@@ -3,6 +3,7 @@ import { apiClient } from '../api/client'
 import { getDemoWallet } from '../lib/demoWallet'
 
 const SESSION_STORAGE_KEY = 'sp-guess-session'
+const ROUND_LOCATION_COUNT = 2
 
 function bytesToBase64(bytes) {
   let binary = ''
@@ -39,6 +40,8 @@ export function useGameSession() {
   const [status, setStatus] = useState('Connect a Solana wallet to start your first world drop.')
   const [isBusy, setIsBusy] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(90)
+  const [currentLocationIndex, setCurrentLocationIndex] = useState(1)
+  const [locationResults, setLocationResults] = useState([])
   const timerRef = useRef(null)
 
   useEffect(() => {
@@ -151,6 +154,8 @@ export function useGameSession() {
       setActiveRound(round)
       setSelectedGuess(null)
       setResult(null)
+      setLocationResults([])
+      setCurrentLocationIndex(1)
       setPaymentRoundId(null)
       setQuota(round.quota)
       setPhase('playing')
@@ -219,12 +224,40 @@ export function useGameSession() {
         activeRound.roundId,
         selectedGuess,
       )
-      setResult(payload.result)
+      const nextResults = [...locationResults, payload.result]
       setQuota(payload.quota)
+
+      if (currentLocationIndex < ROUND_LOCATION_COUNT) {
+        const nextRound = await apiClient.startRound(session.token)
+        setLocationResults(nextResults)
+        setCurrentLocationIndex((current) => current + 1)
+        setActiveRound(nextRound)
+        setSelectedGuess(null)
+        setSecondsLeft(90)
+        setPhase('playing')
+        setStatus(`R${currentLocationIndex} locked. R${currentLocationIndex + 1} is live.`)
+        return
+      }
+
+      const totalRewardSp = nextResults.reduce((sum, entry) => sum + entry.rewardSp, 0)
+      const totalScore = nextResults.reduce((sum, entry) => sum + entry.score, 0)
+      const rewardEligibleCount = nextResults.filter((entry) => entry.rewardEligible).length
+      const averageDistanceKm =
+        nextResults.reduce((sum, entry) => sum + entry.distanceKm, 0) / nextResults.length
+
+      setLocationResults(nextResults)
+      setResult({
+        stops: nextResults,
+        totalRewardSp,
+        totalScore,
+        rewardEligibleCount,
+        thresholdKm: payload.result.thresholdKm,
+        averageDistanceKm: Number(averageDistanceKm.toFixed(2)),
+      })
       setPhase('result')
       setStatus(
-        payload.result.rewardEligible
-          ? `Locked in. ${payload.result.rewardSp} SP is queued for this round.`
+        totalRewardSp > 0
+          ? `Round complete. ${totalRewardSp} SP queued across ${rewardEligibleCount} correct locations.`
           : 'Round complete. No SP this time, but the reveal is live.',
       )
     } catch (caughtError) {
@@ -239,6 +272,8 @@ export function useGameSession() {
     setActiveRound(null)
     setSelectedGuess(null)
     setResult(null)
+    setLocationResults([])
+    setCurrentLocationIndex(1)
     setPaymentRoundId(null)
     setSecondsLeft(90)
     setPhase('ready')
@@ -256,6 +291,9 @@ export function useGameSession() {
     status,
     isBusy,
     secondsLeft,
+    currentLocationIndex,
+    locationResults,
+    roundLocationCount: ROUND_LOCATION_COUNT,
     setSelectedGuess,
     connectWallet,
     startRound,

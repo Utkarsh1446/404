@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { clientConfig } from '../config'
 import { loadGoogleMaps } from '../lib/googleMaps'
 
-function buildStreetViewFallback(round) {
+function buildStreetViewImage(round) {
   if (!round || !clientConfig.googleMapsApiKey) return undefined
 
   const { lat, lng } = round.panorama.position
@@ -11,13 +11,18 @@ function buildStreetViewFallback(round) {
 
   const params = new URLSearchParams({
     key: clientConfig.googleMapsApiKey,
-    location: `${lat},${lng}`,
     size: '1600x900',
     heading: String(heading),
     pitch: String(pitch),
     fov: '90',
     source: 'outdoor',
   })
+
+  if (round.panorama.panoId) {
+    params.set('pano', round.panorama.panoId)
+  } else {
+    params.set('location', `${lat},${lng}`)
+  }
 
   return `https://maps.googleapis.com/maps/api/streetview?${params.toString()}`
 }
@@ -30,68 +35,75 @@ export function StreetViewStage({ round }) {
   )
 
   useEffect(() => {
-    if (!round || !containerRef.current) return undefined
+    if (!round || !containerRef.current || !clientConfig.googleMapsApiKey) {
+      return undefined
+    }
 
     let cancelled = false
-    let paintTimeoutId
-    setLoadState(clientConfig.googleMapsApiKey ? 'loading' : 'missing-key')
+    let fallbackTimeoutId
+
+    setLoadState('loading')
 
     loadGoogleMaps()
       .then((google) => {
         if (cancelled || !containerRef.current) return
-        const streetViewService = new google.maps.StreetViewService()
 
-        streetViewService.getPanorama(
-          {
-            location: round.panorama.position,
-            radius: 300,
-          },
-          (data, streetViewStatus) => {
-            if (cancelled) return
+        panoramaRef.current = new google.maps.StreetViewPanorama(containerRef.current, {
+          pano: round.panorama.panoId,
+          position: round.panorama.position,
+          pov: round.panorama.pov,
+          zoom: round.panorama.zoom,
+          addressControl: false,
+          fullscreenControl: false,
+          motionTracking: false,
+          motionTrackingControl: false,
+          showRoadLabels: false,
+          linksControl: true,
+          clickToGo: true,
+          scrollwheel: true,
+          disableDefaultUI: false,
+          visible: true,
+        })
 
-            if (streetViewStatus !== 'OK' || !data?.location?.pano) {
-              setLoadState('error')
-              return
-            }
+        const panorama = panoramaRef.current
 
-            panoramaRef.current = new google.maps.StreetViewPanorama(containerRef.current, {
-              pano: data.location.pano,
-              pov: round.panorama.pov,
-              zoom: round.panorama.zoom,
-              addressControl: false,
-              linksControl: true,
-              motionTracking: false,
-              fullscreenControl: false,
-              showRoadLabels: false,
-              visible: true,
-            })
-
-            const repaint = () => {
-              if (!cancelled && panoramaRef.current) {
-                google.maps.event.trigger(panoramaRef.current, 'resize')
-                panoramaRef.current.setPov(round.panorama.pov)
-                panoramaRef.current.setZoom(round.panorama.zoom)
-                panoramaRef.current.setVisible(true)
-              }
-            }
-
-            window.requestAnimationFrame(repaint)
-            window.setTimeout(repaint, 120)
-            paintTimeoutId = window.setTimeout(repaint, 500)
-
+        const finalizeReady = () => {
+          if (cancelled || !panorama) return
+          const panoValue = panorama.getPano?.()
+          if (panoValue) {
             setLoadState('ready')
-          },
-        )
+            google.maps.event.trigger(panorama, 'resize')
+            panorama.setPov(round.panorama.pov)
+            panorama.setZoom(round.panorama.zoom)
+          }
+        }
+
+        panorama.addListener('pano_changed', finalizeReady)
+        panorama.addListener('position_changed', finalizeReady)
+
+        if (round.panorama.panoId) {
+          panorama.setPano(round.panorama.panoId)
+        } else {
+          panorama.setPosition(round.panorama.position)
+        }
+
+        fallbackTimeoutId = window.setTimeout(() => {
+          if (cancelled) return
+          const panoValue = panorama.getPano?.()
+          if (!panoValue) {
+            setLoadState('fallback')
+          }
+        }, 2500)
       })
       .catch(() => {
         if (!cancelled) {
-          setLoadState('error')
+          setLoadState('fallback')
         }
       })
 
     return () => {
       cancelled = true
-      window.clearTimeout(paintTimeoutId)
+      window.clearTimeout(fallbackTimeoutId)
     }
   }, [round])
 
@@ -115,40 +127,23 @@ export function StreetViewStage({ round }) {
     )
   }
 
-  if (loadState === 'error') {
-    return (
-      <div
-        className="stage-placeholder"
-        style={
-          buildStreetViewFallback(round)
-            ? { backgroundImage: `url("${buildStreetViewFallback(round)}")` }
-            : undefined
-        }
-      >
-        <span className="eyebrow">Load failure</span>
-        <h3>Google Maps could not load.</h3>
-        <p>Check the key, referrer restrictions, and browser connectivity.</p>
-      </div>
-    )
-  }
+  const imageUrl = buildStreetViewImage(round)
 
   return (
-    <div
-      className={`street-stage ${loadState === 'ready' ? 'is-ready' : 'is-loading'}`}
-      style={
-        buildStreetViewFallback(round)
-          ? { backgroundImage: `url("${buildStreetViewFallback(round)}")` }
-          : undefined
-      }
-    >
-      <div className="stage-overlay">
-        <span className="eyebrow">Live round</span>
-        <div className="stage-overlay-copy">
-          <strong>World mode</strong>
-          <span>Pan, zoom, and place one pin on the guess map.</span>
-        </div>
-      </div>
-      <div ref={containerRef} className="street-stage-canvas" />
+    <div className={`street-stage ${loadState === 'fallback' ? 'is-fallback' : ''}`}>
+      {loadState === 'fallback' ? (
+        <img
+          key={`${round.roundId}-${imageUrl}`}
+          className="street-stage-image"
+          src={imageUrl}
+          alt="Street View fallback"
+          draggable="false"
+        />
+      ) : null}
+      <div
+        ref={containerRef}
+        className={`street-stage-canvas ${loadState === 'ready' ? 'is-visible' : ''}`}
+      />
     </div>
   )
 }

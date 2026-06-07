@@ -10,7 +10,6 @@ import { StreetViewStage } from './components/StreetViewStage'
 import { useGameSession } from './hooks/useGameSession'
 import { formatWallet } from './lib/formatters'
 
-const ROUND_LOCATION_COUNT = 2
 const POLAROID_MIST_TRANSITION_MS = 760
 
 const LANDMARK_POLAROIDS = [
@@ -86,7 +85,6 @@ function normalizeLongitude(value) {
 function clampLatitude(value) {
   return Math.max(-62, Math.min(62, value))
 }
-
 function formatClock(totalSeconds) {
   return `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`
 }
@@ -107,6 +105,9 @@ function App() {
     error,
     isBusy,
     secondsLeft,
+    currentLocationIndex,
+    locationResults,
+    roundLocationCount,
     setSelectedGuess,
     connectWallet,
     beginExperience,
@@ -217,8 +218,6 @@ function App() {
   ]
 
   const elapsedSeconds = 90 - secondsLeft
-  const currentLocationIndex = 1
-  const completedLocations = phase === 'result' ? 1 : 0
   const visiblePolaroids = useMemo(() => {
     const centerLatitude = (globeRotation.lat * Math.PI) / 180
 
@@ -302,6 +301,7 @@ function App() {
       window.clearTimeout(removeTimer)
     }
   }, [visiblePolaroids])
+  const completedLocations = locationResults.length
 
   return (
     <main className="app-shell">
@@ -471,17 +471,17 @@ function App() {
             <div className="hud-top hud-scoreboard">
               <div className={`score-cell ${currentLocationIndex === 1 ? 'active' : ''}`}>
                 <span>R1</span>
-                <strong>{completedLocations >= 1 ? 0 : '-'}</strong>
-                <small>{currentLocationIndex === 1 ? formatClock(secondsLeft) : '-'}</small>
+                <strong>{locationResults[0] ? locationResults[0].score : '-'}</strong>
+                <small>{currentLocationIndex === 1 && phase !== 'result' ? formatClock(secondsLeft) : '-'}</small>
               </div>
-              <div className="score-cell">
+              <div className={`score-cell ${currentLocationIndex === 2 ? 'active' : ''}`}>
                 <span>R2</span>
-                <strong>{completedLocations >= 2 ? 0 : '-'}</strong>
-                <small>{currentLocationIndex === 2 ? formatClock(secondsLeft) : '-'}</small>
+                <strong>{locationResults[1] ? locationResults[1].score : '-'}</strong>
+                <small>{currentLocationIndex === 2 && phase !== 'result' ? formatClock(secondsLeft) : '-'}</small>
               </div>
               <div className="score-cell total-cell">
                 <span>Total</span>
-                <strong>{completedLocations}/{ROUND_LOCATION_COUNT}</strong>
+                <strong>{completedLocations}/{roundLocationCount}</strong>
                 <small>{formatClock(elapsedSeconds)}</small>
               </div>
             </div>

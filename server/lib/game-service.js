@@ -45,6 +45,7 @@ function makeRoundPayload(round, location, quota) {
         lat: location.panorama.lat,
         lng: location.panorama.lng,
       },
+      panoId: location.panorama.panoId,
       pov: location.panorama.pov,
       zoom: location.panorama.zoom,
     },

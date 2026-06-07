@@ -7,40 +7,39 @@ export function ResultModal({ result, onNextRound }) {
   return (
     <div className="result-modal-backdrop">
       <div className="result-modal">
-        <span className="eyebrow">{result.rewardEligible ? 'Reward unlocked' : 'Round complete'}</span>
-        <h2>{result.rewardEligible ? `+${result.rewardSp} SP earned` : 'No SP on this drop'}</h2>
-        <p className="result-distance-callout">You were {formatDistance(result.distanceKm)} from the actual location.</p>
+        <span className="eyebrow">{result.totalRewardSp > 0 ? 'Reward unlocked' : 'Round complete'}</span>
+        <h2>{result.totalRewardSp > 0 ? `+${result.totalRewardSp} SP earned` : 'No SP on this round'}</h2>
+        <p className="result-distance-callout">
+          Average distance across both locations: {formatDistance(result.averageDistanceKm)}.
+        </p>
         <div className="result-grid">
           <div>
-            <span>Distance</span>
-            <strong>{formatDistance(result.distanceKm)}</strong>
+            <span>Average distance</span>
+            <strong>{formatDistance(result.averageDistanceKm)}</strong>
           </div>
           <div>
-            <span>Score</span>
-            <strong>{result.score}</strong>
+            <span>Total score</span>
+            <strong>{result.totalScore}</strong>
           </div>
           <div>
             <span>Threshold</span>
             <strong>{result.thresholdKm} km</strong>
           </div>
         </div>
-        <div className="result-pins">
-          <div>
-            <span>Your pin</span>
-            <strong>
-              {result.guess.lat.toFixed(3)}, {result.guess.lng.toFixed(3)}
-            </strong>
-          </div>
-          <div>
-            <span>Actual pin</span>
-            <strong>
-              {result.answer.lat.toFixed(3)}, {result.answer.lng.toFixed(3)}
-            </strong>
-          </div>
+        <div className="result-stops">
+          {result.stops.map((stop, index) => (
+            <div key={`${stop.answer.lat}-${stop.answer.lng}`} className="result-stop-card">
+              <span>R{index + 1}</span>
+              <strong>{formatDistance(stop.distanceKm)}</strong>
+              <p>
+                Reveal: {stop.region}, {stop.country}
+              </p>
+              <p>
+                Pin {stop.guess.lat.toFixed(3)}, {stop.guess.lng.toFixed(3)}
+              </p>
+            </div>
+          ))}
         </div>
-        <p className="result-caption">
-          Reveal: {result.region}, {result.country}
-        </p>
         <HoverButton className="submit-button" type="button" onClick={onNextRound}>
           Queue next round
         </HoverButton>
