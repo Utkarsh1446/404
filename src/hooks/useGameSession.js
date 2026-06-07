@@ -1,0 +1,267 @@
+import { useEffect, useRef, useState } from 'react'
+import { apiClient } from '../api/client'
+import { getDemoWallet } from '../lib/demoWallet'
+
+const SESSION_STORAGE_KEY = 'sp-guess-session'
+
+function bytesToBase64(bytes) {
+  let binary = ''
+
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte)
+  })
+
+  return window.btoa(binary)
+}
+
+function loadStoredSession() {
+  if (typeof window === 'undefined') return null
+
+  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY)
+  if (!raw) return null
+
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+export function useGameSession() {
+  const [session, setSession] = useState(loadStoredSession)
+  const [phase, setPhase] = useState('disconnected')
+  const [quota, setQuota] = useState(null)
+  const [activeRound, setActiveRound] = useState(null)
+  const [paymentRoundId, setPaymentRoundId] = useState(null)
+  const [selectedGuess, setSelectedGuess] = useState(null)
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState('')
+  const [status, setStatus] = useState('Connect a Solana wallet to start your first world drop.')
+  const [isBusy, setIsBusy] = useState(false)
+  const [secondsLeft, setSecondsLeft] = useState(90)
+  const timerRef = useRef(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (session) {
+        window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session))
+      } else {
+        window.localStorage.removeItem(SESSION_STORAGE_KEY)
+      }
+    }
+  }, [session])
+
+  useEffect(() => {
+    if (!session?.token) return undefined
+
+    apiClient
+      .getQuota(session.token)
+      .then((nextQuota) => {
+        setQuota(nextQuota)
+        setPhase((current) => (current === 'disconnected' ? 'ready' : current))
+      })
+      .catch(() => {
+        setSession(null)
+        setPhase('disconnected')
+      })
+
+    return undefined
+  }, [session?.token])
+
+  useEffect(() => {
+    if (phase !== 'playing') {
+      window.clearInterval(timerRef.current)
+      return undefined
+    }
+
+    timerRef.current = window.setInterval(() => {
+      setSecondsLeft((current) => {
+        if (current <= 1) {
+          window.clearInterval(timerRef.current)
+          return 0
+        }
+        return current - 1
+      })
+    }, 1000)
+
+    return () => window.clearInterval(timerRef.current)
+  }, [phase])
+
+  async function connectWallet() {
+    setIsBusy(true)
+    setError('')
+
+    try {
+      const provider = window.solana?.isPhantom ? window.solana : null
+      const wallet = provider
+        ? await provider.connect()
+        : getDemoWallet()
+      const walletAddress = provider
+        ? wallet.publicKey.toBase58()
+        : wallet.walletAddress
+      const challenge = await apiClient.createChallenge(walletAddress)
+      const messageBytes = new TextEncoder().encode(challenge.message)
+      const signatureBytes = provider
+        ? await provider.signMessage(messageBytes, 'utf8')
+        : await wallet.signMessage(messageBytes)
+      const signature = bytesToBase64(
+        provider ? signatureBytes.signature : signatureBytes,
+      )
+      const verified = await apiClient.verifyWallet({
+        walletAddress,
+        message: challenge.message,
+        signature,
+      })
+
+      setSession({
+        token: verified.token,
+        walletAddress,
+        signerLabel: provider ? 'Phantom' : 'Demo signer',
+      })
+      setQuota(verified.quota)
+      setPhase('ready')
+      setStatus(
+        provider
+          ? 'Wallet verified. Start a world drop and pin the map.'
+          : 'Demo wallet verified. Add your Google Maps key to enable the full panorama flow.',
+      )
+      return {
+        token: verified.token,
+        walletAddress,
+      }
+    } catch (caughtError) {
+      setError(caughtError.message)
+      setStatus('Wallet verification failed. Try connecting again.')
+      return null
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  async function startRound(tokenOverride) {
+    const authToken = tokenOverride ?? session?.token
+
+    if (!authToken) return { status: 'missing_token' }
+
+    setIsBusy(true)
+    setError('')
+
+    try {
+      const round = await apiClient.startRound(authToken)
+      setActiveRound(round)
+      setSelectedGuess(null)
+      setResult(null)
+      setPaymentRoundId(null)
+      setQuota(round.quota)
+      setPhase('playing')
+      setSecondsLeft(90)
+      setStatus('Pan the world, read the clues, and place one decisive pin.')
+      return {
+        status: 'started',
+        round,
+      }
+    } catch (caughtError) {
+      if (caughtError.status === 402 && caughtError.payload?.roundId) {
+        setPaymentRoundId(caughtError.payload.roundId)
+        setQuota(caughtError.payload.quota)
+        setPhase('quota_blocked')
+        setStatus('Free quota exhausted. Unlock one extra round for $1.')
+        return {
+          status: 'quota_blocked',
+          roundId: caughtError.payload.roundId,
+        }
+      } else {
+        setError(caughtError.message)
+      }
+      return {
+        status: 'error',
+      }
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  async function beginExperience() {
+    const nextSession = session ?? (await connectWallet())
+    if (!nextSession?.token) return { status: 'error' }
+    return startRound(nextSession.token)
+  }
+
+  async function unlockPaidRound() {
+    if (!session?.token || !paymentRoundId) return { status: 'missing_payment_round' }
+
+    setIsBusy(true)
+    setError('')
+
+    try {
+      const checkout = await apiClient.checkoutIntent(session.token, paymentRoundId)
+      setQuota(checkout.quota)
+      setStatus('Paid attempt unlocked. Your world drop is ready.')
+      return await startRound()
+    } catch (caughtError) {
+      setError(caughtError.message)
+      return { status: 'error' }
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  async function submitGuess() {
+    if (!session?.token || !activeRound || !selectedGuess) return
+
+    setIsBusy(true)
+    setError('')
+    setPhase('submitted')
+
+    try {
+      const payload = await apiClient.submitGuess(
+        session.token,
+        activeRound.roundId,
+        selectedGuess,
+      )
+      setResult(payload.result)
+      setQuota(payload.quota)
+      setPhase('result')
+      setStatus(
+        payload.result.rewardEligible
+          ? `Locked in. ${payload.result.rewardSp} SP is queued for this round.`
+          : 'Round complete. No SP this time, but the reveal is live.',
+      )
+    } catch (caughtError) {
+      setPhase('playing')
+      setError(caughtError.message)
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  function resetForNextRound() {
+    setActiveRound(null)
+    setSelectedGuess(null)
+    setResult(null)
+    setPaymentRoundId(null)
+    setSecondsLeft(90)
+    setPhase('ready')
+  }
+
+  return {
+    session,
+    phase,
+    quota,
+    activeRound,
+    paymentRoundId,
+    selectedGuess,
+    result,
+    error,
+    status,
+    isBusy,
+    secondsLeft,
+    setSelectedGuess,
+    connectWallet,
+    startRound,
+    beginExperience,
+    unlockPaidRound,
+    submitGuess,
+    resetForNextRound,
+  }
+}
