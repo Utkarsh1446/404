@@ -93,6 +93,10 @@
   padding: 0;
 }
 
+.bubble-menu .menu-btn .hover-button-content {
+  flex-direction: column;
+}
+
 .bubble-menu .menu-line {
   width: 24px;
   height: 2px;

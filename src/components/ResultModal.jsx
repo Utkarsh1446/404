@@ -1,4 +1,5 @@
 import { formatDistance } from '../lib/formatters'
+import { HoverButton } from './HoverButton'
 
 export function ResultModal({ result, onNextRound }) {
   if (!result) return null
@@ -40,9 +41,9 @@ export function ResultModal({ result, onNextRound }) {
         <p className="result-caption">
           Reveal: {result.region}, {result.country}
         </p>
-        <button className="submit-button" type="button" onClick={onNextRound}>
+        <HoverButton className="submit-button" type="button" onClick={onNextRound}>
           Queue next round
-        </button>
+        </HoverButton>
       </div>
     </div>
   )

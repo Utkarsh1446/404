@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
+import { HoverButton } from './HoverButton'
 import './BubbleMenu.css'
 
 const DEFAULT_ITEMS = [
@@ -162,7 +163,7 @@ export default function BubbleMenu({
           </span>
         </div>
 
-        <button
+        <HoverButton
           type="button"
           className={`bubble toggle-bubble menu-btn ${isMenuOpen ? 'open' : ''}`}
           onClick={handleToggle}
@@ -172,7 +173,7 @@ export default function BubbleMenu({
         >
           <span className="menu-line" style={{ background: menuContentColor }} />
           <span className="menu-line short" style={{ background: menuContentColor }} />
-        </button>
+        </HoverButton>
       </nav>
 
       {showOverlay ? (

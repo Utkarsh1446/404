@@ -49,6 +49,10 @@ export function createApp(options = {}) {
   )
   app.use(express.json())
 
+  app.get('/', (_req, res) => {
+    res.json({ ok: true, app: 'SuperPumped Guess API' })
+  })
+
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true })
   })

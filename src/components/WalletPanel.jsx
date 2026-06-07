@@ -1,4 +1,5 @@
 import { formatWallet } from '../lib/formatters'
+import { HoverButton } from './HoverButton'
 
 export function WalletPanel({
   session,
@@ -24,14 +25,14 @@ export function WalletPanel({
           Three rounds are free each UTC day. Every round after that unlocks through
           a mocked $1 checkout flow designed for a real payment adapter later.
         </p>
-        <button
+        <HoverButton
           className="wallet-button"
           type="button"
           onClick={onConnect}
           disabled={isBusy || Boolean(session)}
         >
           {buttonLabel}
-        </button>
+        </HoverButton>
       </div>
 
       <div className="quota-card">
@@ -52,18 +53,18 @@ export function WalletPanel({
         </div>
 
         {phase === 'quota_blocked' ? (
-          <button className="submit-button" type="button" onClick={onUnlockPaidRound}>
+          <HoverButton className="submit-button" type="button" onClick={onUnlockPaidRound}>
             Unlock a paid round
-          </button>
+          </HoverButton>
         ) : (
-          <button
+          <HoverButton
             className="ghost-button"
             type="button"
             disabled={!session || isBusy}
             onClick={onStartRound}
           >
             Start a world drop
-          </button>
+          </HoverButton>
         )}
       </div>
     </aside>

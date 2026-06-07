@@ -24,6 +24,10 @@ export function GuessMap({ selectedGuess, onSelectGuess, disabled }) {
           center: { lat: 18, lng: 0 },
           zoom: 1,
           disableDefaultUI: true,
+          zoomControl: true,
+          zoomControlOptions: {
+            position: google.maps.ControlPosition.LEFT_TOP,
+          },
           gestureHandling: 'greedy',
           minZoom: 1,
           mapTypeId: 'roadmap',

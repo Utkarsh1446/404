@@ -1,14 +1,91 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import notfoundLogo from './assets/notfound-logo-bw.png'
+import worldUvDots from './assets/maps/world-uv-dots.svg'
 import CardNav from './components/CardNav'
 import { GuessMap } from './components/GuessMap'
+import { HoverButton } from './components/HoverButton'
 import { ResultModal } from './components/ResultModal'
 import { StreetViewStage } from './components/StreetViewStage'
 import { useGameSession } from './hooks/useGameSession'
 import { formatWallet } from './lib/formatters'
 
 const ROUND_LOCATION_COUNT = 2
+const POLAROID_MIST_TRANSITION_MS = 760
+
+const LANDMARK_POLAROIDS = [
+  {
+    city: 'Beijing',
+    lat: 39.9042,
+    lng: 116.4074,
+    image:
+      'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Tokyo',
+    lat: 35.6762,
+    lng: 139.6503,
+    image:
+      'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Singapore',
+    lat: 1.3521,
+    lng: 103.8198,
+    image:
+      'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Sydney',
+    lat: -33.8688,
+    lng: 151.2093,
+    image:
+      'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'San Francisco',
+    lat: 37.7749,
+    lng: -122.4194,
+    image:
+      'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Paris',
+    lat: 48.8566,
+    lng: 2.3522,
+    image:
+      'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Cairo',
+    lat: 30.0444,
+    lng: 31.2357,
+    image:
+      'https://images.unsplash.com/photo-1572252009286-268acec5ca0a?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Rio',
+    lat: -22.9068,
+    lng: -43.1729,
+    image:
+      'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'New York',
+    lat: 40.7128,
+    lng: -74.006,
+    image:
+      'https://images.unsplash.com/photo-1485871981521-5b1fd3805eee?auto=format&fit=crop&w=420&q=80',
+  },
+]
+
+function normalizeLongitude(value) {
+  return ((((value + 180) % 360) + 360) % 360) - 180
+}
+
+function clampLatitude(value) {
+  return Math.max(-62, Math.min(62, value))
+}
 
 function formatClock(totalSeconds) {
   return `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`
@@ -17,6 +94,9 @@ function formatClock(totalSeconds) {
 function App() {
   const [showLanding, setShowLanding] = useState(true)
   const [mapExpanded, setMapExpanded] = useState(false)
+  const [globeRotation, setGlobeRotation] = useState({ lng: 0, lat: 0 })
+  const [renderedPolaroids, setRenderedPolaroids] = useState([])
+  const globeDragRef = useRef(null)
   const {
     session,
     phase,
@@ -64,6 +144,37 @@ function App() {
     await connectWallet()
   }
 
+  function handleGlobePointerDown(event) {
+    event.currentTarget.setPointerCapture(event.pointerId)
+    globeDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startRotation: globeRotation,
+    }
+  }
+
+  function handleGlobePointerMove(event) {
+    const drag = globeDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return
+    }
+
+    const longitudeDelta = (event.clientX - drag.startX) * 0.36
+    const latitudeDelta = (drag.startY - event.clientY) * 0.27
+
+    setGlobeRotation({
+      lng: normalizeLongitude(drag.startRotation.lng + longitudeDelta),
+      lat: clampLatitude(drag.startRotation.lat + latitudeDelta),
+    })
+  }
+
+  function handleGlobePointerEnd(event) {
+    if (globeDragRef.current?.pointerId === event.pointerId) {
+      globeDragRef.current = null
+    }
+  }
+
   const landingNavItems = [
     {
       label: 'Play',
@@ -108,6 +219,89 @@ function App() {
   const elapsedSeconds = 90 - secondsLeft
   const currentLocationIndex = 1
   const completedLocations = phase === 'result' ? 1 : 0
+  const visiblePolaroids = useMemo(() => {
+    const centerLatitude = (globeRotation.lat * Math.PI) / 180
+
+    return LANDMARK_POLAROIDS.map((place) => {
+      const relativeLongitude = normalizeLongitude(place.lng - globeRotation.lng)
+      const longitudeRadians = (relativeLongitude * Math.PI) / 180
+      const latitudeRadians = (place.lat * Math.PI) / 180
+      const depth =
+        Math.sin(centerLatitude) * Math.sin(latitudeRadians) +
+        Math.cos(centerLatitude) * Math.cos(latitudeRadians) * Math.cos(longitudeRadians)
+      const projectedX = Math.cos(latitudeRadians) * Math.sin(longitudeRadians)
+      const projectedY =
+        Math.cos(centerLatitude) * Math.sin(latitudeRadians) -
+        Math.sin(centerLatitude) * Math.cos(latitudeRadians) * Math.cos(longitudeRadians)
+      const x = 50 + projectedX * 40
+      const y = 50 - projectedY * 38
+
+      return {
+        ...place,
+        relativeLongitude,
+        depth,
+        x,
+        y,
+        scale: 0.76 + Math.max(depth, 0) * 0.32,
+      }
+    })
+      .filter((place) => place.depth > -0.16)
+      .sort((first, second) => second.depth - first.depth)
+      .slice(0, 5)
+      .sort((first, second) => first.depth - second.depth)
+  }, [globeRotation])
+
+  useEffect(() => {
+    const visibleByCity = new Map(visiblePolaroids.map((place) => [place.city, place]))
+
+    const syncTimer = window.setTimeout(() => {
+      setRenderedPolaroids((current) => {
+        const currentCities = new Set(current.map((place) => place.city))
+        const next = current.map((place) => {
+          const visiblePlace = visibleByCity.get(place.city)
+          if (visiblePlace) {
+            return {
+              ...visiblePlace,
+              mistState: place.mistState === 'entering' ? 'entering' : 'visible',
+            }
+          }
+
+          return {
+            ...place,
+            mistState: 'exiting',
+          }
+        })
+
+        visiblePolaroids.forEach((place) => {
+          if (!currentCities.has(place.city)) {
+            next.push({ ...place, mistState: 'entering' })
+          }
+        })
+
+        return next.sort((first, second) => first.depth - second.depth)
+      })
+    }, 0)
+
+    const settleTimer = window.setTimeout(() => {
+      setRenderedPolaroids((current) =>
+        current.map((place) =>
+          place.mistState === 'entering' ? { ...place, mistState: 'visible' } : place,
+        ),
+      )
+    }, 90)
+
+    const removeTimer = window.setTimeout(() => {
+      setRenderedPolaroids((current) =>
+        current.filter((place) => place.mistState !== 'exiting'),
+      )
+    }, POLAROID_MIST_TRANSITION_MS)
+
+    return () => {
+      window.clearTimeout(syncTimer)
+      window.clearTimeout(settleTimer)
+      window.clearTimeout(removeTimer)
+    }
+  }, [visiblePolaroids])
 
   return (
     <main className="app-shell">
@@ -119,7 +313,7 @@ function App() {
           items={landingNavItems}
           baseColor="#f8f8f2"
           menuColor="#111111"
-          buttonBgColor={phase === 'quota_blocked' ? '#4f46e5' : session ? '#111111' : '#f97316'}
+          buttonBgColor="#111111"
           buttonTextColor="#ffffff"
           ctaLabel={
             phase === 'quota_blocked'
@@ -142,36 +336,124 @@ function App() {
       <section className="viewport-frame" id="play">
         {showLanding ? (
           <div className="landing-screen">
-            <div className="landing-left">
-              <div className="landing-glow landing-glow-left"></div>
+            <div className="landing-world">
               <div className="landing-copy">
+                <span className="landing-kicker">Global street drops</span>
                 <h1>
-                  Play
-                  <span>to win SP</span>
+                  Guess the world.
+                  <span>Win SP.</span>
                 </h1>
-                <button
-                  className="landing-play-button"
-                  type="button"
-                  disabled={isBusy}
-                  onClick={handleLandingPrimaryAction}
-                >
-                  {isBusy
-                    ? 'Loading round...'
-                    : phase === 'quota_blocked'
-                      ? 'Unlock $1 round'
-                      : 'Play'}
-                </button>
+                <p className="landing-caption">
+                  Spin through famous places, read the scene, and drop one pin
+                  before the timer runs out.
+                </p>
+                <div className="landing-actions">
+                  <HoverButton
+                    className="landing-play-button"
+                    type="button"
+                    disabled={isBusy}
+                    onClick={handleLandingPrimaryAction}
+                  >
+                    {isBusy
+                      ? 'Loading...'
+                      : phase === 'quota_blocked'
+                        ? 'Unlock round'
+                        : 'Play'}
+                  </HoverButton>
+                  <span className="landing-action-note">
+                    {session ? 'Wallet ready' : 'Connect wallet to save attempts'}
+                  </span>
+                </div>
                 {error ? <p className="landing-error">{error}</p> : null}
               </div>
-            </div>
-            <div className="landing-right">
-              <div className="landing-code-column">
-                <span>module notfound::guess</span>
-                <span>/// connect wallet</span>
-                <span>/// enter street view</span>
-                <span>/// drop one pin</span>
-                <span>/// claim SP if close</span>
-                <span>return true</span>
+
+              <div
+                className="earth-showcase"
+                aria-label="Interactive rotating Earth with famous place polaroids"
+              >
+                <div className="earth-orbit" aria-hidden="true"></div>
+
+                <div
+                  className="earth-globe"
+                  role="slider"
+                  tabIndex={0}
+                  aria-label="Rotate Earth"
+                  aria-valuemin={-180}
+                  aria-valuemax={180}
+                  aria-valuenow={Math.round(globeRotation.lng)}
+                  aria-valuetext={`Longitude ${Math.round(globeRotation.lng)} degrees, latitude ${Math.round(globeRotation.lat)} degrees`}
+                  onPointerDown={handleGlobePointerDown}
+                  onPointerMove={handleGlobePointerMove}
+                  onPointerUp={handleGlobePointerEnd}
+                  onPointerCancel={handleGlobePointerEnd}
+                  onKeyDown={(event) => {
+                    if (event.key === 'ArrowLeft') {
+                      event.preventDefault()
+                      setGlobeRotation((current) => ({
+                        ...current,
+                        lng: normalizeLongitude(current.lng - 18),
+                      }))
+                    }
+
+                    if (event.key === 'ArrowRight') {
+                      event.preventDefault()
+                      setGlobeRotation((current) => ({
+                        ...current,
+                        lng: normalizeLongitude(current.lng + 18),
+                      }))
+                    }
+
+                    if (event.key === 'ArrowUp') {
+                      event.preventDefault()
+                      setGlobeRotation((current) => ({
+                        ...current,
+                        lat: clampLatitude(current.lat + 12),
+                      }))
+                    }
+
+                    if (event.key === 'ArrowDown') {
+                      event.preventDefault()
+                      setGlobeRotation((current) => ({
+                        ...current,
+                        lat: clampLatitude(current.lat - 12),
+                      }))
+                    }
+                  }}
+                >
+                  <div
+                    className="earth-map-rotation"
+                    style={{
+                      '--map-offset-x': `${globeRotation.lng * -3.35}px`,
+                      '--map-offset-y': `${globeRotation.lat * 1.18}px`,
+                    }}
+                  >
+                    <div
+                      className="earth-map-track"
+                      style={{ backgroundImage: `url(${worldUvDots})` }}
+                    />
+                  </div>
+                  <div className="earth-shade"></div>
+                </div>
+
+                {renderedPolaroids.map((place, index) => (
+                  <article
+                    className={`place-polaroid is-${place.mistState}`}
+                    key={place.city}
+                    style={{
+                      '--photo': `url(${place.image})`,
+                      '--delay': `${index * -1.8}s`,
+                      '--card-x': `${place.x}%`,
+                      '--card-y': `${place.y}%`,
+                      '--card-scale': place.scale,
+                      '--card-opacity': 0.58 + Math.max(place.depth, 0) * 0.42,
+                      '--card-tilt': `${Math.sin((place.relativeLongitude * Math.PI) / 180) * 8}deg`,
+                    }}
+                    aria-label={place.city}
+                  >
+                    <div className="place-photo"></div>
+                    <span>{place.city}</span>
+                  </article>
+                ))}
               </div>
             </div>
           </div>
@@ -180,8 +462,10 @@ function App() {
             <StreetViewStage round={activeRound} />
 
             <div className="hud-top hud-brand">
-              <img className="hud-brand-logo" src={notfoundLogo} alt="notfound logo" />
-              <span>notfound</span>
+              <span className="hud-brand-logo-frame">
+                <img className="hud-brand-logo" src={notfoundLogo} alt="SuperPumped logo" />
+              </span>
+              <span>SuperPumped</span>
             </div>
 
             <div className="hud-top hud-scoreboard">
@@ -208,13 +492,13 @@ function App() {
 
             <div className={`guess-overlay ${mapExpanded ? 'expanded' : ''}`}>
               <div className="guess-overlay-toolbar">
-                <button
+                <HoverButton
                   className="map-toggle"
                   type="button"
                   onClick={() => setMapExpanded((current) => !current)}
                 >
                   {mapExpanded ? 'Minimize map' : 'Expand map'}
-                </button>
+                </HoverButton>
               </div>
 
               <GuessMap
@@ -231,14 +515,14 @@ function App() {
                       : 'Place your pin on the map'}
                   </strong>
                 </div>
-                <button
+                <HoverButton
                   className="submit-button guess-submit"
                   type="button"
                   disabled={!selectedGuess || phase !== 'playing' || isBusy}
                   onClick={submitGuess}
                 >
                   Guess
-                </button>
+                </HoverButton>
               </div>
             </div>
           </div>

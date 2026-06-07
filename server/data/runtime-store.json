@@ -1,9 +1,150 @@
 {
-  "players": [],
+  "players": [
+    {
+      "walletAddress": "HAq7aVZiNv41N2h9w1hbm7yTQxCTEfyqiHEZdRnvVWf3",
+      "createdAt": "2026-06-07T15:25:04.786Z",
+      "lastSeenAt": "2026-06-07T16:22:05.460Z"
+    },
+    {
+      "walletAddress": "EJeH8TcWNX99F9nxw7ADBfztTzNVtQZd8ZkA5R11rMZA",
+      "createdAt": "2026-06-07T16:42:20.528Z",
+      "lastSeenAt": "2026-06-07T17:03:38.704Z"
+    }
+  ],
   "authChallenges": [],
-  "sessions": [],
-  "rounds": [],
-  "guesses": [],
-  "dailyAttemptLedger": [],
-  "rewardEvents": []
+  "sessions": [
+    {
+      "token": "65465f13-8405-47c2-8580-837555098ff2",
+      "walletAddress": "HAq7aVZiNv41N2h9w1hbm7yTQxCTEfyqiHEZdRnvVWf3",
+      "createdAt": "2026-06-07T15:25:04.784Z"
+    },
+    {
+      "token": "f071eca4-18be-46e9-ba11-26c777f4e6a2",
+      "walletAddress": "EJeH8TcWNX99F9nxw7ADBfztTzNVtQZd8ZkA5R11rMZA",
+      "createdAt": "2026-06-07T16:42:20.527Z"
+    }
+  ],
+  "rounds": [
+    {
+      "id": "01d80208-1398-4ce3-9209-392998a544ca",
+      "walletAddress": "HAq7aVZiNv41N2h9w1hbm7yTQxCTEfyqiHEZdRnvVWf3",
+      "locationId": "in-jaipur-hawa-mahal",
+      "attemptType": "free",
+      "status": "completed",
+      "createdAt": "2026-06-07T15:25:04.796Z",
+      "updatedAt": "2026-06-07T15:25:16.800Z",
+      "guessedAt": "2026-06-07T15:25:16.800Z",
+      "result": {
+        "distanceKm": 7479.02,
+        "score": 119,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 14.626483589011977,
+          "lng": 4.21875
+        },
+        "answer": {
+          "lat": 26.9239,
+          "lng": 75.8267
+        },
+        "country": "India",
+        "region": "Jaipur"
+      }
+    },
+    {
+      "id": "38ed181c-9ab5-4376-81b1-2fb5a46967bf",
+      "walletAddress": "EJeH8TcWNX99F9nxw7ADBfztTzNVtQZd8ZkA5R11rMZA",
+      "locationId": "za-cape-town-hout-bay",
+      "attemptType": "free",
+      "status": "completed",
+      "createdAt": "2026-06-07T16:42:20.535Z",
+      "updatedAt": "2026-06-07T16:53:04.750Z",
+      "guessedAt": "2026-06-07T16:53:04.750Z",
+      "result": {
+        "distanceKm": 7945.66,
+        "score": 94,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 34.02694360163906,
+          "lng": -4.82138688345574
+        },
+        "answer": {
+          "lat": -34.0464,
+          "lng": 18.3516
+        },
+        "country": "South Africa",
+        "region": "Cape Town"
+      }
+    },
+    {
+      "id": "9c90e3b0-b00e-4f15-8f7f-8afc0182e2a9",
+      "walletAddress": "EJeH8TcWNX99F9nxw7ADBfztTzNVtQZd8ZkA5R11rMZA",
+      "locationId": "in-jaipur-hawa-mahal",
+      "attemptType": "free",
+      "status": "active",
+      "createdAt": "2026-06-07T16:53:14.559Z",
+      "updatedAt": "2026-06-07T16:53:14.559Z"
+    }
+  ],
+  "guesses": [
+    {
+      "id": "04f7bb21-2fb1-4ff3-8287-cea83a6b8fb3",
+      "roundId": "01d80208-1398-4ce3-9209-392998a544ca",
+      "walletAddress": "HAq7aVZiNv41N2h9w1hbm7yTQxCTEfyqiHEZdRnvVWf3",
+      "guessLat": 14.626483589011977,
+      "guessLng": 4.21875,
+      "distanceKm": 7479.02,
+      "score": 119,
+      "createdAt": "2026-06-07T15:25:16.800Z"
+    },
+    {
+      "id": "20b4c6c2-6124-4b5c-b796-9809aec9d954",
+      "roundId": "38ed181c-9ab5-4376-81b1-2fb5a46967bf",
+      "walletAddress": "EJeH8TcWNX99F9nxw7ADBfztTzNVtQZd8ZkA5R11rMZA",
+      "guessLat": 34.02694360163906,
+      "guessLng": -4.82138688345574,
+      "distanceKm": 7945.66,
+      "score": 94,
+      "createdAt": "2026-06-07T16:53:04.750Z"
+    }
+  ],
+  "dailyAttemptLedger": [
+    {
+      "walletAddress": "HAq7aVZiNv41N2h9w1hbm7yTQxCTEfyqiHEZdRnvVWf3",
+      "dayKey": "2026-06-07",
+      "freeUsed": 1,
+      "paidCredits": 0,
+      "paidConsumed": 0,
+      "updatedAt": "2026-06-07T16:22:05.460Z"
+    },
+    {
+      "walletAddress": "EJeH8TcWNX99F9nxw7ADBfztTzNVtQZd8ZkA5R11rMZA",
+      "dayKey": "2026-06-07",
+      "freeUsed": 1,
+      "paidCredits": 0,
+      "paidConsumed": 0,
+      "updatedAt": "2026-06-07T17:03:37.638Z"
+    }
+  ],
+  "rewardEvents": [
+    {
+      "id": "919e29b6-f426-41e1-aad1-66a411c59a2c",
+      "roundId": "01d80208-1398-4ce3-9209-392998a544ca",
+      "walletAddress": "HAq7aVZiNv41N2h9w1hbm7yTQxCTEfyqiHEZdRnvVWf3",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-07T15:25:16.800Z"
+    },
+    {
+      "id": "2d7a9a9d-6b05-467f-8cd4-73294a8b81a2",
+      "roundId": "38ed181c-9ab5-4376-81b1-2fb5a46967bf",
+      "walletAddress": "EJeH8TcWNX99F9nxw7ADBfztTzNVtQZd8ZkA5R11rMZA",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-07T16:53:04.750Z"
+    }
+  ]
 }

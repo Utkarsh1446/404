@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { GoArrowUpRight } from 'react-icons/go'
+import { HoverButton } from './HoverButton'
 import './CardNav.css'
 
 const CardNav = ({
@@ -147,36 +148,29 @@ const CardNav = ({
         style={{ backgroundColor: baseColor }}
       >
         <div className="card-nav-top">
-          <div
+          <HoverButton
+            type="button"
             className={`hamburger-menu ${isHamburgerOpen ? 'open' : ''}`}
             onClick={toggleMenu}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                toggleMenu()
-              }
-            }}
-            role="button"
             aria-label={isExpanded ? 'Close menu' : 'Open menu'}
-            tabIndex={0}
             style={{ color: menuColor || '#000' }}
           >
-            <div className="hamburger-line" />
-            <div className="hamburger-line" />
-          </div>
+            <span className="hamburger-line" />
+            <span className="hamburger-line" />
+          </HoverButton>
 
           <div className="logo-container">
             <img src={logo} alt={logoAlt} className="logo" />
           </div>
 
-          <button
+          <HoverButton
             type="button"
             className="card-nav-cta-button"
             style={{ backgroundColor: buttonBgColor, color: buttonTextColor }}
             onClick={onCtaClick}
           >
             {ctaLabel}
-          </button>
+          </HoverButton>
         </div>
 
         <div className="card-nav-content" aria-hidden={!isExpanded}>
