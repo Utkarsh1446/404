@@ -33,21 +33,6 @@ export function ResultModal({ result, onNextRound }) {
             <strong>{result.thresholdKm} km</strong>
           </div>
         </div>
-        <div className="result-stops">
-          {result.stops.map((stop) => (
-            <div key={`${stop.answer.lat}-${stop.answer.lng}`} className="result-stop-card">
-              <strong>{stop.score.toLocaleString()} pts</strong>
-              <p>
-                Reveal: {stop.region}, {stop.country}
-              </p>
-              <p>Distance: {formatDistance(stop.distanceKm)}</p>
-              <p>Reward: {stop.rewardSp > 0 ? `+${stop.rewardSp} SP` : '0 SP'}</p>
-              <p>
-                Pin {stop.guess.lat.toFixed(3)}, {stop.guess.lng.toFixed(3)}
-              </p>
-            </div>
-          ))}
-        </div>
         <HoverButton className="submit-button" type="button" onClick={onNextRound}>
           Next round
         </HoverButton>
