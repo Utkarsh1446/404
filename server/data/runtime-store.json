@@ -13,7 +13,7 @@
     {
       "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
       "createdAt": "2026-06-07T22:27:26.838Z",
-      "lastSeenAt": "2026-06-08T15:55:31.252Z"
+      "lastSeenAt": "2026-06-08T16:01:03.237Z"
     },
     {
       "walletAddress": "AKUMGhPecjZuGZNGKwFUK9NEeHKsfMvBkr1yz1MJzM5F",
@@ -852,6 +852,64 @@
         "country": "Hong Kong",
         "region": "Hong Kong"
       }
+    },
+    {
+      "id": "561bb837-a936-492a-a047-1a4a1557ec25",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "locationId": "sg-singapore-core",
+      "attemptType": "paid",
+      "status": "completed",
+      "createdAt": "2026-06-08T16:01:01.829Z",
+      "updatedAt": "2026-06-08T16:02:18.107Z",
+      "paymentUnlockedAt": "2026-06-08T16:01:03.189Z",
+      "guessedAt": "2026-06-08T16:02:18.107Z",
+      "result": {
+        "distanceKm": 18560.48,
+        "score": 0,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": -6.142580463470807,
+          "lng": -63.97709012031555
+        },
+        "answer": {
+          "lat": 1.35284392453344,
+          "lng": 103.8199325003116
+        },
+        "country": "Singapore",
+        "region": "Singapore"
+      }
+    },
+    {
+      "id": "a138af2d-df0c-4859-b176-6ea58f5ca2b0",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "locationId": "jp-tokyo-core",
+      "sessionRootId": "561bb837-a936-492a-a047-1a4a1557ec25",
+      "sequenceIndex": 2,
+      "attemptType": "paid",
+      "consumeQuotaOnSubmit": false,
+      "status": "completed",
+      "createdAt": "2026-06-08T16:02:32.188Z",
+      "updatedAt": "2026-06-08T16:03:03.935Z",
+      "guessedAt": "2026-06-08T16:03:03.935Z",
+      "result": {
+        "distanceKm": 8.57,
+        "score": 4979,
+        "rewardEligible": true,
+        "rewardSp": 28,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 35.64972935668714,
+          "lng": 139.77272910790808
+        },
+        "answer": {
+          "lat": 35.68949362190275,
+          "lng": 139.6914373759062
+        },
+        "country": "Japan",
+        "region": "Tokyo"
+      }
     }
   ],
   "guesses": [
@@ -1134,6 +1192,26 @@
       "distanceKm": 2467.08,
       "score": 1456,
       "createdAt": "2026-06-08T15:32:15.574Z"
+    },
+    {
+      "id": "479edd69-b350-419e-8b86-f71e03edf709",
+      "roundId": "561bb837-a936-492a-a047-1a4a1557ec25",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "guessLat": -6.142580463470807,
+      "guessLng": -63.97709012031555,
+      "distanceKm": 18560.48,
+      "score": 0,
+      "createdAt": "2026-06-08T16:02:18.107Z"
+    },
+    {
+      "id": "cae609c8-9e00-46c3-8acd-3100481a4fe0",
+      "roundId": "a138af2d-df0c-4859-b176-6ea58f5ca2b0",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "guessLat": 35.64972935668714,
+      "guessLng": 139.77272910790808,
+      "distanceKm": 8.57,
+      "score": 4979,
+      "createdAt": "2026-06-08T16:03:03.935Z"
     }
   ],
   "dailyAttemptLedger": [
@@ -1189,9 +1267,9 @@
       "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
       "dayKey": "2026-06-08",
       "freeUsed": 3,
-      "paidCredits": 0,
+      "paidCredits": 1,
       "paidConsumed": 2,
-      "updatedAt": "2026-06-08T15:55:31.252Z"
+      "updatedAt": "2026-06-08T16:03:03.935Z"
     }
   ],
   "rewardEvents": [
@@ -1418,6 +1496,22 @@
       "rewardSp": 0,
       "rewardEligible": false,
       "createdAt": "2026-06-08T15:32:15.574Z"
+    },
+    {
+      "id": "da721b2d-94df-4805-8f3e-730f8928a168",
+      "roundId": "561bb837-a936-492a-a047-1a4a1557ec25",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T16:02:18.107Z"
+    },
+    {
+      "id": "475cdd22-fc7f-4872-b29c-861a836d62e4",
+      "roundId": "a138af2d-df0c-4859-b176-6ea58f5ca2b0",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "rewardSp": 28,
+      "rewardEligible": true,
+      "createdAt": "2026-06-08T16:03:03.935Z"
     }
   ]
 }

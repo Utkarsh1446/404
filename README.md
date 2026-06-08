@@ -1,4 +1,4 @@
-# SuperPumped Guess
+# 404 notfound
 
 GeoGuessr-style MVP with a React/Vite frontend, an Express API, Solana wallet sign-in, curated world drops, server-authoritative quota enforcement, and mocked payment/reward rails.
 
