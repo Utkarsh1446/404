@@ -4,6 +4,11 @@
       "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
       "createdAt": "2026-06-08T17:19:39.715Z",
       "lastSeenAt": "2026-06-08T17:26:56.449Z"
+    },
+    {
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "createdAt": "2026-06-08T17:35:17.393Z",
+      "lastSeenAt": "2026-06-08T18:21:31.540Z"
     }
   ],
   "authChallenges": [],
@@ -12,6 +17,11 @@
       "token": "4caa9dd9-938a-4e59-b813-8c8761e31766",
       "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
       "createdAt": "2026-06-08T17:19:39.714Z"
+    },
+    {
+      "token": "043fcda5-d3b2-4009-a805-5da1aa35fbdf",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "createdAt": "2026-06-08T17:35:17.391Z"
     }
   ],
   "rounds": [
@@ -176,6 +186,18 @@
       "status": "active",
       "createdAt": "2026-06-08T17:27:09.575Z",
       "updatedAt": "2026-06-08T17:27:09.575Z"
+    },
+    {
+      "id": "990b155f-1655-4972-bfd4-c2a7199ba871",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "locationId": "th-chiang-mai-core",
+      "sessionRootId": "990b155f-1655-4972-bfd4-c2a7199ba871",
+      "sequenceIndex": 1,
+      "attemptType": "free",
+      "consumeQuotaOnSubmit": true,
+      "status": "active",
+      "createdAt": "2026-06-08T17:35:17.403Z",
+      "updatedAt": "2026-06-08T17:35:17.403Z"
     }
   ],
   "guesses": [
@@ -238,6 +260,14 @@
       "paidCredits": 0,
       "paidConsumed": 0,
       "updatedAt": "2026-06-08T17:27:06.751Z"
+    },
+    {
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "dayKey": "2026-06-08",
+      "freeUsed": 0,
+      "paidCredits": 0,
+      "paidConsumed": 0,
+      "updatedAt": "2026-06-08T18:21:31.540Z"
     }
   ],
   "rewardEvents": [

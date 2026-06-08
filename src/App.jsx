@@ -8,6 +8,7 @@ import { HoverButton } from './components/HoverButton'
 import { RevealMap } from './components/RevealMap'
 import { ResultModal } from './components/ResultModal'
 import { StreetViewStage } from './components/StreetViewStage'
+import { WalletAvatar } from './components/WalletAvatar'
 import { useGameSession } from './hooks/useGameSession'
 import { formatWallet } from './lib/formatters'
 
@@ -88,10 +89,6 @@ function clampLatitude(value) {
 }
 function formatClock(totalSeconds) {
   return `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`
-}
-
-function getInitials(value) {
-  return value ? value.slice(0, 2).toUpperCase() : 'NF'
 }
 
 function WalletPage({ session, onConnectWallet }) {
@@ -201,6 +198,13 @@ function App() {
   }
 
   function handleNextRound() {
+    resetForNextRound()
+    setShowLanding(true)
+    setMapExpanded(false)
+    navigateTo('/')
+  }
+
+  function handleHomeClick() {
     resetForNextRound()
     setShowLanding(true)
     setMapExpanded(false)
@@ -402,7 +406,7 @@ function App() {
             phase === 'quota_blocked'
               ? 'unlock $1 round'
               : session
-                ? <span className="wallet-avatar">{getInitials(session.walletAddress)}</span>
+                ? <WalletAvatar value={session.walletAddress} />
                 : 'connect wallet'
           }
           ctaClassName={session && phase !== 'quota_blocked' ? 'is-avatar' : ''}
@@ -539,11 +543,16 @@ function App() {
           <div className="reveal-surface">
             <RevealMap revealResult={revealResult} />
 
-            <div className="hud-top hud-brand">
+            <button
+              className="hud-top hud-brand"
+              type="button"
+              aria-label="Go to homepage"
+              onClick={handleHomeClick}
+            >
               <span className="hud-brand-logo-frame">
                 <img className="hud-brand-logo" src={notfoundLogo} alt="notfound logo" />
               </span>
-            </div>
+            </button>
 
             <div className="hud-top hud-scoreboard">
               <div className={`score-cell ${currentLocationIndex === 1 ? 'active' : ''}`}>
@@ -595,11 +604,16 @@ function App() {
           <div className="play-surface">
             <StreetViewStage round={activeRound} />
 
-            <div className="hud-top hud-brand">
+            <button
+              className="hud-top hud-brand"
+              type="button"
+              aria-label="Go to homepage"
+              onClick={handleHomeClick}
+            >
               <span className="hud-brand-logo-frame">
                 <img className="hud-brand-logo" src={notfoundLogo} alt="notfound logo" />
               </span>
-            </div>
+            </button>
 
             <div className="hud-top hud-scoreboard">
               <div className={`score-cell ${currentLocationIndex === 1 ? 'active' : ''}`}>
