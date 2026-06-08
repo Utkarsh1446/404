@@ -16,6 +16,7 @@ const CardNav = ({
   buttonTextColor = 'white',
   ctaLabel = 'Get Started',
   onCtaClick,
+  ctaClassName = '',
 }) => {
   const [isHamburgerOpen, setIsHamburgerOpen] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -165,7 +166,7 @@ const CardNav = ({
 
           <HoverButton
             type="button"
-            className="card-nav-cta-button"
+            className={`card-nav-cta-button ${ctaClassName}`.trim()}
             style={{ backgroundColor: buttonBgColor, color: buttonTextColor }}
             onClick={onCtaClick}
           >
@@ -174,7 +175,7 @@ const CardNav = ({
         </div>
 
         <div className="card-nav-content" aria-hidden={!isExpanded}>
-          {(items || []).slice(0, 3).map((item, idx) => (
+          {(items || []).slice(0, 4).map((item, idx) => (
             <div
               key={`${item.label}-${idx}`}
               className="nav-card"

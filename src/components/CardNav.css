@@ -100,12 +100,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 32px;
-  height: 32px;
-  overflow: hidden;
-  border-radius: 8px;
-  clip-path: inset(0 round 8px);
-  background: #111;
+  width: 168px;
+  height: 54px;
   transform: translate(-50%, -50%);
 }
 
@@ -113,7 +109,7 @@
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .card-nav-cta-button {
@@ -128,6 +124,25 @@
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
   align-items: center;
+}
+
+.card-nav-cta-button.is-avatar {
+  min-width: 52px;
+  width: 52px;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.wallet-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #6d3df0 0%, #4f2ab5 100%);
+  color: #ffffff;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
 }
 
 .card-nav-cta-button:hover {
@@ -145,6 +160,7 @@
   display: flex;
   align-items: flex-end;
   gap: 12px;
+  flex-wrap: nowrap;
   visibility: hidden;
   pointer-events: none;
   z-index: 1;
@@ -213,6 +229,8 @@
 
   .logo-container {
     position: static;
+    width: 140px;
+    height: 44px;
     transform: none;
     order: 1;
   }
@@ -224,6 +242,7 @@
   .card-nav-content {
     flex-direction: column;
     align-items: stretch;
+    flex-wrap: nowrap;
     gap: 8px;
     padding: 0.5rem;
     bottom: 0;

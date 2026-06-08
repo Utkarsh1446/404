@@ -15,7 +15,7 @@ export function assertValidWalletAddress(walletAddress) {
 
 export function buildChallengeMessage(walletAddress, nonce, issuedAt) {
   return [
-    'SuperPumped Guess wallet sign-in',
+    'notfound wallet sign-in',
     `Wallet: ${walletAddress}`,
     `Nonce: ${nonce}`,
     `Issued At: ${issuedAt}`,

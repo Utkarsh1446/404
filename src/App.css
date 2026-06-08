@@ -322,6 +322,66 @@
   animation: landingGradientDrift 24s ease-in-out infinite;
 }
 
+.wallet-page {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: clamp(104px, 14vh, 140px) 24px 40px;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.1), transparent 28%),
+    radial-gradient(circle at 84% 18%, rgba(255, 255, 255, 0.08), transparent 26%),
+    linear-gradient(180deg, #6d3df0 0%, #5f35dd 100%);
+}
+
+.wallet-page-card {
+  width: min(560px, 100%);
+  padding: 34px;
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 30px 80px rgba(25, 11, 66, 0.24);
+  display: grid;
+  gap: 18px;
+}
+
+.wallet-page-kicker {
+  margin: 0;
+  color: #5f35dd;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.wallet-page-card h1 {
+  margin: 0;
+  color: #111111;
+  font-size: clamp(2.8rem, 6vw, 4.4rem);
+  line-height: 0.95;
+}
+
+.wallet-page-balance,
+.wallet-page-detail {
+  display: grid;
+  gap: 8px;
+  padding: 20px 22px;
+  border-radius: 24px;
+  background: rgba(95, 53, 221, 0.08);
+}
+
+.wallet-page-balance span,
+.wallet-page-detail span {
+  color: #5f35dd;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.wallet-page-balance strong,
+.wallet-page-detail strong {
+  color: #111111;
+  font-size: clamp(1.25rem, 2vw, 2rem);
+}
+
 .landing-world {
   position: relative;
   display: grid;
@@ -748,29 +808,22 @@
   left: 18px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #fff;
-  font-size: 1.05rem;
-  font-weight: var(--season-weight-strong);
-  text-shadow: 0 3px 20px rgba(15, 23, 42, 0.4);
+  gap: 0;
 }
 
 .hud-brand-logo-frame {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #6d3df0 0%, #4f2ab5 100%);
-  box-shadow: 0 10px 26px rgba(79, 42, 181, 0.3);
-  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 168px;
+  height: 52px;
 }
 
 .hud-brand-logo {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .hud-scoreboard {

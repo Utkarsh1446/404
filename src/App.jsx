@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import notfoundLogo from './assets/notfound-logo-bw.png'
+import notfoundLogo from './assets/notfound-logo.svg'
 import worldUvDots from './assets/maps/world-uv-dots.svg'
 import CardNav from './components/CardNav'
 import { GuessMap } from './components/GuessMap'
@@ -90,9 +90,43 @@ function formatClock(totalSeconds) {
   return `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`
 }
 
+function getInitials(value) {
+  return value ? value.slice(0, 2).toUpperCase() : 'NF'
+}
+
+function WalletPage({ session, onConnectWallet }) {
+  return (
+    <div className="wallet-page">
+      <div className="wallet-page-card">
+        <p className="wallet-page-kicker">Wallet</p>
+        <h1>{session ? 'Your wallet' : 'Connect your wallet'}</h1>
+        {session ? (
+          <>
+            <div className="wallet-page-balance">
+              <span>Actual balance</span>
+              <strong>$1324</strong>
+            </div>
+            <div className="wallet-page-detail">
+              <span>Address</span>
+              <strong>{formatWallet(session.walletAddress)}</strong>
+            </div>
+          </>
+        ) : (
+          <HoverButton className="landing-play-button" type="button" onClick={onConnectWallet}>
+            Connect wallet
+          </HoverButton>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [showLanding, setShowLanding] = useState(true)
   const [mapExpanded, setMapExpanded] = useState(false)
+  const [route, setRoute] = useState(() =>
+    typeof window !== 'undefined' && window.location.pathname === '/wallet' ? '/wallet' : '/',
+  )
   const [globeRotation, setGlobeRotation] = useState({ lng: 0, lat: 0 })
   const [renderedPolaroids, setRenderedPolaroids] = useState([])
   const globeDragRef = useRef(null)
@@ -119,7 +153,23 @@ function App() {
     resetForNextRound,
   } = useGameSession()
 
+  useEffect(() => {
+    const handlePopState = () => {
+      setRoute(window.location.pathname === '/wallet' ? '/wallet' : '/')
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  function navigateTo(path) {
+    const nextPath = path === '/wallet' ? '/wallet' : '/'
+    window.history.pushState({}, '', nextPath)
+    setRoute(nextPath)
+  }
+
   async function handlePlayEntry() {
+    navigateTo('/')
     const result = await beginExperience()
     if (result?.status === 'started') {
       setShowLanding(false)
@@ -154,10 +204,16 @@ function App() {
     resetForNextRound()
     setShowLanding(true)
     setMapExpanded(false)
+    navigateTo('/')
   }
 
   async function handleLandingWalletConnect() {
     await connectWallet()
+  }
+
+  function handleWalletRoute() {
+    setShowLanding(true)
+    navigateTo('/wallet')
   }
 
   function handleGlobePointerDown(event) {
@@ -217,17 +273,27 @@ function App() {
       ],
     },
     {
-      label: session ? '$1324' : 'Connect',
+      label: 'Drops',
+      bgColor: '#3a196b',
+      textColor: '#f7f7ef',
+      links: [
+        { label: 'City drops', ariaLabel: 'City drops', href: '#play' },
+        { label: 'Reward pool', ariaLabel: 'Reward pool', href: '#play' },
+      ],
+    },
+    {
+      label: 'Wallet',
       bgColor: '#f97316',
       textColor: '#ffffff',
+      onClick: handleWalletRoute,
       links: session
         ? [
-            { label: 'Balance live', ariaLabel: 'Wallet balance', href: '#play' },
-            { label: formatWallet(session.walletAddress), ariaLabel: 'Connected wallet address', href: '#play' },
+            { label: 'Actual balance', ariaLabel: 'Actual balance', href: '/wallet', onClick: handleWalletRoute },
+            { label: formatWallet(session.walletAddress), ariaLabel: 'Connected wallet address', href: '/wallet', onClick: handleWalletRoute },
           ]
         : [
-            { label: 'Connect wallet', ariaLabel: 'Connect wallet', href: '#play', onClick: handleLandingWalletConnect },
-            { label: 'Phantom or demo', ariaLabel: 'Supported wallet states', href: '#play' },
+            { label: 'Connect wallet', ariaLabel: 'Connect wallet', href: '/wallet', onClick: handleLandingWalletConnect },
+            { label: 'Open wallet page', ariaLabel: 'Open wallet page', href: '/wallet', onClick: handleWalletRoute },
           ],
     },
   ]
@@ -336,14 +402,15 @@ function App() {
             phase === 'quota_blocked'
               ? 'unlock $1 round'
               : session
-                ? '$1324'
+                ? <span className="wallet-avatar">{getInitials(session.walletAddress)}</span>
                 : 'connect wallet'
           }
+          ctaClassName={session && phase !== 'quota_blocked' ? 'is-avatar' : ''}
           onCtaClick={
             phase === 'quota_blocked'
               ? handleLandingPrimaryAction
               : session
-                ? undefined
+                ? handleWalletRoute
                 : handleLandingWalletConnect
           }
           ease="power3.out"
@@ -351,7 +418,9 @@ function App() {
       ) : null}
 
       <section className="viewport-frame" id="play">
-        {showLanding ? (
+        {showLanding && route === '/wallet' ? (
+          <WalletPage session={session} onConnectWallet={handleLandingWalletConnect} />
+        ) : showLanding ? (
           <div className="landing-screen">
             <div className="landing-world">
               <div className="landing-copy">
@@ -472,9 +541,8 @@ function App() {
 
             <div className="hud-top hud-brand">
               <span className="hud-brand-logo-frame">
-                <img className="hud-brand-logo" src={notfoundLogo} alt="SuperPumped logo" />
+                <img className="hud-brand-logo" src={notfoundLogo} alt="notfound logo" />
               </span>
-              <span>SuperPumped</span>
             </div>
 
             <div className="hud-top hud-scoreboard">
@@ -529,9 +597,8 @@ function App() {
 
             <div className="hud-top hud-brand">
               <span className="hud-brand-logo-frame">
-                <img className="hud-brand-logo" src={notfoundLogo} alt="SuperPumped logo" />
+                <img className="hud-brand-logo" src={notfoundLogo} alt="notfound logo" />
               </span>
-              <span>SuperPumped</span>
             </div>
 
             <div className="hud-top hud-scoreboard">
