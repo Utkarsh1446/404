@@ -153,6 +153,16 @@ export function createApp(options = {}) {
     }
   })
 
+  app.post('/api/rounds/:roundId/continue', requireAuth, (req, res, next) => {
+    try {
+      res.json(
+        gameService.continueRound(req.auth.walletAddress, req.params.roundId),
+      )
+    } catch (error) {
+      next(error)
+    }
+  })
+
   app.post('/api/rounds/:roundId/guess', requireAuth, (req, res, next) => {
     try {
       const { guessLat, guessLng } = req.body ?? {}

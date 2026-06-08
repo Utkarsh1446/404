@@ -2,16 +2,43 @@ import { useEffect, useRef, useState } from 'react'
 import { clientConfig } from '../config'
 import { loadGoogleMaps } from '../lib/googleMaps'
 
-export function GuessMap({ selectedGuess, onSelectGuess, disabled }) {
+export function GuessMap({
+  selectedGuess,
+  onSelectGuess,
+  disabled,
+  isExpanded,
+  onRequestExpand,
+}) {
   const mapNodeRef = useRef(null)
   const mapRef = useRef(null)
   const markerRef = useRef(null)
+  const googleRef = useRef(null)
+  const disabledRef = useRef(disabled)
+  const expandedRef = useRef(isExpanded)
+  const onSelectGuessRef = useRef(onSelectGuess)
+  const onRequestExpandRef = useRef(onRequestExpand)
   const [loadState, setLoadState] = useState(
     clientConfig.googleMapsApiKey ? 'loading' : 'missing-key',
   )
 
   useEffect(() => {
-    if (!mapNodeRef.current) return undefined
+    disabledRef.current = disabled
+  }, [disabled])
+
+  useEffect(() => {
+    expandedRef.current = isExpanded
+  }, [isExpanded])
+
+  useEffect(() => {
+    onSelectGuessRef.current = onSelectGuess
+  }, [onSelectGuess])
+
+  useEffect(() => {
+    onRequestExpandRef.current = onRequestExpand
+  }, [onRequestExpand])
+
+  useEffect(() => {
+    if (!mapNodeRef.current || mapRef.current) return undefined
 
     let listener
     let cancelled = false
@@ -19,6 +46,7 @@ export function GuessMap({ selectedGuess, onSelectGuess, disabled }) {
     loadGoogleMaps()
       .then((google) => {
         if (cancelled || !mapNodeRef.current) return
+        googleRef.current = google
 
         mapRef.current = new google.maps.Map(mapNodeRef.current, {
           center: { lat: 18, lng: 0 },
@@ -60,7 +88,11 @@ export function GuessMap({ selectedGuess, onSelectGuess, disabled }) {
         }, 120)
 
         listener = mapRef.current.addListener('click', (event) => {
-          if (disabled) return
+          if (disabledRef.current) return
+          if (!expandedRef.current) {
+            onRequestExpandRef.current?.()
+            return
+          }
 
           const nextGuess = {
             lat: event.latLng.lat(),
@@ -71,12 +103,20 @@ export function GuessMap({ selectedGuess, onSelectGuess, disabled }) {
             markerRef.current = new google.maps.Marker({
               map: mapRef.current,
               position: nextGuess,
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                fillColor: '#dc2626',
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 2,
+                scale: 8,
+              },
             })
           } else {
             markerRef.current.setPosition(nextGuess)
           }
 
-          onSelectGuess(nextGuess)
+          onSelectGuessRef.current?.(nextGuess)
         })
 
         setLoadState('ready')
@@ -89,7 +129,21 @@ export function GuessMap({ selectedGuess, onSelectGuess, disabled }) {
       cancelled = true
       if (listener) listener.remove()
     }
-  }, [disabled, onSelectGuess])
+  }, [])
+
+  useEffect(() => {
+    if (!mapRef.current || !googleRef.current) return
+
+    const currentCenter = selectedGuess ?? mapRef.current.getCenter?.()?.toJSON?.() ?? { lat: 18, lng: 0 }
+    const currentZoom = mapRef.current.getZoom?.() ?? 1
+
+    window.requestAnimationFrame(() => {
+      if (!mapRef.current || !googleRef.current) return
+      googleRef.current.maps.event.trigger(mapRef.current, 'resize')
+      mapRef.current.setCenter(currentCenter)
+      mapRef.current.setZoom(currentZoom)
+    })
+  }, [isExpanded, selectedGuess])
 
   useEffect(() => {
     if (!selectedGuess || !markerRef.current) return
@@ -116,5 +170,10 @@ export function GuessMap({ selectedGuess, onSelectGuess, disabled }) {
     )
   }
 
-  return <div ref={mapNodeRef} className="guess-map-canvas" />
+  return (
+    <div
+      ref={mapNodeRef}
+      className={`guess-map-canvas ${isExpanded ? 'is-expanded' : 'is-collapsed'}`}
+    />
+  )
 }

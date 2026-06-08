@@ -5,6 +5,7 @@ import worldUvDots from './assets/maps/world-uv-dots.svg'
 import CardNav from './components/CardNav'
 import { GuessMap } from './components/GuessMap'
 import { HoverButton } from './components/HoverButton'
+import { RevealMap } from './components/RevealMap'
 import { ResultModal } from './components/ResultModal'
 import { StreetViewStage } from './components/StreetViewStage'
 import { useGameSession } from './hooks/useGameSession'
@@ -102,6 +103,7 @@ function App() {
     paymentRoundId,
     selectedGuess,
     result,
+    revealResult,
     error,
     isBusy,
     secondsLeft,
@@ -113,6 +115,7 @@ function App() {
     beginExperience,
     unlockPaidRound,
     submitGuess,
+    continueAfterReveal,
     resetForNextRound,
   } = useGameSession()
 
@@ -133,6 +136,16 @@ function App() {
     }
 
     await handlePlayEntry()
+  }
+
+  async function handleRevealAdvance() {
+    setMapExpanded(false)
+    await continueAfterReveal()
+  }
+
+  async function handleGuessSubmit() {
+    setMapExpanded(false)
+    await submitGuess()
   }
 
   function handleNextRound() {
@@ -301,7 +314,9 @@ function App() {
       window.clearTimeout(removeTimer)
     }
   }, [visiblePolaroids])
+
   const completedLocations = locationResults.length
+  const isFinalReveal = phase === 'reveal' && currentLocationIndex === roundLocationCount
 
   return (
     <main className="app-shell">
@@ -311,10 +326,10 @@ function App() {
           logo={notfoundLogo}
           logoAlt="notfound logo"
           items={landingNavItems}
-          baseColor="#f8f8f2"
+          baseColor="#ffffff"
           menuColor="#111111"
-          buttonBgColor="#111111"
-          buttonTextColor="#ffffff"
+          buttonBgColor="#ffffff"
+          buttonTextColor="#111111"
           ctaLabel={
             phase === 'quota_blocked'
               ? 'unlock $1 round'
@@ -338,15 +353,10 @@ function App() {
           <div className="landing-screen">
             <div className="landing-world">
               <div className="landing-copy">
-                <span className="landing-kicker">Global street drops</span>
                 <h1>
                   Guess the world.
-                  <span>Win SP.</span>
+                  <span>Earn Coffee Money.</span>
                 </h1>
-                <p className="landing-caption">
-                  Spin through famous places, read the scene, and drop one pin
-                  before the timer runs out.
-                </p>
                 <div className="landing-actions">
                   <HoverButton
                     className="landing-play-button"
@@ -358,11 +368,8 @@ function App() {
                       ? 'Loading...'
                       : phase === 'quota_blocked'
                         ? 'Unlock round'
-                        : 'Play'}
+                      : 'Play'}
                   </HoverButton>
-                  <span className="landing-action-note">
-                    {session ? 'Wallet ready' : 'Connect wallet to save attempts'}
-                  </span>
                 </div>
                 {error ? <p className="landing-error">{error}</p> : null}
               </div>
@@ -457,6 +464,53 @@ function App() {
               </div>
             </div>
           </div>
+        ) : phase === 'reveal' && revealResult ? (
+          <div className="reveal-surface">
+            <RevealMap revealResult={revealResult} />
+
+            <div className="hud-top hud-brand">
+              <span className="hud-brand-logo-frame">
+                <img className="hud-brand-logo" src={notfoundLogo} alt="SuperPumped logo" />
+              </span>
+              <span>SuperPumped</span>
+            </div>
+
+            <div className="hud-top hud-scoreboard">
+              <div className={`score-cell ${currentLocationIndex === 1 ? 'active' : ''}`}>
+                <span>R1</span>
+                <strong>{locationResults[0] ? locationResults[0].score : '-'}</strong>
+                <small>{currentLocationIndex === 1 ? formatClock(secondsLeft) : '-'}</small>
+              </div>
+              <div className={`score-cell ${currentLocationIndex === 2 ? 'active' : ''}`}>
+                <span>R2</span>
+                <strong>{locationResults[1] ? locationResults[1].score : '-'}</strong>
+                <small>{currentLocationIndex === 2 ? formatClock(secondsLeft) : '-'}</small>
+              </div>
+              <div className="score-cell total-cell">
+                <span>Total</span>
+                <strong>{completedLocations}/{roundLocationCount}</strong>
+                <small>{formatClock(elapsedSeconds)}</small>
+              </div>
+            </div>
+
+            <div className="reveal-bottom-bar">
+              <div className="reveal-metric">
+                <strong>{Math.round(revealResult.distanceKm).toLocaleString()} km</strong>
+                <span>from location</span>
+              </div>
+              <HoverButton
+                className="submit-button reveal-next-button"
+                type="button"
+                onClick={handleRevealAdvance}
+              >
+                {isFinalReveal ? 'Results' : 'Next'}
+              </HoverButton>
+              <div className="reveal-metric reveal-score">
+                <strong>{revealResult.score.toLocaleString()}</strong>
+                <span>score</span>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="play-surface">
             <StreetViewStage round={activeRound} />
@@ -505,23 +559,18 @@ function App() {
                 selectedGuess={selectedGuess}
                 onSelectGuess={setSelectedGuess}
                 disabled={phase !== 'playing'}
+                isExpanded={mapExpanded}
+                onRequestExpand={() => setMapExpanded(true)}
               />
 
               <div className="guess-overlay-footer">
-                <div className="pin-readout">
-                  <strong>
-                    {selectedGuess
-                      ? `Pin locked at ${selectedGuess.lat.toFixed(2)}, ${selectedGuess.lng.toFixed(2)}`
-                      : 'Place your pin on the map'}
-                  </strong>
-                </div>
                 <HoverButton
-                  className="submit-button guess-submit"
+                  className="submit-button guess-submit guess-submit-full"
                   type="button"
                   disabled={!selectedGuess || phase !== 'playing' || isBusy}
-                  onClick={submitGuess}
+                  onClick={handleGuessSubmit}
                 >
-                  Guess
+                  {selectedGuess ? 'Guess' : 'Place your pin on the map'}
                 </HoverButton>
               </div>
             </div>
