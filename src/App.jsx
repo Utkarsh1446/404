@@ -13,6 +13,7 @@ import { useGameSession } from './hooks/useGameSession'
 import { formatWallet } from './lib/formatters'
 
 const POLAROID_MIST_TRANSITION_MS = 760
+const DROP_INTERVAL_MS = 2 * 60 * 60 * 1000
 
 const LANDMARK_POLAROIDS = [
   {
@@ -91,27 +92,69 @@ function formatClock(totalSeconds) {
   return `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`
 }
 
+function formatCountdown(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
 function WalletPage({ session, onConnectWallet }) {
   return (
     <div className="wallet-page">
-      <div className="wallet-page-card">
-        <p className="wallet-page-kicker">Wallet</p>
-        <h1>{session ? 'Your wallet' : 'Connect your wallet'}</h1>
+      <div className="wallet-page-shell">
+        <div className="wallet-page-heading">
+          <p className="wallet-page-kicker">Wallet</p>
+          <h1>{session ? 'Your wallet' : 'Connect your wallet'}</h1>
+        </div>
+
         {session ? (
-          <>
-            <div className="wallet-page-balance">
+          <div className="wallet-bento-grid">
+            <section className="wallet-bento wallet-bento-balance">
               <span>Actual balance</span>
               <strong>$1324</strong>
-            </div>
-            <div className="wallet-page-detail">
+              <p>Available for new drops and instant withdrawals.</p>
+            </section>
+
+            <section className="wallet-bento wallet-bento-address">
               <span>Address</span>
               <strong>{formatWallet(session.walletAddress)}</strong>
-            </div>
-          </>
+              <p>Connected via verified Solana wallet session.</p>
+            </section>
+
+            <section className="wallet-bento wallet-bento-earnings">
+              <span>Earnings</span>
+              <strong>184 SP</strong>
+              <p>Total rewards collected from world drops.</p>
+            </section>
+
+            <section className="wallet-bento wallet-bento-actions">
+              <span>Actions</span>
+              <div className="wallet-action-row">
+                <HoverButton className="wallet-action-button wallet-action-deposit" type="button">
+                  Deposit
+                </HoverButton>
+                <HoverButton className="wallet-action-button wallet-action-withdraw" type="button">
+                  Withdraw
+                </HoverButton>
+              </div>
+            </section>
+          </div>
         ) : (
-          <HoverButton className="landing-play-button" type="button" onClick={onConnectWallet}>
-            Connect wallet
-          </HoverButton>
+          <div className="wallet-bento-grid wallet-bento-grid-empty">
+            <section className="wallet-bento wallet-bento-balance">
+              <span>Status</span>
+              <strong>No wallet connected</strong>
+              <p>Connect once to view balance, earnings, and wallet actions.</p>
+            </section>
+            <section className="wallet-bento wallet-bento-actions wallet-bento-connect">
+              <span>Actions</span>
+              <HoverButton className="wallet-action-button wallet-action-deposit" type="button" onClick={onConnectWallet}>
+                Connect wallet
+              </HoverButton>
+            </section>
+          </div>
         )}
       </div>
     </div>
@@ -121,6 +164,7 @@ function WalletPage({ session, onConnectWallet }) {
 function App() {
   const [showLanding, setShowLanding] = useState(true)
   const [mapExpanded, setMapExpanded] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
   const [route, setRoute] = useState(() =>
     typeof window !== 'undefined' && window.location.pathname === '/wallet' ? '/wallet' : '/',
   )
@@ -157,6 +201,14 @@ function App() {
 
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setNow(Date.now())
+    }, 1000)
+
+    return () => window.clearInterval(intervalId)
   }, [])
 
   function navigateTo(path) {
@@ -335,6 +387,55 @@ function App() {
       .sort((first, second) => first.depth - second.depth)
   }, [globeRotation])
 
+  const landingDrops = useMemo(() => {
+    const dropLocations = LANDMARK_POLAROIDS.slice(0, 6)
+    const activeBlockStart = Math.floor(now / DROP_INTERVAL_MS) * DROP_INTERVAL_MS
+
+    const timedDrops = dropLocations.map((location, index) => {
+      const startOffset = (index - 2) * DROP_INTERVAL_MS
+      const startsAt = activeBlockStart + startOffset
+      const endsAt = startsAt + DROP_INTERVAL_MS
+
+      if (index < 2) {
+        return {
+          key: `${location.city}-past`,
+          state: 'past',
+          location,
+          startsAt,
+          endsAt,
+        }
+      }
+
+      if (index === 2) {
+        return {
+          key: `${location.city}-live`,
+          state: 'live',
+          location,
+          startsAt,
+          endsAt,
+          countdown: formatCountdown(endsAt - now),
+        }
+      }
+
+      return {
+        key: `${location.city}-upcoming`,
+        state: 'upcoming',
+        location,
+        startsAt,
+        endsAt,
+        countdown: formatCountdown(startsAt - now),
+      }
+    })
+
+    return [
+      {
+        key: 'empty-drop-slot',
+        state: 'empty',
+      },
+      ...timedDrops,
+    ]
+  }, [now])
+
   useEffect(() => {
     const visibleByCity = new Map(visiblePolaroids.map((place) => [place.city, place]))
 
@@ -426,6 +527,46 @@ function App() {
           <WalletPage session={session} onConnectWallet={handleLandingWalletConnect} />
         ) : showLanding ? (
           <div className="landing-screen">
+            <div className="landing-drops-band">
+              <div className="landing-drops-grid">
+                {landingDrops.map((drop) => (
+                  <article className={`landing-drop-card is-${drop.state}`} key={drop.key}>
+                    {drop.state === 'empty' ? (
+                      <div className="landing-drop-empty-mark">DROPS</div>
+                    ) : (
+                      <>
+                        <div className="landing-drop-media">
+                          {drop.state === 'past' ? (
+                            <img alt={drop.location.city} src={drop.location.image} />
+                          ) : (
+                            <div className="landing-drop-placeholder" aria-hidden="true">
+                              ?
+                            </div>
+                          )}
+                        </div>
+                        <div className="landing-drop-body">
+                          <div className="landing-drop-copy">
+                            <span className="landing-drop-state">
+                              {drop.state === 'past'
+                                ? 'Past'
+                                : drop.state === 'live'
+                                  ? 'Ends in'
+                                  : 'Starts in'}
+                            </span>
+                            <h2>{drop.state === 'past' ? drop.location.city : drop.countdown}</h2>
+                          </div>
+                          <div className="landing-drop-reward-block">
+                            <span className="landing-drop-state">Win</span>
+                            <h2 className="landing-drop-amount">$20</h2>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </div>
+
             <div className="landing-world">
               <div className="landing-copy">
                 <h1>

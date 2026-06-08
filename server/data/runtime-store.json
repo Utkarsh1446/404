@@ -3,12 +3,7 @@
     {
       "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
       "createdAt": "2026-06-08T17:19:39.715Z",
-      "lastSeenAt": "2026-06-08T17:26:56.449Z"
-    },
-    {
-      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
-      "createdAt": "2026-06-08T17:35:17.393Z",
-      "lastSeenAt": "2026-06-08T18:21:31.540Z"
+      "lastSeenAt": "2026-06-08T19:34:34.623Z"
     }
   ],
   "authChallenges": [],
@@ -17,11 +12,6 @@
       "token": "4caa9dd9-938a-4e59-b813-8c8761e31766",
       "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
       "createdAt": "2026-06-08T17:19:39.714Z"
-    },
-    {
-      "token": "043fcda5-d3b2-4009-a805-5da1aa35fbdf",
-      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
-      "createdAt": "2026-06-08T17:35:17.391Z"
     }
   ],
   "rounds": [
@@ -183,21 +173,154 @@
       "sequenceIndex": 2,
       "attemptType": "free",
       "consumeQuotaOnSubmit": false,
-      "status": "active",
+      "status": "completed",
       "createdAt": "2026-06-08T17:27:09.575Z",
-      "updatedAt": "2026-06-08T17:27:09.575Z"
+      "updatedAt": "2026-06-08T17:27:48.327Z",
+      "guessedAt": "2026-06-08T17:27:48.327Z",
+      "result": {
+        "distanceKm": 293.08,
+        "score": 4318,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 16.389602075974892,
+          "lng": 100.61981551831738
+        },
+        "answer": {
+          "lat": 13.75632368046659,
+          "lng": 100.5017603674295
+        },
+        "country": "Thailand",
+        "region": "Bangkok"
+      }
     },
     {
-      "id": "990b155f-1655-4972-bfd4-c2a7199ba871",
-      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
-      "locationId": "th-chiang-mai-core",
-      "sessionRootId": "990b155f-1655-4972-bfd4-c2a7199ba871",
+      "id": "57628fa2-a1dc-426c-aeee-f2572875c2d1",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "locationId": "tw-taipei-core",
+      "attemptType": "paid",
+      "status": "completed",
+      "createdAt": "2026-06-08T17:27:57.024Z",
+      "updatedAt": "2026-06-08T17:28:15.457Z",
+      "paymentUnlockedAt": "2026-06-08T17:27:59.401Z",
+      "guessedAt": "2026-06-08T17:28:15.457Z",
+      "result": {
+        "distanceKm": 131.77,
+        "score": 4681,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 23.940963837315397,
+          "lng": 121.0597729727713
+        },
+        "answer": {
+          "lat": 25.03305654671975,
+          "lng": 121.5653891564896
+        },
+        "country": "Taiwan",
+        "region": "Taipei"
+      }
+    },
+    {
+      "id": "065bbd3d-f6d7-401d-b61d-98feb590ff62",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "locationId": "jp-hokkaido-sapporo",
+      "sessionRootId": "57628fa2-a1dc-426c-aeee-f2572875c2d1",
+      "sequenceIndex": 2,
+      "attemptType": "paid",
+      "consumeQuotaOnSubmit": false,
+      "status": "completed",
+      "createdAt": "2026-06-08T17:28:19.022Z",
+      "updatedAt": "2026-06-08T17:28:41.708Z",
+      "guessedAt": "2026-06-08T17:28:41.708Z",
+      "result": {
+        "distanceKm": 0.73,
+        "score": 4998,
+        "rewardEligible": true,
+        "rewardSp": 30,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 43.05621381539538,
+          "lng": 141.35728272890987
+        },
+        "answer": {
+          "lat": 43.06239070564185,
+          "lng": 141.3542935436456
+        },
+        "country": "Japan",
+        "region": "Hokkaido"
+      }
+    },
+    {
+      "id": "5d2abbb3-8bfd-44a4-83e2-9e0dbbcc7959",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "locationId": "jp-osaka-core",
+      "sessionRootId": "5d2abbb3-8bfd-44a4-83e2-9e0dbbcc7959",
       "sequenceIndex": 1,
-      "attemptType": "free",
+      "attemptType": "paid",
       "consumeQuotaOnSubmit": true,
-      "status": "active",
-      "createdAt": "2026-06-08T17:35:17.403Z",
-      "updatedAt": "2026-06-08T17:35:17.403Z"
+      "status": "completed",
+      "createdAt": "2026-06-08T17:33:20.912Z",
+      "updatedAt": "2026-06-08T18:07:20.749Z",
+      "guessedAt": "2026-06-08T18:07:20.749Z",
+      "result": {
+        "distanceKm": 52.69,
+        "score": 4870,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 34.490952829980415,
+          "lng": 136.02250438453174
+        },
+        "answer": {
+          "lat": 34.69373586763776,
+          "lng": 135.5022184188465
+        },
+        "country": "Japan",
+        "region": "Osaka"
+      }
+    },
+    {
+      "id": "431070a0-54e6-4a32-b1e3-4d13582e5799",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "locationId": "kr-seoul-center",
+      "sessionRootId": "5d2abbb3-8bfd-44a4-83e2-9e0dbbcc7959",
+      "sequenceIndex": 2,
+      "attemptType": "paid",
+      "consumeQuotaOnSubmit": false,
+      "status": "completed",
+      "createdAt": "2026-06-08T18:07:22.331Z",
+      "updatedAt": "2026-06-08T18:08:34.381Z",
+      "guessedAt": "2026-06-08T18:08:34.381Z",
+      "result": {
+        "distanceKm": 89.16,
+        "score": 4782,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 37.09834491295542,
+          "lng": 127.79661118984222
+        },
+        "answer": {
+          "lat": 37.56653947732659,
+          "lng": 126.9779910812839
+        },
+        "country": "South Korea",
+        "region": "Seoul"
+      }
+    },
+    {
+      "id": "b2f76c90-4b45-43f4-bc5c-e56d39ff23ac",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "locationId": "jp-tokyo-core",
+      "attemptType": "paid",
+      "status": "awaiting_payment",
+      "createdAt": "2026-06-08T18:09:05.806Z",
+      "updatedAt": "2026-06-08T18:09:05.806Z"
     }
   ],
   "guesses": [
@@ -250,6 +373,56 @@
       "distanceKm": 1234.61,
       "score": 2697,
       "createdAt": "2026-06-08T17:27:06.751Z"
+    },
+    {
+      "id": "a0dec2d4-0a1d-42db-b482-44d61dbfc97e",
+      "roundId": "f4a7c822-d182-48fc-ab7e-4bcc4dfed12b",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "guessLat": 16.389602075974892,
+      "guessLng": 100.61981551831738,
+      "distanceKm": 293.08,
+      "score": 4318,
+      "createdAt": "2026-06-08T17:27:48.327Z"
+    },
+    {
+      "id": "3543c0e3-7ed9-4ea3-a1cf-37673902eb5e",
+      "roundId": "57628fa2-a1dc-426c-aeee-f2572875c2d1",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "guessLat": 23.940963837315397,
+      "guessLng": 121.0597729727713,
+      "distanceKm": 131.77,
+      "score": 4681,
+      "createdAt": "2026-06-08T17:28:15.457Z"
+    },
+    {
+      "id": "e8a9b6bf-9f45-4159-b665-900d728112ba",
+      "roundId": "065bbd3d-f6d7-401d-b61d-98feb590ff62",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "guessLat": 43.05621381539538,
+      "guessLng": 141.35728272890987,
+      "distanceKm": 0.73,
+      "score": 4998,
+      "createdAt": "2026-06-08T17:28:41.708Z"
+    },
+    {
+      "id": "6b59086a-2eb4-47cd-b643-6108cf6d3637",
+      "roundId": "5d2abbb3-8bfd-44a4-83e2-9e0dbbcc7959",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "guessLat": 34.490952829980415,
+      "guessLng": 136.02250438453174,
+      "distanceKm": 52.69,
+      "score": 4870,
+      "createdAt": "2026-06-08T18:07:20.749Z"
+    },
+    {
+      "id": "474935f4-5de1-422e-94ce-bf74a3eb3a5c",
+      "roundId": "431070a0-54e6-4a32-b1e3-4d13582e5799",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "guessLat": 37.09834491295542,
+      "guessLng": 127.79661118984222,
+      "distanceKm": 89.16,
+      "score": 4782,
+      "createdAt": "2026-06-08T18:08:34.381Z"
     }
   ],
   "dailyAttemptLedger": [
@@ -258,16 +431,8 @@
       "dayKey": "2026-06-08",
       "freeUsed": 3,
       "paidCredits": 0,
-      "paidConsumed": 0,
-      "updatedAt": "2026-06-08T17:27:06.751Z"
-    },
-    {
-      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
-      "dayKey": "2026-06-08",
-      "freeUsed": 0,
-      "paidCredits": 0,
-      "paidConsumed": 0,
-      "updatedAt": "2026-06-08T18:21:31.540Z"
+      "paidConsumed": 1,
+      "updatedAt": "2026-06-08T19:34:34.623Z"
     }
   ],
   "rewardEvents": [
@@ -310,6 +475,46 @@
       "rewardSp": 0,
       "rewardEligible": false,
       "createdAt": "2026-06-08T17:27:06.751Z"
+    },
+    {
+      "id": "5ac7b505-066c-4b7b-9dea-09153dd45076",
+      "roundId": "f4a7c822-d182-48fc-ab7e-4bcc4dfed12b",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T17:27:48.327Z"
+    },
+    {
+      "id": "086bcf85-efa3-42c6-869c-242039290848",
+      "roundId": "57628fa2-a1dc-426c-aeee-f2572875c2d1",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T17:28:15.457Z"
+    },
+    {
+      "id": "dfe8be37-f401-4df8-b20f-475094e57f1f",
+      "roundId": "065bbd3d-f6d7-401d-b61d-98feb590ff62",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "rewardSp": 30,
+      "rewardEligible": true,
+      "createdAt": "2026-06-08T17:28:41.708Z"
+    },
+    {
+      "id": "d60e21ba-642e-4e90-a7b2-f323f7cf7795",
+      "roundId": "5d2abbb3-8bfd-44a4-83e2-9e0dbbcc7959",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T18:07:20.749Z"
+    },
+    {
+      "id": "4bda81c2-86be-4020-82c9-deeea65e7399",
+      "roundId": "431070a0-54e6-4a32-b1e3-4d13582e5799",
+      "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T18:08:34.381Z"
     }
   ]
 }
