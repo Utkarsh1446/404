@@ -34,9 +34,8 @@ export function ResultModal({ result, onNextRound }) {
           </div>
         </div>
         <div className="result-stops">
-          {result.stops.map((stop, index) => (
+          {result.stops.map((stop) => (
             <div key={`${stop.answer.lat}-${stop.answer.lng}`} className="result-stop-card">
-              <span>R{index + 1}</span>
               <strong>{stop.score.toLocaleString()} pts</strong>
               <p>
                 Reveal: {stop.region}, {stop.country}

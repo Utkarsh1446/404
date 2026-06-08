@@ -139,6 +139,8 @@ function App() {
   }
 
   async function handleRevealAdvance() {
+    if (isBusy) return
+
     setMapExpanded(false)
     await continueAfterReveal()
   }
@@ -498,17 +500,27 @@ function App() {
                 <strong>{Math.round(revealResult.distanceKm).toLocaleString()} km</strong>
                 <span>from location</span>
               </div>
-              <HoverButton
+              <button
                 className="submit-button reveal-next-button"
                 type="button"
-                onClick={handleRevealAdvance}
+                disabled={isBusy}
+                onPointerDown={(event) => {
+                  event.preventDefault()
+                  void handleRevealAdvance()
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
+                  void handleRevealAdvance()
+                }}
               >
-                {isFinalReveal ? 'Results' : 'Next'}
-              </HoverButton>
+                {isBusy ? 'Loading...' : isFinalReveal ? 'Results' : 'Next'}
+              </button>
               <div className="reveal-metric reveal-score">
                 <strong>{revealResult.score.toLocaleString()}</strong>
                 <span>score</span>
               </div>
+              {error ? <p className="reveal-error">{error}</p> : null}
             </div>
           </div>
         ) : (

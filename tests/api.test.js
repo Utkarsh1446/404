@@ -124,6 +124,44 @@ test('starting and guessing a round stores exactly one result and rejects duplic
     .expect(409)
 })
 
+test('completed first location can continue to a playable second location', async () => {
+  const app = createTestApp()
+  const auth = await authenticate(app)
+
+  const firstRound = await request(app)
+    .post('/api/rounds/start')
+    .set('Authorization', `Bearer ${auth.token}`)
+    .expect(200)
+
+  await request(app)
+    .post(`/api/rounds/${firstRound.body.roundId}/guess`)
+    .set('Authorization', `Bearer ${auth.token}`)
+    .send({
+      guessLat: firstRound.body.panorama.position.lat,
+      guessLng: firstRound.body.panorama.position.lng,
+    })
+    .expect(200)
+
+  const secondRound = await request(app)
+    .post(`/api/rounds/${firstRound.body.roundId}/continue`)
+    .set('Authorization', `Bearer ${auth.token}`)
+    .expect(200)
+
+  assert.equal(secondRound.body.status, 'active')
+  assert.equal(secondRound.body.sequenceIndex, 2)
+  assert.notEqual(secondRound.body.roundId, firstRound.body.roundId)
+  assert.ok(secondRound.body.panorama.position)
+
+  await request(app)
+    .post(`/api/rounds/${secondRound.body.roundId}/guess`)
+    .set('Authorization', `Bearer ${auth.token}`)
+    .send({
+      guessLat: secondRound.body.panorama.position.lat,
+      guessLng: secondRound.body.panorama.position.lng,
+    })
+    .expect(200)
+})
+
 test('fourth round requires payment and mocked checkout unlocks one paid attempt', async () => {
   const app = createTestApp()
   const auth = await authenticate(app)

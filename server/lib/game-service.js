@@ -40,6 +40,8 @@ function makeRoundPayload(round, location, quota) {
   return {
     roundId: round.id,
     status: round.status,
+    sequenceIndex: round.sequenceIndex ?? 1,
+    roundLocationCount: ROUND_LOCATION_COUNT,
     attemptType: round.attemptType,
     quota,
     panorama: {

@@ -316,10 +316,10 @@ export function useGameSession() {
         setActiveRound(nextRound)
         setPendingNextRound(null)
         setRevealResult(null)
-        setCurrentLocationIndex((current) => current + 1)
+        setCurrentLocationIndex(nextRound.sequenceIndex ?? currentLocationIndex + 1)
         setPhase('playing')
         setSecondsLeft(90)
-        setStatus(`R${currentLocationIndex + 1} is live.`)
+        setStatus(`R${nextRound.sequenceIndex ?? currentLocationIndex + 1} is live.`)
       } catch (caughtError) {
         setError(caughtError.message)
       } finally {

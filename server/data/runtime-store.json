@@ -24,6 +24,16 @@
       "walletAddress": "T1LoErQ1jeZbV2k4q8LT2PZTYxSeR421nquhiRsPbWX",
       "createdAt": "2026-06-07T23:43:52.245Z",
       "lastSeenAt": "2026-06-08T13:44:55.189Z"
+    },
+    {
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "createdAt": "2026-06-08T16:06:40.230Z",
+      "lastSeenAt": "2026-06-08T16:21:03.600Z"
+    },
+    {
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "createdAt": "2026-06-08T16:30:35.706Z",
+      "lastSeenAt": "2026-06-08T17:08:27.410Z"
     }
   ],
   "authChallenges": [],
@@ -52,6 +62,16 @@
       "token": "c9fddefd-e86d-4c44-903a-33cc84404a17",
       "walletAddress": "T1LoErQ1jeZbV2k4q8LT2PZTYxSeR421nquhiRsPbWX",
       "createdAt": "2026-06-07T23:43:52.244Z"
+    },
+    {
+      "token": "e2d5b017-4a24-48f2-bcd2-73cd14267074",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "createdAt": "2026-06-08T16:06:40.228Z"
+    },
+    {
+      "token": "2b812c53-b9b5-42fb-874c-e3ead74cb8e1",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "createdAt": "2026-06-08T16:30:35.703Z"
     }
   ],
   "rounds": [
@@ -910,6 +930,265 @@
         "country": "Japan",
         "region": "Tokyo"
       }
+    },
+    {
+      "id": "8d3cad1e-49ae-48e1-ade4-bbc1f64bfaf5",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "locationId": "no-lofoten-bridge",
+      "attemptType": "free",
+      "status": "completed",
+      "createdAt": "2026-06-08T16:06:40.245Z",
+      "updatedAt": "2026-06-08T16:07:28.539Z",
+      "guessedAt": "2026-06-08T16:07:28.539Z",
+      "result": {
+        "distanceKm": 710.5,
+        "score": 3505,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 62.23370832683298,
+          "lng": 19.545224478874953
+        },
+        "answer": {
+          "lat": 68.0765342480485,
+          "lng": 13.34666979321486
+        },
+        "country": "Norway",
+        "region": "Lofoten"
+      }
+    },
+    {
+      "id": "4cfa3870-4c28-41cf-ba5b-65c78fef0fed",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "locationId": "jp-kyoto-gion",
+      "attemptType": "free",
+      "status": "completed",
+      "createdAt": "2026-06-08T16:14:28.905Z",
+      "updatedAt": "2026-06-08T16:14:45.937Z",
+      "guessedAt": "2026-06-08T16:14:45.937Z",
+      "result": {
+        "distanceKm": 2.58,
+        "score": 4994,
+        "rewardEligible": true,
+        "rewardSp": 30,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 35.016677468777885,
+          "lng": 135.80245049855148
+        },
+        "answer": {
+          "lat": 35.00373612777182,
+          "lng": 135.7788833499043
+        },
+        "country": "Japan",
+        "region": "Kyoto"
+      }
+    },
+    {
+      "id": "8df5bf56-cb51-45ab-a245-e9ddb461b022",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "locationId": "za-cape-town-hout-bay",
+      "attemptType": "free",
+      "status": "completed",
+      "createdAt": "2026-06-08T16:15:59.657Z",
+      "updatedAt": "2026-06-08T16:16:58.156Z",
+      "guessedAt": "2026-06-08T16:16:58.156Z",
+      "result": {
+        "distanceKm": 3343.97,
+        "score": 939,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": -4.696492984920088,
+          "lng": 11.2939453125
+        },
+        "answer": {
+          "lat": -34.04623087499067,
+          "lng": 18.35157630197139
+        },
+        "country": "South Africa",
+        "region": "Cape Town"
+      }
+    },
+    {
+      "id": "14ed9459-34ff-4bd1-96f1-35c26af8face",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "locationId": "cl-valparaiso-hills",
+      "attemptType": "paid",
+      "status": "completed",
+      "createdAt": "2026-06-08T16:20:56.015Z",
+      "updatedAt": "2026-06-08T16:21:16.306Z",
+      "paymentUnlockedAt": "2026-06-08T16:21:03.584Z",
+      "guessedAt": "2026-06-08T16:21:16.306Z",
+      "result": {
+        "distanceKm": 17669.34,
+        "score": 1,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 11.964185586248275,
+          "lng": 107.53822977933514
+        },
+        "answer": {
+          "lat": -33.0458727990377,
+          "lng": -71.61973021745742
+        },
+        "country": "Chile",
+        "region": "Valparaiso"
+      }
+    },
+    {
+      "id": "95bb6c7d-7042-49be-933a-f33fd547ebf8",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "locationId": "jp-osaka-core",
+      "sessionRootId": "14ed9459-34ff-4bd1-96f1-35c26af8face",
+      "sequenceIndex": 2,
+      "attemptType": "paid",
+      "consumeQuotaOnSubmit": false,
+      "status": "completed",
+      "createdAt": "2026-06-08T16:26:25.864Z",
+      "updatedAt": "2026-06-08T16:27:35.143Z",
+      "guessedAt": "2026-06-08T16:27:35.143Z",
+      "result": {
+        "distanceKm": 16965.85,
+        "score": 1,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": -24.3267235895792,
+          "lng": -73.828125
+        },
+        "answer": {
+          "lat": 34.69373586763776,
+          "lng": 135.5022184188465
+        },
+        "country": "Japan",
+        "region": "Osaka"
+      }
+    },
+    {
+      "id": "d097fca4-3a2c-406a-a302-cd24188377a6",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "locationId": "hk-hong-kong-core",
+      "sessionRootId": "d097fca4-3a2c-406a-a302-cd24188377a6",
+      "sequenceIndex": 1,
+      "attemptType": "free",
+      "consumeQuotaOnSubmit": true,
+      "status": "completed",
+      "createdAt": "2026-06-08T16:30:35.716Z",
+      "updatedAt": "2026-06-08T16:30:43.816Z",
+      "guessedAt": "2026-06-08T16:30:43.816Z",
+      "result": {
+        "distanceKm": 1742.49,
+        "score": 2092,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 17.014581418667195,
+          "lng": 98.49725603841023
+        },
+        "answer": {
+          "lat": 22.31929207522302,
+          "lng": 114.1694281497672
+        },
+        "country": "Hong Kong",
+        "region": "Hong Kong"
+      }
+    },
+    {
+      "id": "025911a0-29c0-41ce-9e94-1b6d31e61679",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "locationId": "jp-hokkaido-sapporo",
+      "sessionRootId": "d097fca4-3a2c-406a-a302-cd24188377a6",
+      "sequenceIndex": 2,
+      "attemptType": "free",
+      "consumeQuotaOnSubmit": false,
+      "status": "completed",
+      "createdAt": "2026-06-08T16:30:44.783Z",
+      "updatedAt": "2026-06-08T16:30:49.635Z",
+      "guessedAt": "2026-06-08T16:30:49.635Z",
+      "result": {
+        "distanceKm": 5652.09,
+        "score": 296,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 39.64542618309963,
+          "lng": 71.74048488231193
+        },
+        "answer": {
+          "lat": 43.06239070564185,
+          "lng": 141.3542935436456
+        },
+        "country": "Japan",
+        "region": "Hokkaido"
+      }
+    },
+    {
+      "id": "bcba7e1c-50bf-4131-903a-7e697181eeb3",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "locationId": "th-bangkok-core",
+      "sessionRootId": "bcba7e1c-50bf-4131-903a-7e697181eeb3",
+      "sequenceIndex": 1,
+      "attemptType": "free",
+      "consumeQuotaOnSubmit": true,
+      "status": "completed",
+      "createdAt": "2026-06-08T17:08:27.410Z",
+      "updatedAt": "2026-06-08T17:08:41.811Z",
+      "guessedAt": "2026-06-08T17:08:41.811Z",
+      "result": {
+        "distanceKm": 431.5,
+        "score": 4030,
+        "rewardEligible": false,
+        "rewardSp": 0,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 13.53971971470783,
+          "lng": 104.48891105280727
+        },
+        "answer": {
+          "lat": 13.75632368046659,
+          "lng": 100.5017603674295
+        },
+        "country": "Thailand",
+        "region": "Bangkok"
+      }
+    },
+    {
+      "id": "250ebe73-a219-4323-8b38-dad1bde8951b",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "locationId": "jp-osaka-core",
+      "sessionRootId": "bcba7e1c-50bf-4131-903a-7e697181eeb3",
+      "sequenceIndex": 2,
+      "attemptType": "free",
+      "consumeQuotaOnSubmit": false,
+      "status": "completed",
+      "createdAt": "2026-06-08T17:08:44.050Z",
+      "updatedAt": "2026-06-08T17:08:58.795Z",
+      "guessedAt": "2026-06-08T17:08:58.795Z",
+      "result": {
+        "distanceKm": 23.63,
+        "score": 4941,
+        "rewardEligible": true,
+        "rewardSp": 28,
+        "thresholdKm": 50,
+        "guess": {
+          "lat": 34.621801487425635,
+          "lng": 135.7453495379537
+        },
+        "answer": {
+          "lat": 34.69373586763776,
+          "lng": 135.5022184188465
+        },
+        "country": "Japan",
+        "region": "Osaka"
+      }
     }
   ],
   "guesses": [
@@ -1212,6 +1491,96 @@
       "distanceKm": 8.57,
       "score": 4979,
       "createdAt": "2026-06-08T16:03:03.935Z"
+    },
+    {
+      "id": "0497ff5c-2552-421d-9e30-79a9f40c7665",
+      "roundId": "8d3cad1e-49ae-48e1-ade4-bbc1f64bfaf5",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "guessLat": 62.23370832683298,
+      "guessLng": 19.545224478874953,
+      "distanceKm": 710.5,
+      "score": 3505,
+      "createdAt": "2026-06-08T16:07:28.539Z"
+    },
+    {
+      "id": "c50fd134-3e77-4f9f-913e-6715c4d405d5",
+      "roundId": "4cfa3870-4c28-41cf-ba5b-65c78fef0fed",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "guessLat": 35.016677468777885,
+      "guessLng": 135.80245049855148,
+      "distanceKm": 2.58,
+      "score": 4994,
+      "createdAt": "2026-06-08T16:14:45.937Z"
+    },
+    {
+      "id": "75700577-ac3f-4def-89c0-275d79c6f939",
+      "roundId": "8df5bf56-cb51-45ab-a245-e9ddb461b022",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "guessLat": -4.696492984920088,
+      "guessLng": 11.2939453125,
+      "distanceKm": 3343.97,
+      "score": 939,
+      "createdAt": "2026-06-08T16:16:58.156Z"
+    },
+    {
+      "id": "e85f8640-fbed-4f9e-8120-68b37487dc1e",
+      "roundId": "14ed9459-34ff-4bd1-96f1-35c26af8face",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "guessLat": 11.964185586248275,
+      "guessLng": 107.53822977933514,
+      "distanceKm": 17669.34,
+      "score": 1,
+      "createdAt": "2026-06-08T16:21:16.306Z"
+    },
+    {
+      "id": "b7dfaa8d-2620-4cc6-bdf5-83abbbd6695d",
+      "roundId": "95bb6c7d-7042-49be-933a-f33fd547ebf8",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "guessLat": -24.3267235895792,
+      "guessLng": -73.828125,
+      "distanceKm": 16965.85,
+      "score": 1,
+      "createdAt": "2026-06-08T16:27:35.143Z"
+    },
+    {
+      "id": "26eceaf7-2b18-4fda-ac26-90f4a9ebc047",
+      "roundId": "d097fca4-3a2c-406a-a302-cd24188377a6",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "guessLat": 17.014581418667195,
+      "guessLng": 98.49725603841023,
+      "distanceKm": 1742.49,
+      "score": 2092,
+      "createdAt": "2026-06-08T16:30:43.816Z"
+    },
+    {
+      "id": "53e23be7-6ce2-41e8-b16d-2a34da261438",
+      "roundId": "025911a0-29c0-41ce-9e94-1b6d31e61679",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "guessLat": 39.64542618309963,
+      "guessLng": 71.74048488231193,
+      "distanceKm": 5652.09,
+      "score": 296,
+      "createdAt": "2026-06-08T16:30:49.635Z"
+    },
+    {
+      "id": "469b2ff5-b7d1-4b07-a49e-f0af1ee3ac7b",
+      "roundId": "bcba7e1c-50bf-4131-903a-7e697181eeb3",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "guessLat": 13.53971971470783,
+      "guessLng": 104.48891105280727,
+      "distanceKm": 431.5,
+      "score": 4030,
+      "createdAt": "2026-06-08T17:08:41.811Z"
+    },
+    {
+      "id": "5046b6d8-4e5f-4c86-b3c4-b4bf76277bf8",
+      "roundId": "250ebe73-a219-4323-8b38-dad1bde8951b",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "guessLat": 34.621801487425635,
+      "guessLng": 135.7453495379537,
+      "distanceKm": 23.63,
+      "score": 4941,
+      "createdAt": "2026-06-08T17:08:58.795Z"
     }
   ],
   "dailyAttemptLedger": [
@@ -1270,6 +1639,22 @@
       "paidCredits": 1,
       "paidConsumed": 2,
       "updatedAt": "2026-06-08T16:03:03.935Z"
+    },
+    {
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "dayKey": "2026-06-08",
+      "freeUsed": 3,
+      "paidCredits": 0,
+      "paidConsumed": 1,
+      "updatedAt": "2026-06-08T16:27:35.143Z"
+    },
+    {
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "dayKey": "2026-06-08",
+      "freeUsed": 2,
+      "paidCredits": 0,
+      "paidConsumed": 0,
+      "updatedAt": "2026-06-08T17:08:58.795Z"
     }
   ],
   "rewardEvents": [
@@ -1512,6 +1897,78 @@
       "rewardSp": 28,
       "rewardEligible": true,
       "createdAt": "2026-06-08T16:03:03.935Z"
+    },
+    {
+      "id": "ba7babbe-ba44-416d-a516-537883eaac3a",
+      "roundId": "8d3cad1e-49ae-48e1-ade4-bbc1f64bfaf5",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T16:07:28.539Z"
+    },
+    {
+      "id": "859b1a81-dae4-4db5-ae96-cde56102f7fb",
+      "roundId": "4cfa3870-4c28-41cf-ba5b-65c78fef0fed",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "rewardSp": 30,
+      "rewardEligible": true,
+      "createdAt": "2026-06-08T16:14:45.937Z"
+    },
+    {
+      "id": "fee60aaf-58a7-4693-b82d-8da6f7013be1",
+      "roundId": "8df5bf56-cb51-45ab-a245-e9ddb461b022",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T16:16:58.156Z"
+    },
+    {
+      "id": "e14d5dc5-91c0-44a2-95fd-768169f834bb",
+      "roundId": "14ed9459-34ff-4bd1-96f1-35c26af8face",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T16:21:16.306Z"
+    },
+    {
+      "id": "9b4212fc-a9f1-4613-b6c7-dda46b68b1d9",
+      "roundId": "95bb6c7d-7042-49be-933a-f33fd547ebf8",
+      "walletAddress": "3rVWxw5beGPbdYih1e1ZF9g14rorF9SncP8rcnsd19LL",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T16:27:35.143Z"
+    },
+    {
+      "id": "503c76d7-b0f4-434e-b0cf-877b8a5ba32a",
+      "roundId": "d097fca4-3a2c-406a-a302-cd24188377a6",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T16:30:43.816Z"
+    },
+    {
+      "id": "8bec2a43-e575-4cb2-9647-f5015c8ea1eb",
+      "roundId": "025911a0-29c0-41ce-9e94-1b6d31e61679",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T16:30:49.635Z"
+    },
+    {
+      "id": "b229727a-5869-4c46-af52-33511df1036f",
+      "roundId": "bcba7e1c-50bf-4131-903a-7e697181eeb3",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "rewardSp": 0,
+      "rewardEligible": false,
+      "createdAt": "2026-06-08T17:08:41.811Z"
+    },
+    {
+      "id": "7d628e3f-5489-4244-bc1b-978541712cf6",
+      "roundId": "250ebe73-a219-4323-8b38-dad1bde8951b",
+      "walletAddress": "8AmoMYMmVpu5MkyJUeNWr3GnjXcoikxSAQte3BLjx9LQ",
+      "rewardSp": 28,
+      "rewardEligible": true,
+      "createdAt": "2026-06-08T17:08:58.795Z"
     }
   ]
 }
