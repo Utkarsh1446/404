@@ -1,5 +1,14 @@
+@font-face {
+  font-family: 'ROGENZ Demo';
+  src: url('./assets/fonts/ROGENZ-DEMO.otf') format('opentype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 :root {
-  --font-season-serif: 'Season Serif', ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-rogenz: 'ROGENZ Demo', serif;
+  --font-season-serif: var(--font-rogenz);
   --season-weight-light: 335;
   --season-weight-book: 340;
   --season-weight-text: 358;
@@ -7,7 +16,7 @@
   --season-weight-regular: 400;
   --season-weight-medium: 420;
   --season-weight-strong: 444;
-  font-family: var(--font-season-serif);
+  font-family: var(--font-rogenz);
   line-height: 1.5;
   font-weight: var(--season-weight-regular);
   color: #0f172a;
@@ -90,6 +99,6 @@ code,
 pre,
 kbd,
 samp {
-  font-family: var(--font-season-serif);
+  font-family: var(--font-rogenz);
   font-weight: var(--season-weight-text);
 }

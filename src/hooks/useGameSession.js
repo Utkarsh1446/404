@@ -28,6 +28,10 @@ function loadStoredSession() {
   }
 }
 
+function hasRoundPanorama(round) {
+  return Boolean(round?.panorama?.position)
+}
+
 export function useGameSession() {
   const [session, setSession] = useState(loadStoredSession)
   const [phase, setPhase] = useState('disconnected')
@@ -36,12 +40,15 @@ export function useGameSession() {
   const [paymentRoundId, setPaymentRoundId] = useState(null)
   const [selectedGuess, setSelectedGuess] = useState(null)
   const [result, setResult] = useState(null)
+  const [revealResult, setRevealResult] = useState(null)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('Connect a Solana wallet to start your first world drop.')
   const [isBusy, setIsBusy] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(90)
   const [currentLocationIndex, setCurrentLocationIndex] = useState(1)
   const [locationResults, setLocationResults] = useState([])
+  const [pendingNextRound, setPendingNextRound] = useState(null)
+  const [pendingFinalSummary, setPendingFinalSummary] = useState(null)
   const timerRef = useRef(null)
 
   useEffect(() => {
@@ -151,12 +158,18 @@ export function useGameSession() {
 
     try {
       const round = await apiClient.startRound(authToken)
+      if (!hasRoundPanorama(round)) {
+        throw new Error('Round payload missing panorama data.')
+      }
       setActiveRound(round)
       setSelectedGuess(null)
       setResult(null)
+      setRevealResult(null)
       setLocationResults([])
       setCurrentLocationIndex(1)
       setPaymentRoundId(null)
+      setPendingNextRound(null)
+      setPendingFinalSummary(null)
       setQuota(round.quota)
       setPhase('playing')
       setSecondsLeft(90)
@@ -226,16 +239,18 @@ export function useGameSession() {
       )
       const nextResults = [...locationResults, payload.result]
       setQuota(payload.quota)
+      setLocationResults(nextResults)
+      setSelectedGuess(null)
 
       if (currentLocationIndex < ROUND_LOCATION_COUNT) {
-        const nextRound = await apiClient.startRound(session.token)
-        setLocationResults(nextResults)
-        setCurrentLocationIndex((current) => current + 1)
-        setActiveRound(nextRound)
-        setSelectedGuess(null)
-        setSecondsLeft(90)
-        setPhase('playing')
-        setStatus(`R${currentLocationIndex} locked. R${currentLocationIndex + 1} is live.`)
+        setPendingNextRound({ needsFetch: true })
+        setRevealResult({
+          ...payload.result,
+          stopIndex: currentLocationIndex,
+          stopCount: ROUND_LOCATION_COUNT,
+        })
+        setPhase('reveal')
+        setStatus(`R${currentLocationIndex} revealed. Continue when ready for R${currentLocationIndex + 1}.`)
         return
       }
 
@@ -245,8 +260,12 @@ export function useGameSession() {
       const averageDistanceKm =
         nextResults.reduce((sum, entry) => sum + entry.distanceKm, 0) / nextResults.length
 
-      setLocationResults(nextResults)
-      setResult({
+      setRevealResult({
+        ...payload.result,
+        stopIndex: currentLocationIndex,
+        stopCount: ROUND_LOCATION_COUNT,
+      })
+      setPendingFinalSummary({
         stops: nextResults,
         totalRewardSp,
         totalScore,
@@ -254,7 +273,7 @@ export function useGameSession() {
         thresholdKm: payload.result.thresholdKm,
         averageDistanceKm: Number(averageDistanceKm.toFixed(2)),
       })
-      setPhase('result')
+      setPhase('reveal')
       setStatus(
         totalRewardSp > 0
           ? `Round complete. ${totalRewardSp} SP queued across ${rewardEligibleCount} correct locations.`
@@ -272,11 +291,49 @@ export function useGameSession() {
     setActiveRound(null)
     setSelectedGuess(null)
     setResult(null)
+    setRevealResult(null)
     setLocationResults([])
     setCurrentLocationIndex(1)
     setPaymentRoundId(null)
+    setPendingNextRound(null)
+    setPendingFinalSummary(null)
     setSecondsLeft(90)
     setPhase('ready')
+  }
+
+  async function continueAfterReveal() {
+    if (pendingNextRound) {
+      if (!session?.token) return
+
+      setIsBusy(true)
+      setError('')
+
+      try {
+        const nextRound = await apiClient.continueRound(session.token, activeRound.roundId)
+        if (!hasRoundPanorama(nextRound)) {
+          throw new Error('Next round payload missing panorama data.')
+        }
+        setActiveRound(nextRound)
+        setPendingNextRound(null)
+        setRevealResult(null)
+        setCurrentLocationIndex((current) => current + 1)
+        setPhase('playing')
+        setSecondsLeft(90)
+        setStatus(`R${currentLocationIndex + 1} is live.`)
+      } catch (caughtError) {
+        setError(caughtError.message)
+      } finally {
+        setIsBusy(false)
+      }
+      return
+    }
+
+    if (pendingFinalSummary) {
+      setResult(pendingFinalSummary)
+      setPendingFinalSummary(null)
+      setRevealResult(null)
+      setPhase('result')
+    }
   }
 
   return {
@@ -287,6 +344,7 @@ export function useGameSession() {
     paymentRoundId,
     selectedGuess,
     result,
+    revealResult,
     error,
     status,
     isBusy,
@@ -300,6 +358,7 @@ export function useGameSession() {
     beginExperience,
     unlockPaidRound,
     submitGuess,
+    continueAfterReveal,
     resetForNextRound,
   }
 }

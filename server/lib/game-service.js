@@ -7,6 +7,8 @@ import {
   summarizeQuota,
 } from './quota.js'
 
+const ROUND_LOCATION_COUNT = 2
+
 function pickNextLocation(state, walletAddress) {
   const activeLocations = curatedLocations.filter((location) => location.active)
   const walletRounds = state.rounds.filter(
@@ -61,6 +63,14 @@ function getLocationById(locationId) {
   return curatedLocations.find((location) => location.id === locationId)
 }
 
+function pruneInvalidOpenRounds(state, walletAddress) {
+  state.rounds = state.rounds.filter((round) => {
+    if (round.walletAddress !== walletAddress) return true
+    if (round.status !== 'active' && round.status !== 'awaiting_payment') return true
+    return Boolean(getLocationById(round.locationId))
+  })
+}
+
 export function createGameService({ store, rewardThresholdKm }) {
   function getOrCreatePlayer(state, walletAddress) {
     let player = state.players.find((entry) => entry.walletAddress === walletAddress)
@@ -82,6 +92,7 @@ export function createGameService({ store, rewardThresholdKm }) {
   function getQuota(walletAddress) {
     return store.update((state) => {
       getOrCreatePlayer(state, walletAddress)
+      pruneInvalidOpenRounds(state, walletAddress)
       const ledger = ensureLedgerEntry(state, walletAddress, getDayKey())
       ledger.updatedAt = new Date().toISOString()
       return summarizeQuota(ledger)
@@ -91,6 +102,7 @@ export function createGameService({ store, rewardThresholdKm }) {
   function startRound(walletAddress) {
     return store.update((state) => {
       getOrCreatePlayer(state, walletAddress)
+      pruneInvalidOpenRounds(state, walletAddress)
       const existingRound = state.rounds.find(
         (round) =>
           round.walletAddress === walletAddress &&
@@ -146,11 +158,16 @@ export function createGameService({ store, rewardThresholdKm }) {
         id: crypto.randomUUID(),
         walletAddress,
         locationId: location.id,
+        sessionRootId: null,
+        sequenceIndex: 1,
         attemptType: quota.freeRemaining > 0 ? 'free' : 'paid',
+        consumeQuotaOnSubmit: true,
         status: 'active',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
+
+      round.sessionRootId = round.id
 
       state.rounds.push(round)
 
@@ -158,8 +175,81 @@ export function createGameService({ store, rewardThresholdKm }) {
     })
   }
 
+  function continueRound(walletAddress, roundId) {
+    return store.update((state) => {
+      pruneInvalidOpenRounds(state, walletAddress)
+      const sourceRound = state.rounds.find(
+        (entry) => entry.id === roundId && entry.walletAddress === walletAddress,
+      )
+
+      if (!sourceRound || sourceRound.status !== 'completed') {
+        const error = new Error('Round is not ready to continue.')
+        error.statusCode = 409
+        throw error
+      }
+
+      if ((sourceRound.sequenceIndex ?? 1) >= ROUND_LOCATION_COUNT) {
+        const error = new Error('Round sequence is already complete.')
+        error.statusCode = 409
+        throw error
+      }
+
+      const rootId = sourceRound.sessionRootId ?? sourceRound.id
+      const existingContinuation = state.rounds.find(
+        (entry) =>
+          entry.walletAddress === walletAddress &&
+          entry.sessionRootId === rootId &&
+          entry.sequenceIndex === (sourceRound.sequenceIndex ?? 1) + 1,
+      )
+      const ledger = ensureLedgerEntry(state, walletAddress, getDayKey())
+      const quota = summarizeQuota(ledger)
+
+      if (existingContinuation) {
+        return makeRoundPayload(
+          existingContinuation,
+          getLocationById(existingContinuation.locationId),
+          quota,
+        )
+      }
+
+      const activeContinuation = state.rounds.find(
+        (entry) =>
+          entry.walletAddress === walletAddress &&
+          entry.status === 'active' &&
+          entry.sessionRootId === rootId,
+      )
+
+      if (activeContinuation) {
+        return makeRoundPayload(
+          activeContinuation,
+          getLocationById(activeContinuation.locationId),
+          quota,
+        )
+      }
+
+      const location = pickNextLocation(state, walletAddress)
+      const nextRound = {
+        id: crypto.randomUUID(),
+        walletAddress,
+        locationId: location.id,
+        sessionRootId: rootId,
+        sequenceIndex: (sourceRound.sequenceIndex ?? 1) + 1,
+        attemptType: sourceRound.attemptType,
+        consumeQuotaOnSubmit: false,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      state.rounds.push(nextRound)
+
+      return makeRoundPayload(nextRound, location, quota)
+    })
+  }
+
   function checkoutAttempt(walletAddress, roundId) {
     return store.update((state) => {
+      pruneInvalidOpenRounds(state, walletAddress)
       const round = state.rounds.find(
         (entry) => entry.id === roundId && entry.walletAddress === walletAddress,
       )
@@ -191,6 +281,7 @@ export function createGameService({ store, rewardThresholdKm }) {
 
   function submitGuess(walletAddress, roundId, guess) {
     return store.update((state) => {
+      pruneInvalidOpenRounds(state, walletAddress)
       const round = state.rounds.find(
         (entry) => entry.id === roundId && entry.walletAddress === walletAddress,
       )
@@ -209,7 +300,7 @@ export function createGameService({ store, rewardThresholdKm }) {
 
       const ledger = ensureLedgerEntry(state, walletAddress, getDayKey())
 
-      if (round.attemptType === 'paid' && ledger.paidCredits <= 0) {
+      if (round.consumeQuotaOnSubmit && round.attemptType === 'paid' && ledger.paidCredits <= 0) {
         const error = new Error('Paid attempt credit is required before guessing.')
         error.statusCode = 402
         error.payload = {
@@ -227,11 +318,13 @@ export function createGameService({ store, rewardThresholdKm }) {
       const rewardEligible = distanceKm <= rewardThresholdKm
       const rewardSp = rewardEligible ? location.rewardSp : 0
 
-      if (round.attemptType === 'free') {
-        ledger.freeUsed += 1
-      } else {
-        ledger.paidCredits -= 1
-        ledger.paidConsumed += 1
+      if (round.consumeQuotaOnSubmit) {
+        if (round.attemptType === 'free') {
+          ledger.freeUsed += 1
+        } else {
+          ledger.paidCredits -= 1
+          ledger.paidConsumed += 1
+        }
       }
 
       ledger.updatedAt = new Date().toISOString()
@@ -281,6 +374,7 @@ export function createGameService({ store, rewardThresholdKm }) {
 
   function getRoundResult(walletAddress, roundId) {
     return store.update((state) => {
+      pruneInvalidOpenRounds(state, walletAddress)
       const round = state.rounds.find(
         (entry) => entry.id === roundId && entry.walletAddress === walletAddress,
       )
@@ -303,6 +397,7 @@ export function createGameService({ store, rewardThresholdKm }) {
   }
 
   return {
+    continueRound,
     getQuota,
     startRound,
     checkoutAttempt,

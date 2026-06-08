@@ -3,7 +3,7 @@ import { clientConfig } from '../config'
 import { loadGoogleMaps } from '../lib/googleMaps'
 
 function buildStreetViewImage(round) {
-  if (!round || !clientConfig.googleMapsApiKey) return undefined
+  if (!round?.panorama?.position || !clientConfig.googleMapsApiKey) return undefined
 
   const { lat, lng } = round.panorama.position
   const heading = round.panorama.pov?.heading ?? 0
@@ -33,14 +33,16 @@ export function StreetViewStage({ round }) {
   const [loadState, setLoadState] = useState(
     clientConfig.googleMapsApiKey ? 'loading' : 'missing-key',
   )
+  const hasValidPanorama = Boolean(round?.panorama?.position)
 
   useEffect(() => {
-    if (!round || !containerRef.current || !clientConfig.googleMapsApiKey) {
+    if (!hasValidPanorama || !containerRef.current || !clientConfig.googleMapsApiKey) {
       return undefined
     }
 
     let cancelled = false
     let fallbackTimeoutId
+    let panoramaListeners = []
 
     setLoadState('loading')
 
@@ -48,52 +50,86 @@ export function StreetViewStage({ round }) {
       .then((google) => {
         if (cancelled || !containerRef.current) return
 
-        panoramaRef.current = new google.maps.StreetViewPanorama(containerRef.current, {
-          pano: round.panorama.panoId,
-          position: round.panorama.position,
-          pov: round.panorama.pov,
-          zoom: round.panorama.zoom,
-          addressControl: false,
-          fullscreenControl: false,
-          motionTracking: false,
-          motionTrackingControl: false,
-          showRoadLabels: false,
-          linksControl: true,
-          clickToGo: true,
-          scrollwheel: true,
-          disableDefaultUI: false,
-          visible: true,
-        })
+        const service = new google.maps.StreetViewService()
 
-        const panorama = panoramaRef.current
+        const mountPanorama = (panoramaOptions) => {
+          if (cancelled || !containerRef.current) return
 
-        const finalizeReady = () => {
-          if (cancelled || !panorama) return
-          const panoValue = panorama.getPano?.()
-          if (panoValue) {
-            setLoadState('ready')
-            google.maps.event.trigger(panorama, 'resize')
-            panorama.setPov(round.panorama.pov)
-            panorama.setZoom(round.panorama.zoom)
+          panoramaRef.current = new google.maps.StreetViewPanorama(containerRef.current, {
+            ...panoramaOptions,
+            pov: round.panorama.pov,
+            zoom: round.panorama.zoom,
+            addressControl: false,
+            fullscreenControl: false,
+            motionTracking: false,
+            motionTrackingControl: false,
+            showRoadLabels: false,
+            linksControl: true,
+            clickToGo: true,
+            scrollwheel: true,
+            disableDefaultUI: false,
+            visible: true,
+          })
+
+          const panorama = panoramaRef.current
+
+          const finalizeReady = () => {
+            if (cancelled || !panorama) return
+            const panoValue = panorama.getPano?.()
+            const positionValue = panorama.getPosition?.()
+            if (panoValue && positionValue) {
+              setLoadState('ready')
+              google.maps.event.trigger(panorama, 'resize')
+              panorama.setPov(round.panorama.pov)
+              panorama.setZoom(round.panorama.zoom)
+              window.clearTimeout(fallbackTimeoutId)
+            }
           }
+
+          panoramaListeners = [
+            panorama.addListener('pano_changed', finalizeReady),
+            panorama.addListener('position_changed', finalizeReady),
+            panorama.addListener('links_changed', finalizeReady),
+          ]
+
+          fallbackTimeoutId = window.setTimeout(() => {
+            if (cancelled) return
+            const panoValue = panorama.getPano?.()
+            if (!panoValue) {
+              setLoadState('fallback')
+            }
+          }, 3000)
         }
 
-        panorama.addListener('pano_changed', finalizeReady)
-        panorama.addListener('position_changed', finalizeReady)
+        service.getPanorama(
+          {
+            location: round.panorama.position,
+            radius: 120,
+            source: google.maps.StreetViewSource.OUTDOOR,
+            preference: google.maps.StreetViewPreference.BEST,
+          },
+          (data, status) => {
+            if (cancelled) return
 
-        if (round.panorama.panoId) {
-          panorama.setPano(round.panorama.panoId)
-        } else {
-          panorama.setPosition(round.panorama.position)
-        }
+            if (status === google.maps.StreetViewStatus.OK && data?.location?.pano) {
+              mountPanorama({
+                pano: data.location.pano,
+                position: data.location.latLng ?? round.panorama.position,
+              })
+              return
+            }
 
-        fallbackTimeoutId = window.setTimeout(() => {
-          if (cancelled) return
-          const panoValue = panorama.getPano?.()
-          if (!panoValue) {
+            if (round.panorama.panoId) {
+              mountPanorama({
+                pano: round.panorama.panoId,
+                position: round.panorama.position,
+              })
+              return
+            }
+
             setLoadState('fallback')
           }
-        }, 2500)
+        )
       })
       .catch(() => {
         if (!cancelled) {
@@ -104,8 +140,9 @@ export function StreetViewStage({ round }) {
     return () => {
       cancelled = true
       window.clearTimeout(fallbackTimeoutId)
+      panoramaListeners.forEach((listener) => listener?.remove?.())
     }
-  }, [round])
+  }, [hasValidPanorama, round])
 
   if (!round) {
     return (
@@ -113,6 +150,15 @@ export function StreetViewStage({ round }) {
         <span className="eyebrow">Street view</span>
         <h3>Connect, then launch a round.</h3>
         <p>The active panorama loads only after the server assigns a valid world drop.</p>
+      </div>
+    )
+  }
+
+  if (!hasValidPanorama) {
+    return (
+      <div className="stage-placeholder">
+        <h3>Location data is incomplete.</h3>
+        <p>This round did not include a valid panorama payload. Start a fresh round.</p>
       </div>
     )
   }

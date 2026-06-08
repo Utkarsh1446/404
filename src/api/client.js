@@ -41,6 +41,12 @@ export const apiClient = {
   startRound(token) {
     return apiFetch('/api/rounds/start', { method: 'POST', token })
   },
+  continueRound(token, roundId) {
+    return apiFetch(`/api/rounds/${roundId}/continue`, {
+      method: 'POST',
+      token,
+    })
+  },
   checkoutIntent(token, roundId) {
     return apiFetch(`/api/attempts/${roundId}/checkout-intent`, {
       method: 'POST',
