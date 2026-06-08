@@ -962,16 +962,19 @@
   display: grid;
   place-items: center;
   padding: 18px;
-  background: rgba(15, 23, 42, 0.32);
+  background: rgba(10, 10, 10, 0.34);
+  backdrop-filter: blur(18px);
 }
 
 .result-modal {
-  width: min(560px, 100%);
-  border-radius: 30px;
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+  width: min(620px, 100%);
+  border-radius: 26px;
+  padding: 28px;
+  background: rgba(12, 12, 12, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(22px);
 }
 
 .eyebrow {
@@ -989,19 +992,28 @@
 }
 
 .result-modal h2 {
-  margin: 14px 0 18px;
-  font-size: 2rem;
+  margin: 14px 0 10px;
+  color: #ffffff;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
   font-weight: var(--season-weight-strong);
+  line-height: 0.98;
+}
+
+.result-modal .eyebrow {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .result-distance-callout {
-  margin-bottom: 16px;
-  color: #334155;
+  margin-bottom: 18px;
+  color: rgba(255, 255, 255, 0.78);
   font-size: 1.05rem;
+  line-height: 1.45;
 }
 
 .result-grid,
-.result-pins {
+.result-stops {
   display: grid;
   gap: 12px;
 }
@@ -1010,23 +1022,29 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
-.result-pins {
-  grid-template-columns: repeat(2, 1fr);
-  margin: 14px 0;
-}
-
 .result-grid div,
-.result-pins div {
+.result-stop-card {
   padding: 14px;
-  border-radius: 18px;
-  background: rgba(248, 250, 252, 0.92);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .result-grid strong,
-.result-pins strong {
+.result-stop-card strong {
   display: block;
   margin-top: 6px;
-  color: #111827;
+  color: #ffffff;
+}
+
+.result-grid span,
+.result-stop-card span {
+  display: block;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.76rem;
+  font-weight: var(--season-weight-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .result-caption {
@@ -1035,26 +1053,14 @@
 }
 
 .result-stops {
-  display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin: 14px 0 18px;
 }
 
-.result-stop-card {
-  padding: 14px;
-  background: rgba(248, 250, 252, 0.92);
-}
-
-.result-stop-card strong {
-  display: block;
-  margin: 6px 0 8px;
-  color: #111827;
-}
-
 .result-stop-card p {
   margin: 4px 0 0;
-  color: #546273;
+  color: rgba(255, 255, 255, 0.68);
   font-size: 0.92rem;
 }
 
