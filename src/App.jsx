@@ -319,6 +319,7 @@ function App() {
     setSelectedGuess,
     connectWallet,
     beginExperience,
+    beginDropExperience,
     unlockPaidRound,
     submitGuess,
     continueAfterReveal,
@@ -366,6 +367,16 @@ function App() {
     }
 
     await handlePlayEntry()
+  }
+
+  async function handleDropEntry() {
+    if (isBusy) return
+
+    navigateTo('/')
+    const result = await beginDropExperience()
+    if (result?.status === 'started') {
+      setShowLanding(false)
+    }
   }
 
   async function handleRevealAdvance() {
@@ -700,7 +711,18 @@ function App() {
             <div className="landing-drops-band">
               <div className="landing-drops-grid">
                 {landingDrops.map((drop) => (
-                  <article className={`landing-drop-card is-${drop.state}`} key={drop.key}>
+                  <button
+                    aria-label={
+                      drop.state === 'live'
+                        ? `Play active ${drop.location.city} drop`
+                        : undefined
+                    }
+                    className={`landing-drop-card is-${drop.state}`}
+                    disabled={drop.state !== 'live' || isBusy}
+                    key={drop.key}
+                    onClick={drop.state === 'live' ? handleDropEntry : undefined}
+                    type="button"
+                  >
                     {drop.state === 'empty' ? (
                       <div className="landing-drop-empty-mark">DROPS</div>
                     ) : (
@@ -734,7 +756,7 @@ function App() {
                         </div>
                       </>
                     )}
-                  </article>
+                  </button>
                 ))}
               </div>
             </div>

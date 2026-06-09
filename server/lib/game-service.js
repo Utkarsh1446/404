@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import { curatedLocations, regularGameLocations } from '../data/locations.js'
+import { getScheduledDrop } from './drop-schedule.js'
 import { distanceToScore, haversineDistanceKm } from './geo.js'
 import {
   ensureLedgerEntry,
@@ -24,6 +25,10 @@ function getActiveLocations(locations, label) {
 
 function getActiveRegularLocations() {
   return getActiveLocations(regularGameLocations, 'regular game')
+}
+
+function getActiveDropLocations() {
+  return getActiveLocations(curatedLocations, 'drop')
 }
 
 function pickRegularLocation(state, excludedLocationIds = []) {
@@ -67,7 +72,7 @@ function makeRoundPayload(round, location, quota, timestamp = Date.now()) {
     roundId: round.id,
     status: round.status,
     sequenceIndex: round.sequenceIndex ?? 1,
-    roundLocationCount: REGULAR_ROUND_LOCATION_COUNT,
+    roundLocationCount: round.roundLocationCount ?? REGULAR_ROUND_LOCATION_COUNT,
     attemptType: round.attemptType,
     quota,
     panorama: {
@@ -220,6 +225,88 @@ export function createGameService({ store, rewardThresholdKm }) {
       state.rounds.push(round)
 
       return makeRoundPayload(round, location, quota, now)
+    })
+  }
+
+  function startDropRound(walletAddress) {
+    return store.update((state) => {
+      getOrCreatePlayer(state, walletAddress)
+      pruneInvalidOpenRounds(state, walletAddress)
+
+      const now = Date.now()
+      const scheduledDrop = getScheduledDrop(getActiveDropLocations(), now)
+      const ledger = ensureLedgerEntry(state, walletAddress, getDayKey())
+      const quota = summarizeQuota(ledger)
+
+      if (scheduledDrop.phase !== 'active') {
+        const error = new Error('The active drop is in reveal. Wait for the next drop.')
+        error.statusCode = 409
+        error.payload = {
+          code: 'DROP_REVEAL_ACTIVE',
+          activeEndsAt: scheduledDrop.activeEndsAt,
+          revealEndsAt: scheduledDrop.revealEndsAt,
+        }
+        throw error
+      }
+
+      const existingRound = state.rounds.find(
+        (round) =>
+          round.walletAddress === walletAddress &&
+          round.gameMode === 'drop' &&
+          round.dropCycleNumber === scheduledDrop.cycleNumber &&
+          round.status === 'active',
+      )
+
+      if (existingRound) {
+        return makeRoundPayload(
+          existingRound,
+          getLocationById(existingRound.locationId),
+          quota,
+          now,
+        )
+      }
+
+      const submittedRound = state.rounds.find(
+        (round) =>
+          round.walletAddress === walletAddress &&
+          round.gameMode === 'drop' &&
+          round.dropCycleNumber === scheduledDrop.cycleNumber &&
+          round.status === 'submitted',
+      )
+
+      if (submittedRound) {
+        const error = new Error('You already submitted this active drop.')
+        error.statusCode = 409
+        error.payload = {
+          code: 'DROP_ALREADY_SUBMITTED',
+          activeEndsAt: scheduledDrop.activeEndsAt,
+          revealEndsAt: scheduledDrop.revealEndsAt,
+        }
+        throw error
+      }
+
+      const round = {
+        id: crypto.randomUUID(),
+        walletAddress,
+        gameMode: 'drop',
+        locationId: scheduledDrop.location.id,
+        dropCycleNumber: scheduledDrop.cycleNumber,
+        activeEndsAt: scheduledDrop.activeEndsAt,
+        revealEndsAt: scheduledDrop.revealEndsAt,
+        sessionRootId: null,
+        sequenceIndex: 1,
+        roundLocationCount: 1,
+        attemptType: 'drop',
+        consumeQuotaOnSubmit: false,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      round.sessionRootId = round.id
+      state.rounds.push(round)
+
+      return makeRoundPayload(round, scheduledDrop.location, quota, now)
     })
   }
 
@@ -515,6 +602,7 @@ export function createGameService({ store, rewardThresholdKm }) {
   return {
     continueRound,
     getQuota,
+    startDropRound,
     startRound,
     checkoutAttempt,
     submitGuess,

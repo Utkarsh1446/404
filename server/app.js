@@ -143,6 +143,14 @@ export function createApp(options = {}) {
     }
   })
 
+  app.post('/api/drops/start', requireAuth, (req, res, next) => {
+    try {
+      res.json(gameService.startDropRound(req.auth.walletAddress))
+    } catch (error) {
+      next(error)
+    }
+  })
+
   app.post('/api/attempts/:roundId/checkout-intent', requireAuth, (req, res, next) => {
     try {
       res.json(
