@@ -30,8 +30,17 @@ function createTestApp() {
   return createApp({ storageFile, challengeTtlMs: 60_000, rewardThresholdKm: 50 })
 }
 
-async function authenticate(app) {
-  const keypair = Keypair.generate()
+function createTestAppWithState(initialState) {
+  const storageFile = path.join(
+    os.tmpdir(),
+    `sp-guess-${Math.random().toString(36).slice(2)}.json`,
+  )
+  fs.writeFileSync(storageFile, JSON.stringify(initialState))
+
+  return createApp({ storageFile, challengeTtlMs: 60_000, rewardThresholdKm: 50 })
+}
+
+async function authenticate(app, keypair = Keypair.generate()) {
   const walletAddress = keypair.publicKey.toBase58()
   const challengeResponse = await request(app)
     .post('/api/auth/wallet/challenge')
@@ -170,6 +179,47 @@ test('regular rounds continue to a second 90 second location', async () => {
     secondRound.body.panorama.position,
     firstRound.body.panorama.position,
   )
+})
+
+test('legacy active drop-timed rounds are not reused for regular gameplay', async () => {
+  const keypair = Keypair.generate()
+  const walletAddress = keypair.publicKey.toBase58()
+  const app = createTestAppWithState({
+    players: [{ walletAddress, createdAt: new Date().toISOString(), lastSeenAt: new Date().toISOString() }],
+    authChallenges: [],
+    sessions: [],
+    rounds: [
+      {
+        id: 'legacy-active-round',
+        walletAddress,
+        locationId: 'na-namib-desert-dunes',
+        dropCycleNumber: 123,
+        activeEndsAt: Date.now() + 2 * 60 * 60 * 1000,
+        revealEndsAt: Date.now() + 2 * 60 * 60 * 1000 + 120 * 1000,
+        sessionRootId: 'legacy-active-round',
+        sequenceIndex: 1,
+        attemptType: 'free',
+        consumeQuotaOnSubmit: true,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ],
+    guesses: [],
+    dailyAttemptLedger: [],
+    rewardEvents: [],
+  })
+  const auth = await authenticate(app, keypair)
+
+  const round = await request(app)
+    .post('/api/rounds/start')
+    .set('Authorization', `Bearer ${auth.token}`)
+    .expect(200)
+
+  assert.notEqual(round.body.roundId, 'legacy-active-round')
+  assert.equal(round.body.meta.gameMode, 'regular')
+  assert.equal(round.body.meta.timeLimitSeconds, 90)
+  assert.equal(round.body.roundLocationCount, 2)
 })
 
 test('fourth round requires payment and mocked checkout unlocks one paid attempt', async () => {

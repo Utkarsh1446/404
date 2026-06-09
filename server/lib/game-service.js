@@ -140,7 +140,7 @@ export function createGameService({ store, rewardThresholdKm }) {
       const existingRound = state.rounds.find(
         (round) =>
           round.walletAddress === walletAddress &&
-          round.gameMode !== 'drop' &&
+          round.gameMode === 'regular' &&
           (round.status === 'active' ||
             round.status === 'awaiting_payment'),
       )
