@@ -649,6 +649,10 @@ function App() {
 
   const completedLocations = locationResults.length
   const isFinalReveal = phase === 'reveal' && currentLocationIndex === roundLocationCount
+  const scoreSlots = Array.from({ length: roundLocationCount }, (_entry, index) => index + 1)
+  const scoreboardStyle = {
+    gridTemplateColumns: `repeat(${scoreSlots.length + 1}, minmax(126px, 1fr))`,
+  }
   const hasFreePlayRemaining = (quota?.freeRemaining ?? 3) > 0
   const shouldShowTokenPlayCost = phase === 'quota_blocked' || !hasFreePlayRemaining
   const landingPlayButtonLabel = isBusy ? (
@@ -945,17 +949,14 @@ function App() {
               </span>
             </button>
 
-            <div className="hud-top hud-scoreboard">
-              <div className={`score-cell ${currentLocationIndex === 1 ? 'active' : ''}`}>
-                <span>R1</span>
-                <strong>{locationResults[0] ? locationResults[0].score : '-'}</strong>
-                <small>{currentLocationIndex === 1 ? formatClock(secondsLeft) : '-'}</small>
-              </div>
-              <div className={`score-cell ${currentLocationIndex === 2 ? 'active' : ''}`}>
-                <span>R2</span>
-                <strong>{locationResults[1] ? locationResults[1].score : '-'}</strong>
-                <small>{currentLocationIndex === 2 ? formatClock(secondsLeft) : '-'}</small>
-              </div>
+            <div className="hud-top hud-scoreboard" style={scoreboardStyle}>
+              {scoreSlots.map((slot) => (
+                <div className={`score-cell ${currentLocationIndex === slot ? 'active' : ''}`} key={slot}>
+                  <span>R{slot}</span>
+                  <strong>{locationResults[slot - 1] ? locationResults[slot - 1].score : '-'}</strong>
+                  <small>{currentLocationIndex === slot ? formatClock(secondsLeft) : '-'}</small>
+                </div>
+              ))}
               <div className="score-cell total-cell">
                 <span>Total</span>
                 <strong>{completedLocations}/{roundLocationCount}</strong>
@@ -1010,17 +1011,16 @@ function App() {
               </span>
             </button>
 
-            <div className="hud-top hud-scoreboard">
-              <div className={`score-cell ${currentLocationIndex === 1 ? 'active' : ''}`}>
-                <span>R1</span>
-                <strong>{locationResults[0] ? locationResults[0].score : '-'}</strong>
-                <small>{currentLocationIndex === 1 && phase !== 'result' ? formatClock(secondsLeft) : '-'}</small>
-              </div>
-              <div className={`score-cell ${currentLocationIndex === 2 ? 'active' : ''}`}>
-                <span>R2</span>
-                <strong>{locationResults[1] ? locationResults[1].score : '-'}</strong>
-                <small>{currentLocationIndex === 2 && phase !== 'result' ? formatClock(secondsLeft) : '-'}</small>
-              </div>
+            <div className="hud-top hud-scoreboard" style={scoreboardStyle}>
+              {scoreSlots.map((slot) => (
+                <div className={`score-cell ${currentLocationIndex === slot ? 'active' : ''}`} key={slot}>
+                  <span>R{slot}</span>
+                  <strong>{locationResults[slot - 1] ? locationResults[slot - 1].score : '-'}</strong>
+                  <small>
+                    {currentLocationIndex === slot && phase !== 'result' ? formatClock(secondsLeft) : '-'}
+                  </small>
+                </div>
+              ))}
               <div className="score-cell total-cell">
                 <span>Total</span>
                 <strong>{completedLocations}/{roundLocationCount}</strong>

@@ -162,7 +162,7 @@ export const curatedLocations = [
     panorama: {
       lat: -24.7508,
       lng: 15.2886,
-      panoId: null,
+      panoId: 'CAoSFkNJSE0wb2dLRUlDQWdJQzRsdnVUSmc.',
       pov: { heading: 32, pitch: 0 },
       zoom: 1,
     },
@@ -177,7 +177,7 @@ export const curatedLocations = [
     panorama: {
       lat: -20.1338,
       lng: -67.4891,
-      panoId: null,
+      panoId: 'CAoSF0NJSE0wb2dLRUlDQWdJQ2tpcF9oaEFF',
       pov: { heading: 84, pitch: 0 },
       zoom: 1,
     },
@@ -192,7 +192,7 @@ export const curatedLocations = [
     panorama: {
       lat: 29.3457,
       lng: 110.5446,
-      panoId: null,
+      panoId: 'CAoSF0NJSE0wb2dLRUlDQWdJRHF6WUhMd0FF',
       pov: { heading: 126, pitch: 0 },
       zoom: 1,
     },
@@ -207,7 +207,7 @@ export const curatedLocations = [
     panorama: {
       lat: 2.2642,
       lng: -73.7947,
-      panoId: null,
+      panoId: 'CAoSFkNJSE0wb2dLRUlDQWdJRDR2TFNpZHc.',
       pov: { heading: 216, pitch: 0 },
       zoom: 1,
     },
@@ -222,7 +222,7 @@ export const curatedLocations = [
     panorama: {
       lat: -15.6094,
       lng: -71.9793,
-      panoId: null,
+      panoId: 'CAoSF0NJSE0wb2dLRUlDQWdJQzZyWnZ2OWdF',
       pov: { heading: 18, pitch: 0 },
       zoom: 1,
     },
@@ -237,7 +237,7 @@ export const curatedLocations = [
     panorama: {
       lat: 63.9912,
       lng: -19.0607,
-      panoId: null,
+      panoId: 'CAoSFkNJSE0wb2dLRUlDQWdJRHVsSkhSQXc.',
       pov: { heading: 302, pitch: 0 },
       zoom: 1,
     },
@@ -248,7 +248,7 @@ export const curatedLocations = [
     region: 'Tsingy de Bemaraha',
     difficulty: 'hard',
     rewardSp: 46,
-    active: true,
+    active: false,
     panorama: {
       lat: -18.6667,
       lng: 44.75,
@@ -267,7 +267,7 @@ export const curatedLocations = [
     panorama: {
       lat: -0.2346,
       lng: 130.523,
-      panoId: null,
+      panoId: 'CAoSF0NJSE0wb2dLRUlDQWdJQzFzS25MMkFF',
       pov: { heading: 92, pitch: 0 },
       zoom: 1,
     },
@@ -282,7 +282,7 @@ export const curatedLocations = [
     panorama: {
       lat: 61.5976,
       lng: -125.735,
-      panoId: null,
+      panoId: 'mn4N9UUVyrXwJ59J5Y5zRg',
       pov: { heading: 268, pitch: 0 },
       zoom: 1,
     },
@@ -297,7 +297,7 @@ export const curatedLocations = [
     panorama: {
       lat: 28.596,
       lng: 83.8203,
-      panoId: null,
+      panoId: 'CAoSF0NJSE0wb2dLRUlDQWdJRDQ0cGlOdGdF',
       pov: { heading: 344, pitch: 0 },
       zoom: 1,
     },

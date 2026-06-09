@@ -15,13 +15,13 @@ function buildStreetViewImage(round) {
     heading: String(heading),
     pitch: String(pitch),
     fov: '90',
-    source: 'outdoor',
   })
 
   if (round.panorama.panoId) {
     params.set('pano', round.panorama.panoId)
   } else {
     params.set('location', `${lat},${lng}`)
+    params.set('source', 'outdoor')
   }
 
   return `https://maps.googleapis.com/maps/api/streetview?${params.toString()}`
@@ -113,6 +113,14 @@ export function StreetViewStage({ round }) {
           }, 3000)
         }
 
+        if (round.panorama.panoId) {
+          mountPanorama({
+            pano: round.panorama.panoId,
+            position: round.panorama.position,
+          })
+          return
+        }
+
         const panoramaRequests = [
           {
             location: round.panorama.position,
@@ -137,14 +145,6 @@ export function StreetViewStage({ round }) {
           if (cancelled) return
 
           if (requestIndex >= panoramaRequests.length) {
-            if (round.panorama.panoId) {
-              mountPanorama({
-                pano: round.panorama.panoId,
-                position: round.panorama.position,
-              })
-              return
-            }
-
             setLoadState('fallback')
             return
           }
