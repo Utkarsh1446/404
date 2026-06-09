@@ -36,6 +36,7 @@ export function useGameSession() {
   const [session, setSession] = useState(loadStoredSession)
   const [phase, setPhase] = useState('disconnected')
   const [quota, setQuota] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [activeRound, setActiveRound] = useState(null)
   const [paymentRoundId, setPaymentRoundId] = useState(null)
   const [selectedGuess, setSelectedGuess] = useState(null)
@@ -90,12 +91,14 @@ export function useGameSession() {
 
     apiClient
       .getQuota(session.token)
-      .then((nextQuota) => {
+      .then(async (nextQuota) => {
         setQuota(nextQuota)
+        setProfile(await apiClient.getProfile(session.token))
         setPhase((current) => (current === 'disconnected' ? 'ready' : current))
       })
       .catch(() => {
         setSession(null)
+        setProfile(null)
         setPhase('disconnected')
       })
 
@@ -137,6 +140,7 @@ export function useGameSession() {
         nextResults.reduce((sum, entry) => sum + entry.distanceKm, 0) / nextResults.length
 
       setQuota(payload.quota)
+      if (payload.profile) setProfile(payload.profile)
       setLocationResults(nextResults)
       setPendingRevealRoundId(null)
       setRevealResult({
@@ -228,6 +232,7 @@ export function useGameSession() {
         signerLabel,
       })
       setQuota(verified.quota)
+      setProfile(verified.profile)
       setPhase('ready')
       setStatus(
         signerLabel === 'Phantom'
@@ -360,6 +365,7 @@ export function useGameSession() {
         )
 
         setQuota(payload.quota)
+        if (payload.profile) setProfile(payload.profile)
         setSelectedGuess(null)
         setPendingRevealRoundId(activeRound.roundId)
         setSecondsLeft(secondsUntilReveal)
@@ -374,6 +380,7 @@ export function useGameSession() {
 
       const nextResults = [...locationResults, payload.result]
       setQuota(payload.quota)
+      if (payload.profile) setProfile(payload.profile)
       setLocationResults(nextResults)
       setSelectedGuess(null)
 
@@ -476,6 +483,7 @@ export function useGameSession() {
     session,
     phase,
     quota,
+    profile,
     activeRound,
     paymentRoundId,
     selectedGuess,

@@ -213,7 +213,12 @@ function hashDropCycle(cycleNumber) {
 function getHardDropLocation(cycleNumber) {
   return HARD_DROP_LOCATIONS[hashDropCycle(cycleNumber) % HARD_DROP_LOCATIONS.length]
 }
-function WalletPage({ session, onConnectWallet }) {
+function WalletPage({ profile, session, onConnectWallet }) {
+  const tokenBalance = profile?.tokenBalance ?? 0
+  const spBalance = profile?.spBalance ?? 0
+  const dropsParticipated = profile?.dropsParticipated ?? 0
+  const dropsWon = profile?.dropsWon ?? 0
+
   return (
     <div className="wallet-page">
       <div className="wallet-page-shell">
@@ -225,9 +230,9 @@ function WalletPage({ session, onConnectWallet }) {
         {session ? (
           <div className="wallet-bento-grid">
             <section className="wallet-bento wallet-bento-balance">
-              <span>Actual balance</span>
-              <strong>$1324</strong>
-              <p>Available for new drops and instant withdrawals.</p>
+              <span>Token balance</span>
+              <strong>{tokenBalance.toLocaleString()}</strong>
+              <p>Available for paid plays and future token actions.</p>
             </section>
 
             <section className="wallet-bento wallet-bento-address">
@@ -237,9 +242,9 @@ function WalletPage({ session, onConnectWallet }) {
             </section>
 
             <section className="wallet-bento wallet-bento-earnings">
-              <span>Earnings</span>
-              <strong>184 SP</strong>
-              <p>Total rewards collected from world drops.</p>
+              <span>SP earned</span>
+              <strong>{spBalance.toLocaleString()} SP</strong>
+              <p>{dropsParticipated} drops played, {dropsWon} wins recorded.</p>
             </section>
 
             <section className="wallet-bento wallet-bento-actions">
@@ -305,6 +310,7 @@ function App() {
     session,
     phase,
     quota,
+    profile,
     activeRound,
     paymentRoundId,
     selectedGuess,
@@ -709,7 +715,7 @@ function App() {
 
       <section className="viewport-frame" id="play">
         {showLanding && route === '/wallet' ? (
-          <WalletPage session={session} onConnectWallet={handleLandingWalletConnect} />
+          <WalletPage profile={profile} session={session} onConnectWallet={handleLandingWalletConnect} />
         ) : showLanding ? (
           <div className="landing-screen">
             <div className="landing-drops-band">

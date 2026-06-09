@@ -10,6 +10,7 @@ import {
 
 const REGULAR_ROUND_LOCATION_COUNT = 2
 const REGULAR_ROUND_TIME_LIMIT_MS = 90 * 1000
+const DEFAULT_TOKEN_BALANCE = 300
 
 function getActiveLocations(locations, label) {
   const activeLocations = locations.filter((location) => location.active)
@@ -61,6 +62,146 @@ function getWinnerForDrop(state, dropCycleNumber) {
     distanceKm: winningGuess.distanceKm,
     score: winningGuess.score,
   }
+}
+
+function ensureStateCollections(state) {
+  state.dropParticipations ??= []
+  state.dropSettlements ??= []
+  state.rewardEvents ??= []
+}
+
+function ensurePlayerAccount(player) {
+  player.tokenBalance ??= DEFAULT_TOKEN_BALANCE
+  player.spBalance ??= 0
+  player.dropWins ??= 0
+  player.updatedAt ??= player.lastSeenAt ?? new Date().toISOString()
+  return player
+}
+
+function summarizePlayerProfile(state, walletAddress) {
+  ensureStateCollections(state)
+  const player = state.players.find((entry) => entry.walletAddress === walletAddress)
+  if (!player) {
+    return {
+      walletAddress,
+      tokenBalance: 0,
+      spBalance: 0,
+      dropsParticipated: 0,
+      dropsWon: 0,
+    }
+  }
+  ensurePlayerAccount(player)
+  const dropsParticipated = state.dropParticipations.filter(
+    (entry) => entry.walletAddress === walletAddress,
+  ).length
+
+  return {
+    walletAddress,
+    tokenBalance: player.tokenBalance,
+    spBalance: player.spBalance,
+    dropsParticipated,
+    dropsWon: player.dropWins ?? 0,
+  }
+}
+
+function upsertDropParticipation(state, round, updates = {}) {
+  ensureStateCollections(state)
+  let participation = state.dropParticipations.find(
+    (entry) =>
+      entry.walletAddress === round.walletAddress &&
+      entry.dropCycleNumber === round.dropCycleNumber,
+  )
+
+  if (!participation) {
+    participation = {
+      id: crypto.randomUUID(),
+      walletAddress: round.walletAddress,
+      roundId: round.id,
+      dropCycleNumber: round.dropCycleNumber,
+      locationId: round.locationId,
+      status: 'active',
+      joinedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    state.dropParticipations.push(participation)
+  }
+
+  Object.assign(participation, updates, {
+    roundId: round.id,
+    locationId: round.locationId,
+    updatedAt: new Date().toISOString(),
+  })
+
+  return participation
+}
+
+function creditPlayerSp(state, walletAddress, rewardSp) {
+  if (!rewardSp) return
+  const player = ensurePlayerAccount(
+    state.players.find((entry) => entry.walletAddress === walletAddress),
+  )
+  player.spBalance += rewardSp
+  player.updatedAt = new Date().toISOString()
+}
+
+function settleDropWinner(state, dropCycleNumber, timestamp = Date.now()) {
+  ensureStateCollections(state)
+  const existingSettlement = state.dropSettlements.find(
+    (entry) => entry.dropCycleNumber === dropCycleNumber,
+  )
+
+  if (existingSettlement) return existingSettlement
+
+  const winner = getWinnerForDrop(state, dropCycleNumber)
+  const winningRound = winner
+    ? state.rounds.find(
+        (round) =>
+          round.walletAddress === winner.walletAddress &&
+          round.dropCycleNumber === dropCycleNumber,
+      )
+    : null
+  const rewardSp = winningRound?.result?.rewardSp ?? 0
+  const settlement = {
+    id: crypto.randomUUID(),
+    dropCycleNumber,
+    locationId: winningRound?.locationId ?? null,
+    winningRoundId: winningRound?.id ?? null,
+    winnerWalletAddress: winner?.walletAddress ?? null,
+    rewardSp,
+    settledAt: new Date(timestamp).toISOString(),
+  }
+
+  state.dropSettlements.push(settlement)
+
+  state.dropParticipations
+    .filter((entry) => entry.dropCycleNumber === dropCycleNumber)
+    .forEach((entry) => {
+      entry.status = winner && entry.walletAddress === winner.walletAddress ? 'won' : 'lost'
+      entry.settledAt = settlement.settledAt
+      entry.updatedAt = settlement.settledAt
+    })
+
+  if (winner?.walletAddress && rewardSp > 0) {
+    const winnerPlayer = ensurePlayerAccount(
+      state.players.find((entry) => entry.walletAddress === winner.walletAddress),
+    )
+    winnerPlayer.spBalance += rewardSp
+    winnerPlayer.dropWins = (winnerPlayer.dropWins ?? 0) + 1
+    winnerPlayer.updatedAt = settlement.settledAt
+    state.rewardEvents.push({
+      id: crypto.randomUUID(),
+      roundId: winningRound.id,
+      walletAddress: winner.walletAddress,
+      rewardSp,
+      rewardEligible: true,
+      type: 'drop_win',
+      dropCycleNumber,
+      settlementId: settlement.id,
+      createdAt: settlement.settledAt,
+    })
+  }
+
+  return settlement
 }
 
 function makeRoundPayload(round, location, quota, timestamp = Date.now()) {
@@ -118,15 +259,28 @@ export function createGameService({ store, rewardThresholdKm }) {
     if (!player) {
       player = {
         walletAddress,
+        tokenBalance: DEFAULT_TOKEN_BALANCE,
+        spBalance: 0,
+        dropWins: 0,
         createdAt: new Date().toISOString(),
         lastSeenAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       }
       state.players.push(player)
     } else {
       player.lastSeenAt = new Date().toISOString()
+      player.updatedAt = player.lastSeenAt
     }
 
-    return player
+    return ensurePlayerAccount(player)
+  }
+
+  function getProfile(walletAddress) {
+    return store.update((state) => {
+      ensureStateCollections(state)
+      getOrCreatePlayer(state, walletAddress)
+      return summarizePlayerProfile(state, walletAddress)
+    })
   }
 
   function getQuota(walletAddress) {
@@ -258,6 +412,7 @@ export function createGameService({ store, rewardThresholdKm }) {
       )
 
       if (existingRound) {
+        upsertDropParticipation(state, existingRound)
         return makeRoundPayload(
           existingRound,
           getLocationById(existingRound.locationId),
@@ -307,6 +462,7 @@ export function createGameService({ store, rewardThresholdKm }) {
 
       round.sessionRootId = round.id
       state.rounds.push(round)
+      upsertDropParticipation(state, round)
 
       return makeRoundPayload(round, scheduledDrop.location, quota, now)
     })
@@ -523,19 +679,35 @@ export function createGameService({ store, rewardThresholdKm }) {
         createdAt: round.guessedAt,
       })
 
-      state.rewardEvents.push({
-        id: crypto.randomUUID(),
-        roundId,
-        walletAddress,
-        rewardSp,
-        rewardEligible,
-        createdAt: round.guessedAt,
-      })
+      if (round.gameMode === 'drop') {
+        upsertDropParticipation(state, round, {
+          status: 'submitted',
+          guessedAt: round.guessedAt,
+          distanceKm: round.result.distanceKm,
+          score,
+          rewardEligible,
+        })
+      } else {
+        if (rewardEligible && rewardSp > 0) {
+          creditPlayerSp(state, walletAddress, rewardSp)
+        }
+
+        state.rewardEvents.push({
+          id: crypto.randomUUID(),
+          roundId,
+          walletAddress,
+          rewardSp,
+          rewardEligible,
+          type: 'regular_round',
+          createdAt: round.guessedAt,
+        })
+      }
 
       return {
         roundId: round.id,
         attemptType: round.attemptType,
         quota: summarizeQuota(ledger),
+        profile: summarizePlayerProfile(state, walletAddress),
         ...(round.gameMode === 'drop'
           ? {
               pendingReveal: {
@@ -582,7 +754,20 @@ export function createGameService({ store, rewardThresholdKm }) {
 
       const ledger = ensureLedgerEntry(state, walletAddress, getDayKey())
       const location = getLocationById(round.locationId)
-      const winner = round.gameMode === 'drop' ? getWinnerForDrop(state, round.dropCycleNumber) : null
+      const dropSettlement =
+        round.gameMode === 'drop'
+          ? settleDropWinner(state, round.dropCycleNumber, now)
+          : null
+      const winner =
+        round.gameMode === 'drop' && dropSettlement?.winnerWalletAddress
+          ? {
+              walletAddress: dropSettlement.winnerWalletAddress,
+              rewardSp: dropSettlement.rewardSp,
+              guessedAt: getWinnerForDrop(state, round.dropCycleNumber)?.guessedAt,
+              distanceKm: getWinnerForDrop(state, round.dropCycleNumber)?.distanceKm,
+              score: getWinnerForDrop(state, round.dropCycleNumber)?.score,
+            }
+          : null
 
       round.status = 'completed'
       round.updatedAt = new Date(now).toISOString()
@@ -591,6 +776,7 @@ export function createGameService({ store, rewardThresholdKm }) {
         roundId: round.id,
         attemptType: round.attemptType,
         quota: summarizeQuota(ledger),
+        profile: summarizePlayerProfile(state, walletAddress),
         result: {
           ...round.result,
           country: location.country,
@@ -603,6 +789,7 @@ export function createGameService({ store, rewardThresholdKm }) {
 
   return {
     continueRound,
+    getProfile,
     getQuota,
     startDropRound,
     startRound,

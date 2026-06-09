@@ -38,6 +38,9 @@ export const apiClient = {
   getQuota(token) {
     return apiFetch('/api/me/quota', { token })
   },
+  getProfile(token) {
+    return apiFetch('/api/me/profile', { token })
+  },
   startRound(token) {
     return apiFetch('/api/rounds/start', { method: 'POST', token })
   },

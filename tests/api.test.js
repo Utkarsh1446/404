@@ -93,6 +93,10 @@ test('quota is wallet-specific and starts with three free rounds', async () => {
     .get('/api/me/quota')
     .set('Authorization', `Bearer ${first.token}`)
     .expect(200)
+  const firstProfile = await request(app)
+    .get('/api/me/profile')
+    .set('Authorization', `Bearer ${first.token}`)
+    .expect(200)
 
   const secondQuota = await request(app)
     .get('/api/me/quota')
@@ -100,6 +104,9 @@ test('quota is wallet-specific and starts with three free rounds', async () => {
     .expect(200)
 
   assert.equal(firstQuota.body.freeRemaining, 3)
+  assert.equal(firstProfile.body.walletAddress, first.walletAddress)
+  assert.equal(firstProfile.body.tokenBalance, 300)
+  assert.equal(firstProfile.body.spBalance, 0)
   assert.equal(secondQuota.body.freeRemaining, 3)
 })
 
@@ -128,6 +135,7 @@ test('starting and guessing a regular round reveals immediately', async () => {
   assert.equal(guess.body.result.rewardEligible, true)
   assert.equal(guess.body.result.winner, null)
   assert.equal(guess.body.pendingReveal, undefined)
+  assert.equal(guess.body.profile.spBalance, guess.body.result.rewardSp)
 
   await request(app)
     .post(`/api/rounds/${round.body.roundId}/guess`)
@@ -145,6 +153,64 @@ test('starting and guessing a regular round reveals immediately', async () => {
 
   assert.equal(result.body.result.rewardEligible, true)
   assert.equal(result.body.result.winner, null)
+})
+
+test('drop settlement credits only the first correct wallet', async () => {
+  const app = createTestApp()
+  const first = await authenticate(app)
+  const second = await authenticate(app)
+
+  const firstRound = await request(app)
+    .post('/api/drops/start')
+    .set('Authorization', `Bearer ${first.token}`)
+    .expect(200)
+  const secondRound = await request(app)
+    .post('/api/drops/start')
+    .set('Authorization', `Bearer ${second.token}`)
+    .expect(200)
+
+  await request(app)
+    .post(`/api/rounds/${firstRound.body.roundId}/guess`)
+    .set('Authorization', `Bearer ${first.token}`)
+    .send({
+      guessLat: firstRound.body.panorama.position.lat,
+      guessLng: firstRound.body.panorama.position.lng,
+    })
+    .expect(200)
+
+  await request(app)
+    .post(`/api/rounds/${secondRound.body.roundId}/guess`)
+    .set('Authorization', `Bearer ${second.token}`)
+    .send({
+      guessLat: secondRound.body.panorama.position.lat,
+      guessLng: secondRound.body.panorama.position.lng,
+    })
+    .expect(200)
+
+  const storageFile = app.locals.config.storageFile
+  const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
+  state.rounds
+    .filter((round) => round.dropCycleNumber === firstRound.body.meta.dropCycleNumber)
+    .forEach((round) => {
+      round.revealEndsAt = Date.now() - 1
+    })
+  fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
+
+  const firstResult = await request(app)
+    .get(`/api/rounds/${firstRound.body.roundId}/result`)
+    .set('Authorization', `Bearer ${first.token}`)
+    .expect(200)
+
+  assert.equal(firstResult.body.result.winner.walletAddress, first.walletAddress)
+  assert.equal(firstResult.body.profile.spBalance, firstResult.body.result.rewardSp)
+
+  const secondProfile = await request(app)
+    .get('/api/me/profile')
+    .set('Authorization', `Bearer ${second.token}`)
+    .expect(200)
+
+  assert.equal(secondProfile.body.spBalance, 0)
+  assert.equal(secondProfile.body.dropsParticipated, 1)
 })
 
 test('regular rounds continue to a second 90 second location', async () => {

@@ -120,6 +120,7 @@ export function createApp(options = {}) {
         token: payload.token,
         walletAddress,
         quota: gameService.getQuota(walletAddress),
+        profile: gameService.getProfile(walletAddress),
       })
     } catch (error) {
       next(error)
@@ -131,6 +132,14 @@ export function createApp(options = {}) {
   app.get('/api/me/quota', requireAuth, (req, res, next) => {
     try {
       res.json(gameService.getQuota(req.auth.walletAddress))
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  app.get('/api/me/profile', requireAuth, (req, res, next) => {
+    try {
+      res.json(gameService.getProfile(req.auth.walletAddress))
     } catch (error) {
       next(error)
     }
