@@ -14,6 +14,22 @@ import { formatWallet } from './lib/formatters'
 
 const POLAROID_MIST_TRANSITION_MS = 760
 const DROP_INTERVAL_MS = 2 * 60 * 60 * 1000
+const DROP_REVEAL_MS = 120 * 1000
+const DROP_CYCLE_MS = DROP_INTERVAL_MS + DROP_REVEAL_MS
+const TODAYS_REWARDS_TOTAL = 1200
+const ESTIMATED_REWARD_PER_PLAYER = TODAYS_REWARDS_TOTAL / 10
+const LANDING_LEADERBOARD = [
+  { rank: 1, correctGuesses: 10 },
+  { rank: 2, correctGuesses: 9 },
+  { rank: 3, correctGuesses: 9 },
+  { rank: 4, correctGuesses: 8 },
+  { rank: 5, correctGuesses: 8 },
+  { rank: 6, correctGuesses: 7 },
+  { rank: 7, correctGuesses: 7 },
+  { rank: 8, correctGuesses: 6 },
+  { rank: 9, correctGuesses: 6 },
+  { rank: 10, correctGuesses: 5 },
+]
 
 const LANDMARK_POLAROIDS = [
   {
@@ -81,6 +97,79 @@ const LANDMARK_POLAROIDS = [
   },
 ]
 
+const HARD_DROP_LOCATIONS = [
+  {
+    city: 'Namib Desert',
+    lat: -24.7508,
+    lng: 15.2886,
+    image:
+      'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Salar de Uyuni',
+    lat: -20.1338,
+    lng: -67.4891,
+    image:
+      'https://images.unsplash.com/photo-1535551951406-a19828b0a76b?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Zhangjiajie',
+    lat: 29.3457,
+    lng: 110.5446,
+    image:
+      'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Cano Cristales',
+    lat: 2.2642,
+    lng: -73.7947,
+    image:
+      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Colca Canyon',
+    lat: -15.6094,
+    lng: -71.9793,
+    image:
+      'https://images.unsplash.com/photo-1526392060635-9d6019884377?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Landmannalaugar',
+    lat: 63.9912,
+    lng: -19.0607,
+    image:
+      'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Tsingy',
+    lat: -18.6667,
+    lng: 44.75,
+    image:
+      'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Raja Ampat',
+    lat: -0.2346,
+    lng: 130.523,
+    image:
+      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Nahanni River',
+    lat: 61.5976,
+    lng: -125.735,
+    image:
+      'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=420&q=80',
+  },
+  {
+    city: 'Annapurna',
+    lat: 28.596,
+    lng: 83.8203,
+    image:
+      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=420&q=80',
+  },
+]
+
 function normalizeLongitude(value) {
   return ((((value + 180) % 360) + 360) % 360) - 180
 }
@@ -89,6 +178,14 @@ function clampLatitude(value) {
   return Math.max(-62, Math.min(62, value))
 }
 function formatClock(totalSeconds) {
+  if (totalSeconds >= 3600) {
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+
   return `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`
 }
 
@@ -99,6 +196,22 @@ function formatCountdown(ms) {
   const seconds = totalSeconds % 60
 
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function hashDropCycle(cycleNumber) {
+  let hash = 2166136261
+  const input = `notfound-drop-${cycleNumber}`
+
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return hash >>> 0
+}
+
+function getHardDropLocation(cycleNumber) {
+  return HARD_DROP_LOCATIONS[hashDropCycle(cycleNumber) % HARD_DROP_LOCATIONS.length]
 }
 function WalletPage({ session, onConnectWallet }) {
   return (
@@ -161,6 +274,23 @@ function WalletPage({ session, onConnectWallet }) {
   )
 }
 
+function TokenPinIcon({ className = '' }) {
+  return (
+    <svg
+      className={className}
+      viewBox="530 200 225 345"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M 635 247 L 659 248 L 672 251 L 692 259 L 707 269 L 720 281 L 734 301 L 742 321 L 745 337 L 745 357 L 742 371 L 737 385 L 723 411 L 688 457 L 644 501 L 640 501 L 591 451 L 569 423 L 549 389 L 540 358 L 540 338 L 545 316 L 551 302 L 561 287 L 579 269 L 596 258 L 617 250 Z M 638 302 L 637 303 L 634 303 L 633 304 L 632 304 L 631 305 L 630 305 L 629 306 L 626 307 L 619 314 L 619 315 L 618 316 L 618 317 L 616 320 L 616 322 L 615 323 L 615 326 L 614 327 L 614 334 L 615 335 L 615 339 L 616 340 L 616 341 L 617 342 L 618 345 L 620 347 L 620 348 L 623 351 L 624 351 L 629 355 L 630 355 L 631 356 L 633 356 L 634 357 L 638 357 L 639 358 L 647 358 L 648 357 L 651 357 L 652 356 L 654 356 L 655 355 L 658 354 L 660 352 L 661 352 L 667 346 L 667 345 L 669 343 L 669 342 L 670 341 L 670 339 L 671 338 L 671 335 L 672 334 L 672 326 L 671 325 L 671 322 L 670 321 L 670 319 L 669 318 L 668 315 L 665 312 L 665 311 L 664 310 L 663 310 L 660 307 L 659 307 L 657 305 L 656 305 L 655 304 L 653 304 L 652 303 L 650 303 L 649 302 Z"
+        fill="currentColor"
+        fillRule="evenodd"
+      />
+    </svg>
+  )
+}
+
 function App() {
   const [showLanding, setShowLanding] = useState(true)
   const [mapExpanded, setMapExpanded] = useState(false)
@@ -174,6 +304,7 @@ function App() {
   const {
     session,
     phase,
+    quota,
     activeRound,
     paymentRoundId,
     selectedGuess,
@@ -354,7 +485,10 @@ function App() {
     },
   ]
 
-  const elapsedSeconds = 90 - secondsLeft
+  const elapsedSeconds = Math.max(
+    0,
+    (activeRound?.meta?.timeLimitSeconds ?? 90) - secondsLeft,
+  )
   const visiblePolaroids = useMemo(() => {
     const centerLatitude = (globeRotation.lat * Math.PI) / 180
 
@@ -388,27 +522,29 @@ function App() {
   }, [globeRotation])
 
   const landingDrops = useMemo(() => {
-    const dropLocations = LANDMARK_POLAROIDS.slice(0, 6)
-    const activeBlockStart = Math.floor(now / DROP_INTERVAL_MS) * DROP_INTERVAL_MS
+    const activeCycle = Math.floor(now / DROP_CYCLE_MS)
 
-    const timedDrops = dropLocations.map((location, index) => {
-      const startOffset = (index - 2) * DROP_INTERVAL_MS
-      const startsAt = activeBlockStart + startOffset
+    const timedDrops = Array.from({ length: 6 }, (_entry, index) => {
+      const cycleNumber = activeCycle + index - 2
+      const startsAt = cycleNumber * DROP_CYCLE_MS
       const endsAt = startsAt + DROP_INTERVAL_MS
+      const revealEndsAt = endsAt + DROP_REVEAL_MS
+      const location = getHardDropLocation(cycleNumber)
 
-      if (index < 2) {
+      if (cycleNumber < activeCycle) {
         return {
-          key: `${location.city}-past`,
+          key: `${cycleNumber}-past`,
           state: 'past',
           location,
           startsAt,
           endsAt,
+          revealEndsAt,
         }
       }
 
-      if (index === 2) {
+      if (cycleNumber === activeCycle && now < endsAt) {
         return {
-          key: `${location.city}-live`,
+          key: `${cycleNumber}-live`,
           state: 'live',
           location,
           startsAt,
@@ -417,8 +553,20 @@ function App() {
         }
       }
 
+      if (cycleNumber === activeCycle) {
+        return {
+          key: `${cycleNumber}-reveal`,
+          state: 'reveal',
+          location,
+          startsAt,
+          endsAt,
+          revealEndsAt,
+          countdown: formatCountdown(revealEndsAt - now),
+        }
+      }
+
       return {
-        key: `${location.city}-upcoming`,
+        key: `${cycleNumber}-upcoming`,
         state: 'upcoming',
         location,
         startsAt,
@@ -490,6 +638,23 @@ function App() {
 
   const completedLocations = locationResults.length
   const isFinalReveal = phase === 'reveal' && currentLocationIndex === roundLocationCount
+  const hasFreePlayRemaining = (quota?.freeRemaining ?? 3) > 0
+  const shouldShowTokenPlayCost = phase === 'quota_blocked' || !hasFreePlayRemaining
+  const landingPlayButtonLabel = isBusy ? (
+    'Loading...'
+  ) : shouldShowTokenPlayCost ? (
+    <span className="landing-token-price" aria-hidden="true">
+      <span>100</span>
+      <TokenPinIcon className="landing-token-icon" />
+    </span>
+  ) : (
+    'Play for Free'
+  )
+  const landingPlayButtonAriaLabel = isBusy
+    ? 'Loading'
+    : shouldShowTokenPlayCost
+      ? 'Play for 100 tokens'
+      : 'Play for free'
 
   return (
     <main className="app-shell">
@@ -549,7 +714,9 @@ function App() {
                             <span className="landing-drop-state">
                               {drop.state === 'past'
                                 ? 'Past'
-                                : drop.state === 'live'
+                                : drop.state === 'reveal'
+                                  ? 'Reveal In'
+                                  : drop.state === 'live'
                                   ? 'Ends in'
                                   : 'Starts in'}
                             </span>
@@ -568,26 +735,81 @@ function App() {
             </div>
 
             <div className="landing-world">
-              <div className="landing-copy">
-                <h1>
-                  Guess the world.
-                  <span>Earn Coffee Money.</span>
-                </h1>
-                <div className="landing-actions">
-                  <HoverButton
-                    className="landing-play-button"
-                    type="button"
-                    disabled={isBusy}
-                    onClick={handleLandingPrimaryAction}
-                  >
-                    {isBusy
-                      ? 'Loading...'
-                      : phase === 'quota_blocked'
-                        ? 'Unlock round'
-                      : 'Play'}
-                  </HoverButton>
-                </div>
-                {error ? <p className="landing-error">{error}</p> : null}
+              <div className="landing-bento-grid">
+                <section className="landing-bento landing-bento-copy">
+                  <div className="landing-copy">
+                    <h1>
+                      Guess the world.
+                      <span>Earn Coffee Money.</span>
+                    </h1>
+                    <div className="landing-actions">
+                      <HoverButton
+                        className="landing-play-button"
+                        type="button"
+                        aria-label={landingPlayButtonAriaLabel}
+                        disabled={isBusy}
+                        onClick={handleLandingPrimaryAction}
+                      >
+                        {landingPlayButtonLabel}
+                      </HoverButton>
+                    </div>
+                    {error ? <p className="landing-error">{error}</p> : null}
+                  </div>
+                </section>
+
+                <section className="landing-bento landing-bento-feature">
+                  <div className="landing-copy landing-copy-feature">
+                    <h2 className="landing-bento-title">
+                      <span className="landing-bento-title-line">Invite</span>
+                      <span className="landing-bento-title-line">&</span>
+                      <span className="landing-bento-title-line">Play with</span>
+                      <span className="landing-bento-title-line">Your</span>
+                      <span className="landing-bento-title-line">Friends</span>
+                    </h2>
+                    <div className="landing-actions landing-bento-feature-actions">
+                      <HoverButton className="landing-play-button" type="button">
+                        CREATE ROOM
+                      </HoverButton>
+                      <HoverButton className="landing-play-button" type="button">
+                        JOIN ROOM
+                      </HoverButton>
+                    </div>
+                  </div>
+                </section>
+                <section className="landing-bento landing-bento-rewards">
+                  <div className="landing-rewards">
+                    <div className="landing-rewards-summary">
+                      <h2 className="landing-bento-title landing-rewards-title">
+                        Today's Rewards
+                      </h2>
+                      <div className="landing-rewards-counter">$1200</div>
+                    </div>
+                    <div
+                      className="landing-leaderboard"
+                      role="table"
+                      aria-label="Today's rewards leaderboard"
+                    >
+                      <div className="landing-leaderboard-row is-head" role="row">
+                        <span role="columnheader">Rank</span>
+                        <span role="columnheader">Avatar</span>
+                        <span role="columnheader">Correct Guess</span>
+                        <span role="columnheader">Est. Rewards</span>
+                      </div>
+                      {LANDING_LEADERBOARD.map((player) => (
+                        <div className="landing-leaderboard-row" role="row" key={player.rank}>
+                          <span className="landing-leaderboard-rank" role="cell">
+                            {player.rank}
+                          </span>
+                          <span className="landing-leaderboard-avatar" role="cell">
+                            <WalletAvatar />
+                          </span>
+                          <span role="cell">{player.correctGuesses}</span>
+                          <span role="cell">${ESTIMATED_REWARD_PER_PLAYER}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </section>
               </div>
 
               <div
@@ -715,8 +937,12 @@ function App() {
 
             <div className="reveal-bottom-bar">
               <div className="reveal-metric">
-                <strong>{Math.round(revealResult.distanceKm).toLocaleString()} km</strong>
-                <span>from location</span>
+                <strong>
+                  {revealResult.winner
+                    ? formatWallet(revealResult.winner.walletAddress)
+                    : 'No winner'}
+                </strong>
+                <span>winner</span>
               </div>
               <button
                 className="submit-button reveal-next-button"
@@ -775,6 +1001,7 @@ function App() {
             </div>
 
             <div className="timer-pod">
+              {phase === 'submitted' ? <span>Reveal In</span> : null}
               <strong>{formatClock(secondsLeft)}</strong>
             </div>
 

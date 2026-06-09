@@ -321,7 +321,6 @@
     132% 132%,
     146% 146%,
     100% 100%;
-  animation: landingGradientDrift 24s ease-in-out infinite;
 }
 
 .landing-drops-band {
@@ -392,6 +391,10 @@
   background: #fbfaf5;
 }
 
+.landing-drop-card.is-reveal::before {
+  background: #fbfaf5;
+}
+
 .landing-drop-card.is-empty::before {
   background: #fbfaf5;
 }
@@ -404,12 +407,18 @@
   width: 100%;
   height: 100%;
   padding: 18px;
-  color: #111111;
-  font-size: clamp(1.15rem, 1.55vw, 1.8rem);
+  color: #ffffff;
+  -webkit-text-stroke: 8px #ff2020;
+  text-stroke: 8px #ff2020;
+  paint-order: stroke fill;
+  text-shadow:
+    0 0 18px rgba(255, 32, 32, 0.08),
+    0 10px 20px rgba(255, 32, 32, 0.06);
+  font-size: clamp(1.35rem, 1.9vw, 2.3rem);
   font-weight: var(--season-weight-strong);
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  line-height: 0.9;
+  line-height: 0.82;
   text-align: center;
 }
 
@@ -451,6 +460,12 @@
   background:
     linear-gradient(180deg, #8dc6ff 0%, #d6b6ff 48%, #f4d6b0 100%),
     radial-gradient(circle at 72% 24%, rgba(255, 248, 194, 0.68), transparent 24%);
+}
+
+.landing-drop-card.is-reveal .landing-drop-placeholder {
+  background:
+    linear-gradient(180deg, #9cc8ff 0%, #d8b2ff 46%, #f3c7b6 100%),
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.38), transparent 28%);
 }
 
 .landing-drop-body {
@@ -499,6 +514,10 @@
 
 .landing-drop-card.is-live .landing-drop-state {
   color: #5f35dd;
+}
+
+.landing-drop-card.is-reveal .landing-drop-state {
+  color: #ef4444;
 }
 
 .landing-drop-card.is-upcoming .landing-drop-state {
@@ -685,25 +704,175 @@
 
 .landing-world {
   position: relative;
-  display: grid;
+  display: block;
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
-  grid-template-columns: minmax(290px, 0.72fr) minmax(460px, 1.28fr);
-  align-items: center;
-  gap: clamp(18px, 3vw, 48px);
-  padding: clamp(18px, 3vh, 30px) clamp(28px, 6vw, 86px) clamp(22px, 4vh, 38px);
+  padding:
+    clamp(18px, 3vh, 30px)
+    clamp(34px, 6vw, 86px)
+    clamp(22px, 4vh, 38px)
+    clamp(28px, 5vw, 72px);
+  padding-right: clamp(390px, 34vw, 540px);
   overflow: hidden;
+}
+
+.landing-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(330px, 1fr));
+  gap: 18px;
+  height: 100%;
+  min-height: 0;
+  max-width: min(84vw, 1620px);
+}
+
+.landing-bento {
+  min-height: clamp(250px, 34vh, 420px);
+  border-radius: 34px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 18px 48px rgba(44, 19, 118, 0.18);
+}
+
+.landing-bento-copy,
+.landing-bento-feature,
+.landing-bento-rewards {
+  display: flex;
+  align-items: flex-start;
+  padding: clamp(24px, 4vw, 42px);
+}
+
+.landing-bento-rewards {
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.landing-bento-empty {
+  position: relative;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .landing-copy {
   position: relative;
   z-index: 5;
   display: flex;
-  max-width: 450px;
+  max-width: 520px;
   flex-direction: column;
   align-items: flex-start;
   gap: 14px;
+}
+
+.landing-copy-feature {
+  padding-top: 0;
+  width: 100%;
+}
+
+.landing-rewards {
+  display: flex;
+  width: 100%;
+  max-width: 520px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: clamp(8px, 1.4vw, 16px);
+}
+
+.landing-rewards-summary {
+  display: grid;
+  gap: clamp(2px, 0.5vw, 6px);
+}
+
+.landing-rewards-title {
+  max-width: 100%;
+}
+
+.landing-rewards-counter {
+  font-family: var(--font-season-serif);
+  font-size: clamp(3rem, 4.8vw, 5.6rem);
+  font-weight: var(--season-weight-strong);
+  line-height: 0.88;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.landing-leaderboard {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: clamp(1px, 0.22vw, 3px);
+}
+
+.landing-leaderboard-row {
+  display: grid;
+  min-width: 0;
+  min-height: clamp(12px, 1.55vw, 25px);
+  grid-template-columns: minmax(18px, 0.42fr) minmax(20px, 0.48fr) minmax(42px, 1fr) minmax(50px, 1.1fr);
+  align-items: center;
+  gap: clamp(3px, 0.55vw, 8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(0.48rem, 0.72vw, 0.82rem);
+  line-height: 1.15;
+}
+
+.landing-leaderboard-row.is-head {
+  min-height: clamp(13px, 1.6vw, 26px);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: clamp(0.43rem, 0.64vw, 0.72rem);
+}
+
+.landing-leaderboard-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.landing-leaderboard-rank {
+  color: #ffffff;
+}
+
+.landing-leaderboard-avatar {
+  display: inline-flex;
+  align-items: center;
+}
+
+.landing-leaderboard .wallet-avatar {
+  width: clamp(10px, 1.35vw, 24px);
+  height: clamp(10px, 1.35vw, 24px);
+  box-shadow: 0 4px 10px rgba(17, 17, 17, 0.12), inset 0 0 0 1px rgba(17, 17, 17, 0.08);
+}
+
+@media (max-width: 1999px) and (min-width: 1201px) {
+  .landing-bento-rewards .landing-bento-title,
+  .landing-rewards-counter {
+    font-size: clamp(3rem, 3.4vw, 4.25rem);
+    line-height: 0.9;
+  }
+}
+
+@media (max-width: 1280px) {
+  .landing-leaderboard {
+    gap: 1px;
+  }
+
+  .landing-leaderboard-row {
+    min-height: clamp(10px, 1.15vw, 15px);
+    grid-template-columns: minmax(16px, 0.38fr) minmax(18px, 0.43fr) minmax(46px, 1.2fr) minmax(48px, 1.2fr);
+    gap: clamp(2px, 0.35vw, 5px);
+    font-size: clamp(0.42rem, 0.58vw, 0.62rem);
+  }
+
+  .landing-leaderboard-row.is-head {
+    min-height: clamp(10px, 1.2vw, 15px);
+    font-size: clamp(0.36rem, 0.5vw, 0.54rem);
+  }
+
+  .landing-leaderboard .wallet-avatar {
+    width: clamp(9px, 1vw, 13px);
+    height: clamp(9px, 1vw, 13px);
+  }
 }
 
 .landing-kicker {
@@ -727,11 +896,12 @@
   flex-direction: column;
   gap: 4px;
   font-family: var(--font-season-serif);
-  font-size: clamp(3.4rem, 6.2vw, 6.2rem);
+  font-size: clamp(3rem, 4.8vw, 5.6rem);
   font-weight: var(--season-weight-strong);
-  line-height: 0.92;
+  line-height: 0.88;
   letter-spacing: 0;
   color: #ffffff;
+  overflow-wrap: anywhere;
 }
 
 .landing-copy h1 span {
@@ -739,6 +909,20 @@
   font-size: 1em;
   font-weight: var(--season-weight-text);
   color: rgba(255, 255, 255, 0.88);
+}
+
+.landing-bento-title {
+  margin: 0;
+  font-family: var(--font-season-serif);
+  font-size: clamp(3rem, 4.8vw, 5.6rem);
+  font-weight: var(--season-weight-strong);
+  line-height: 0.88;
+  color: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.landing-bento-title-line {
+  display: block;
 }
 
 .landing-caption {
@@ -755,11 +939,44 @@
   flex-wrap: wrap;
 }
 
+.landing-bento-feature-actions {
+  width: 100%;
+  gap: clamp(6px, 0.8vw, 12px);
+  flex-wrap: nowrap;
+}
+
 .landing-play-button {
   min-width: 128px;
   min-height: 52px;
   padding-inline: 28px;
   border-radius: 999px;
+}
+
+.landing-bento-feature-actions .landing-play-button {
+  min-width: 0;
+  flex: 1 1 0;
+  min-height: clamp(40px, 4.4vw, 52px);
+  padding-inline: clamp(12px, 1.6vw, 22px);
+  font-size: clamp(0.42rem, 0.8vw, 0.88rem);
+}
+
+.landing-bento-feature-actions .hover-button-content {
+  white-space: nowrap;
+}
+
+.landing-token-price {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.landing-token-icon {
+  width: 22px;
+  height: 26px;
+  flex: 0 0 auto;
+  color: #f0181f;
 }
 
 .landing-action-note {
@@ -769,14 +986,14 @@
 }
 
 .earth-showcase {
-  --earth-size: clamp(280px, 42vw, 560px);
+  --earth-size: clamp(260px, 28vw, 420px);
   position: absolute;
-  right: clamp(12px, 5vw, 88px);
+  right: clamp(18px, 4vw, 72px);
   top: 50%;
   z-index: 2;
-  width: min(64vw, 720px);
-  height: min(58vh, 580px);
-  min-height: 400px;
+  width: min(34vw, 430px);
+  height: min(50vh, 470px);
+  min-height: 320px;
   transform: translateY(-45%);
 }
 
@@ -888,7 +1105,6 @@
   box-shadow:
     0 16px 30px rgba(15, 23, 42, 0.18),
     0 2px 8px rgba(15, 23, 42, 0.08);
-  animation: polaroidFloat 6s ease-in-out infinite;
   animation-delay: var(--delay);
   left: var(--card-x);
   top: var(--card-y);
@@ -918,7 +1134,7 @@
   background:
     radial-gradient(circle at 32% 36%, rgba(255, 255, 255, 0.94), transparent 40%),
     radial-gradient(circle at 68% 58%, rgba(217, 231, 244, 0.7), transparent 46%);
-  filter: blur(12px);
+  filter: blur(8px);
   opacity: var(--mist-cloud-opacity, 0);
   pointer-events: none;
   transition: opacity 520ms ease, transform 620ms ease;
@@ -930,7 +1146,7 @@
   background:
     radial-gradient(circle at 44% 50%, rgba(255, 255, 255, 0.82), transparent 34%),
     radial-gradient(circle at 72% 34%, rgba(226, 232, 240, 0.62), transparent 42%);
-  filter: blur(18px);
+  filter: blur(10px);
 }
 
 .place-polaroid.is-entering {
@@ -1233,6 +1449,14 @@
   line-height: 1;
   text-align: center;
   box-shadow: 0 12px 34px rgba(54, 28, 129, 0.28), 0 0 0 1px rgba(167, 136, 255, 0.16);
+}
+
+.timer-pod span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .guess-overlay {
@@ -1578,14 +1802,75 @@ button:disabled {
   }
 
   .landing-world {
-    grid-template-columns: minmax(280px, 0.78fr) minmax(380px, 1.22fr);
     padding-inline: clamp(24px, 4vw, 54px);
+    padding-right: clamp(320px, 30vw, 420px);
+  }
+
+  .landing-bento-grid {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 1.15fr);
+    max-width: min(66vw, 760px);
+  }
+
+  .landing-bento-copy,
+  .landing-bento-feature,
+  .landing-bento-rewards {
+    padding: clamp(22px, 2.7vw, 32px);
+  }
+
+  .landing-copy {
+    gap: 10px;
+  }
+
+  .landing-copy h1,
+  .landing-bento-title {
+    font-size: clamp(1.85rem, 3.2vw, 2.45rem);
+    line-height: 0.9;
+  }
+
+  .landing-rewards-counter {
+    font-size: clamp(1.85rem, 3.2vw, 2.45rem);
+    line-height: 0.9;
+  }
+
+  .landing-play-button {
+    min-height: 46px;
+    padding-inline: 16px;
   }
 
   .earth-showcase {
-    --earth-size: clamp(280px, 43vw, 500px);
-    right: 0;
-    width: min(62vw, 620px);
+    --earth-size: clamp(220px, 22vw, 320px);
+    width: min(30vw, 340px);
+    min-height: 250px;
+    height: min(42vh, 360px);
+  }
+}
+
+@media (max-width: 980px) {
+  .landing-world {
+    padding-right: 24px;
+  }
+
+  .landing-bento-grid {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+
+  .landing-bento {
+    min-height: 220px;
+  }
+
+  .landing-copy h1,
+  .landing-bento-title {
+    font-size: clamp(2.2rem, 6vw, 3.8rem);
+  }
+
+  .landing-play-button {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .earth-showcase {
+    display: none;
   }
 }
 
@@ -1643,11 +1928,22 @@ button:disabled {
   }
 
   .landing-world {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 12px;
     padding: 16px 18px 24px;
+  }
+
+  .landing-bento-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .landing-bento {
+    border-radius: 24px;
+  }
+
+  .landing-bento-copy,
+  .landing-bento-empty,
+  .landing-bento-rewards {
+    min-height: 180px;
   }
 
   .landing-copy {
@@ -1660,6 +1956,10 @@ button:disabled {
     font-size: clamp(2.8rem, 11vw, 4.5rem);
   }
 
+  .landing-bento-title {
+    font-size: clamp(2rem, 9vw, 3.4rem);
+  }
+
   .landing-caption {
     max-width: 100%;
     font-size: 1rem;
@@ -1668,28 +1968,6 @@ button:disabled {
   .landing-action-note {
     white-space: normal;
   }
-
-  .earth-showcase {
-    --earth-size: clamp(250px, 66vw, 360px);
-    position: relative;
-    right: auto;
-    top: auto;
-    width: 100%;
-    height: min(34vh, 300px);
-    min-height: 220px;
-    transform: none;
-  }
-
-  .earth-orbit {
-    width: calc(var(--earth-size) + 42px);
-    height: calc(var(--earth-size) + 42px);
-  }
-
-  .place-polaroid {
-    width: clamp(64px, 18vw, 86px);
-    padding: 6px 6px 10px;
-  }
-
   .result-grid,
   .result-pins {
     grid-template-columns: 1fr;
