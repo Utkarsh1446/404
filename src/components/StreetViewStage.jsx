@@ -86,29 +86,70 @@ export function StreetViewStage({ round }) {
             }
           }
 
+          const finalizeFallback = () => {
+            if (cancelled || !panorama) return
+            const statusValue = panorama.getStatus?.()
+            const panoValue = panorama.getPano?.()
+            if (statusValue === google.maps.StreetViewStatus.ZERO_RESULTS || !panoValue) {
+              panorama.setVisible?.(false)
+              setLoadState('fallback')
+            }
+          }
+
           panoramaListeners = [
             panorama.addListener('pano_changed', finalizeReady),
             panorama.addListener('position_changed', finalizeReady),
             panorama.addListener('links_changed', finalizeReady),
+            panorama.addListener('status_changed', finalizeFallback),
           ]
 
           fallbackTimeoutId = window.setTimeout(() => {
             if (cancelled) return
             const panoValue = panorama.getPano?.()
             if (!panoValue) {
+              panorama.setVisible?.(false)
               setLoadState('fallback')
             }
           }, 3000)
         }
 
-        service.getPanorama(
+        const panoramaRequests = [
           {
             location: round.panorama.position,
-            radius: 120,
+            radius: 250,
             source: google.maps.StreetViewSource.OUTDOOR,
             preference: google.maps.StreetViewPreference.BEST,
           },
-          (data, status) => {
+          {
+            location: round.panorama.position,
+            radius: 1500,
+            source: google.maps.StreetViewSource.OUTDOOR,
+            preference: google.maps.StreetViewPreference.BEST,
+          },
+          {
+            location: round.panorama.position,
+            radius: 3500,
+            preference: google.maps.StreetViewPreference.BEST,
+          },
+        ]
+
+        const findPanorama = (requestIndex = 0) => {
+          if (cancelled) return
+
+          if (requestIndex >= panoramaRequests.length) {
+            if (round.panorama.panoId) {
+              mountPanorama({
+                pano: round.panorama.panoId,
+                position: round.panorama.position,
+              })
+              return
+            }
+
+            setLoadState('fallback')
+            return
+          }
+
+          service.getPanorama(panoramaRequests[requestIndex], (data, status) => {
             if (cancelled) return
 
             if (status === google.maps.StreetViewStatus.OK && data?.location?.pano) {
@@ -119,17 +160,11 @@ export function StreetViewStage({ round }) {
               return
             }
 
-            if (round.panorama.panoId) {
-              mountPanorama({
-                pano: round.panorama.panoId,
-                position: round.panorama.position,
-              })
-              return
-            }
+            findPanorama(requestIndex + 1)
+          })
+        }
 
-            setLoadState('fallback')
-          }
-        )
+        findPanorama()
       })
       .catch(() => {
         if (!cancelled) {
