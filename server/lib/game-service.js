@@ -266,19 +266,21 @@ export function createGameService({ store, rewardThresholdKm }) {
         )
       }
 
-      const submittedRound = state.rounds.find(
+      const playedRound = state.rounds.find(
         (round) =>
           round.walletAddress === walletAddress &&
           round.gameMode === 'drop' &&
           round.dropCycleNumber === scheduledDrop.cycleNumber &&
-          round.status === 'submitted',
+          (round.status === 'submitted' ||
+            round.status === 'completed' ||
+            round.status === 'closed'),
       )
 
-      if (submittedRound) {
-        const error = new Error('You already submitted this active drop.')
+      if (playedRound) {
+        const error = new Error('You already played this active drop.')
         error.statusCode = 409
         error.payload = {
-          code: 'DROP_ALREADY_SUBMITTED',
+          code: 'DROP_ALREADY_PLAYED',
           activeEndsAt: scheduledDrop.activeEndsAt,
           revealEndsAt: scheduledDrop.revealEndsAt,
         }

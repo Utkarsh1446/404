@@ -41,6 +41,7 @@ export function createApp(options = {}) {
   })
 
   const app = express()
+  app.locals.config = config
   app.use(
     cors({
       origin: true,

@@ -264,6 +264,58 @@ test('expired regular active rounds are not reused on fresh start', async () => 
   assert.equal(round.body.roundLocationCount, 2)
 })
 
+test('completed active drops cannot be replayed after re-authentication', async () => {
+  const app = createTestApp()
+  const keypair = Keypair.generate()
+  const firstAuth = await authenticate(app, keypair)
+
+  const dropRound = await request(app)
+    .post('/api/drops/start')
+    .set('Authorization', `Bearer ${firstAuth.token}`)
+    .expect(200)
+
+  assert.equal(dropRound.body.meta.gameMode, 'drop')
+  assert.equal(dropRound.body.roundLocationCount, 1)
+
+  await request(app)
+    .post(`/api/rounds/${dropRound.body.roundId}/guess`)
+    .set('Authorization', `Bearer ${firstAuth.token}`)
+    .send({
+      guessLat: dropRound.body.panorama.position.lat,
+      guessLng: dropRound.body.panorama.position.lng,
+    })
+    .expect(200)
+
+  const secondAuth = await authenticate(app, keypair)
+
+  const blockedWhileSubmitted = await request(app)
+    .post('/api/drops/start')
+    .set('Authorization', `Bearer ${secondAuth.token}`)
+    .expect(409)
+
+  assert.equal(blockedWhileSubmitted.body.payload.code, 'DROP_ALREADY_PLAYED')
+
+  const storageFile = app.locals.config.storageFile
+  const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
+  const storedRound = state.rounds.find((round) => round.id === dropRound.body.roundId)
+  storedRound.revealEndsAt = Date.now() - 1
+  fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
+
+  await request(app)
+    .get(`/api/rounds/${dropRound.body.roundId}/result`)
+    .set('Authorization', `Bearer ${secondAuth.token}`)
+    .expect(200)
+
+  const thirdAuth = await authenticate(app, keypair)
+
+  const blockedAfterCompleted = await request(app)
+    .post('/api/drops/start')
+    .set('Authorization', `Bearer ${thirdAuth.token}`)
+    .expect(409)
+
+  assert.equal(blockedAfterCompleted.body.payload.code, 'DROP_ALREADY_PLAYED')
+})
+
 test('fourth round requires payment and mocked checkout unlocks one paid attempt', async () => {
   const app = createTestApp()
   const auth = await authenticate(app)
