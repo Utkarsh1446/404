@@ -96,9 +96,12 @@ function getLocationById(locationId) {
 }
 
 function pruneInvalidOpenRounds(state, walletAddress) {
+  const now = Date.now()
+
   state.rounds = state.rounds.filter((round) => {
     if (round.walletAddress !== walletAddress) return true
     if (round.status !== 'active' && round.status !== 'awaiting_payment') return true
+    if (round.status === 'active' && round.gameMode === 'regular' && round.activeEndsAt <= now) return false
     return Boolean(getLocationById(round.locationId))
   })
 }

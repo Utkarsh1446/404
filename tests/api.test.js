@@ -222,6 +222,48 @@ test('legacy active drop-timed rounds are not reused for regular gameplay', asyn
   assert.equal(round.body.roundLocationCount, 2)
 })
 
+test('expired regular active rounds are not reused on fresh start', async () => {
+  const keypair = Keypair.generate()
+  const walletAddress = keypair.publicKey.toBase58()
+  const app = createTestAppWithState({
+    players: [{ walletAddress, createdAt: new Date().toISOString(), lastSeenAt: new Date().toISOString() }],
+    authChallenges: [],
+    sessions: [],
+    rounds: [
+      {
+        id: 'expired-regular-round',
+        walletAddress,
+        gameMode: 'regular',
+        locationId: 'cn-beijing-great-wall',
+        dropCycleNumber: null,
+        activeEndsAt: Date.now() - 1,
+        revealEndsAt: Date.now() - 1,
+        sessionRootId: 'expired-regular-round',
+        sequenceIndex: 1,
+        attemptType: 'free',
+        consumeQuotaOnSubmit: true,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ],
+    guesses: [],
+    dailyAttemptLedger: [],
+    rewardEvents: [],
+  })
+  const auth = await authenticate(app, keypair)
+
+  const round = await request(app)
+    .post('/api/rounds/start')
+    .set('Authorization', `Bearer ${auth.token}`)
+    .expect(200)
+
+  assert.notEqual(round.body.roundId, 'expired-regular-round')
+  assert.equal(round.body.meta.gameMode, 'regular')
+  assert.equal(round.body.meta.timeLimitSeconds, 90)
+  assert.equal(round.body.roundLocationCount, 2)
+})
+
 test('fourth round requires payment and mocked checkout unlocks one paid attempt', async () => {
   const app = createTestApp()
   const auth = await authenticate(app)
