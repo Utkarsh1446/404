@@ -126,11 +126,31 @@
   align-items: center;
 }
 
+.card-nav-cta-button.is-avatar,
+.card-nav-cta-button.is-connected-wallet {
+  border-radius: 999px;
+}
+
 .card-nav-cta-button.is-avatar {
   min-width: 52px;
   width: 52px;
   padding: 0;
-  border-radius: 999px;
+}
+
+.card-nav-cta-button.is-connected-wallet {
+  min-width: 128px;
+  padding: 0 0.85rem 0 0.45rem;
+}
+
+.connected-wallet-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.connected-wallet-cta > span:last-child {
+  transform: translateY(1px);
 }
 
 .wallet-avatar {

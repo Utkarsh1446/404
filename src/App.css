@@ -858,6 +858,16 @@
     max-width: min(55vw, 760px);
   }
 
+  .landing-bento-feature .landing-bento-title {
+    font-size: clamp(2.2rem, 3.2vw, 2.8rem);
+    line-height: 0.82;
+  }
+
+  .landing-bento-feature-actions .landing-play-button {
+    min-height: 46px;
+    padding-inline: 10px;
+  }
+
   .landing-leaderboard {
     gap: 1px;
   }

@@ -166,20 +166,34 @@ export function useGameSession() {
 
     try {
       const provider = window.solana?.isPhantom ? window.solana : null
-      const wallet = provider
-        ? await provider.connect()
-        : getDemoWallet()
-      const walletAddress = provider
-        ? wallet.publicKey.toBase58()
-        : wallet.walletAddress
+      let signerLabel = 'Demo signer'
+      let walletAddress
+      let signMessage
+
+      if (provider) {
+        try {
+          const wallet = await provider.connect()
+          walletAddress = wallet.publicKey.toBase58()
+          signMessage = async (messageBytes) => {
+            const signatureBytes = await provider.signMessage(messageBytes, 'utf8')
+            return signatureBytes.signature
+          }
+          signerLabel = 'Phantom'
+        } catch {
+          const demoWallet = getDemoWallet()
+          walletAddress = demoWallet.walletAddress
+          signMessage = demoWallet.signMessage
+        }
+      } else {
+        const demoWallet = getDemoWallet()
+        walletAddress = demoWallet.walletAddress
+        signMessage = demoWallet.signMessage
+      }
+
       const challenge = await apiClient.createChallenge(walletAddress)
       const messageBytes = new TextEncoder().encode(challenge.message)
-      const signatureBytes = provider
-        ? await provider.signMessage(messageBytes, 'utf8')
-        : await wallet.signMessage(messageBytes)
-      const signature = bytesToBase64(
-        provider ? signatureBytes.signature : signatureBytes,
-      )
+      const signatureBytes = await signMessage(messageBytes)
+      const signature = bytesToBase64(signatureBytes)
       const verified = await apiClient.verifyWallet({
         walletAddress,
         message: challenge.message,
@@ -189,12 +203,12 @@ export function useGameSession() {
       setSession({
         token: verified.token,
         walletAddress,
-        signerLabel: provider ? 'Phantom' : 'Demo signer',
+        signerLabel,
       })
       setQuota(verified.quota)
       setPhase('ready')
       setStatus(
-        provider
+        signerLabel === 'Phantom'
           ? 'Wallet verified. Start a round and pin the map.'
           : 'Demo wallet verified. Add your Google Maps key to enable the full panorama flow.',
       )

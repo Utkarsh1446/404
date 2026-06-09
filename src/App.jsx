@@ -672,10 +672,15 @@ function App() {
             phase === 'quota_blocked'
               ? 'unlock $1 round'
               : session
-                ? <WalletAvatar value={session.walletAddress} />
+                ? (
+                    <span className="connected-wallet-cta">
+                      <WalletAvatar value={session.walletAddress} />
+                      <span>Wallet</span>
+                    </span>
+                  )
                 : 'connect wallet'
           }
-          ctaClassName={session && phase !== 'quota_blocked' ? 'is-avatar' : ''}
+          ctaClassName={session && phase !== 'quota_blocked' ? 'is-connected-wallet' : ''}
           onCtaClick={
             phase === 'quota_blocked'
               ? handleLandingPrimaryAction
