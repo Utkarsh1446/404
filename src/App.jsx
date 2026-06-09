@@ -762,7 +762,8 @@ function App() {
                     <h2 className="landing-bento-title">
                       <span className="landing-bento-title-line">Invite</span>
                       <span className="landing-bento-title-line">&</span>
-                      <span className="landing-bento-title-line">Play with</span>
+                      <span className="landing-bento-title-line">Play</span>
+                      <span className="landing-bento-title-line">with</span>
                       <span className="landing-bento-title-line">Your</span>
                       <span className="landing-bento-title-line">Friends</span>
                     </h2>
