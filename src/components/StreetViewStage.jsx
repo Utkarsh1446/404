@@ -34,9 +34,16 @@ export function StreetViewStage({ round }) {
     clientConfig.googleMapsApiKey ? 'loading' : 'missing-key',
   )
   const hasValidPanorama = Boolean(round?.panorama?.position)
+  const imageUrl = buildStreetViewImage(round)
+  const shouldUseStaticStreetView = round?.meta?.gameMode === 'drop' && Boolean(imageUrl)
 
   useEffect(() => {
-    if (!hasValidPanorama || !containerRef.current || !clientConfig.googleMapsApiKey) {
+    if (
+      shouldUseStaticStreetView ||
+      !hasValidPanorama ||
+      !containerRef.current ||
+      !clientConfig.googleMapsApiKey
+    ) {
       return undefined
     }
 
@@ -177,7 +184,7 @@ export function StreetViewStage({ round }) {
       window.clearTimeout(fallbackTimeoutId)
       panoramaListeners.forEach((listener) => listener?.remove?.())
     }
-  }, [hasValidPanorama, round])
+  }, [hasValidPanorama, round, shouldUseStaticStreetView])
 
   if (!round) {
     return (
@@ -208,11 +215,9 @@ export function StreetViewStage({ round }) {
     )
   }
 
-  const imageUrl = buildStreetViewImage(round)
-
   return (
-    <div className={`street-stage ${loadState === 'fallback' ? 'is-fallback' : ''}`}>
-      {loadState === 'fallback' ? (
+    <div className={`street-stage ${loadState === 'fallback' || shouldUseStaticStreetView ? 'is-fallback' : ''}`}>
+      {loadState === 'fallback' || shouldUseStaticStreetView ? (
         <img
           key={`${round.roundId}-${imageUrl}`}
           className="street-stage-image"
