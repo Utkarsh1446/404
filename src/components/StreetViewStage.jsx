@@ -149,7 +149,7 @@ export function StreetViewStage({ round }) {
       <div className="stage-placeholder">
         <span className="eyebrow">Street view</span>
         <h3>Connect, then launch a round.</h3>
-        <p>The active panorama loads only after the server assigns a valid world drop.</p>
+        <p>The active panorama loads only after the server assigns a valid round location.</p>
       </div>
     )
   }

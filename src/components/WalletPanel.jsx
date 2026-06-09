@@ -63,7 +63,7 @@ export function WalletPanel({
             disabled={!session || isBusy}
             onClick={onStartRound}
           >
-            Start a world drop
+            Start a round
           </HoverButton>
         )}
       </div>

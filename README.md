@@ -1,6 +1,6 @@
 # 404 notfound
 
-GeoGuessr-style MVP with a React/Vite frontend, an Express API, Solana wallet sign-in, curated world drops, server-authoritative quota enforcement, and mocked payment/reward rails.
+GeoGuessr-style MVP with a React/Vite frontend, an Express API, Solana wallet sign-in, regular two-location rounds, separate scheduled Drops, server-authoritative quota enforcement, and mocked payment/reward rails.
 
 ## Setup
 
@@ -37,5 +37,7 @@ npm install
 
 - Three rounds are free each UTC day per wallet.
 - The fourth and later rounds require a mocked `$1` checkout unlock.
+- Regular rounds use two locations with 90 seconds per location.
+- Drops are a separate scheduled landing experience and do not change regular round timing.
 - Reward eligibility defaults to guesses within `50 km`.
 - Payments and SP transfers are mocked, but recorded through durable backend events.

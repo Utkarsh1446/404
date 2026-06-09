@@ -42,7 +42,7 @@ export function useGameSession() {
   const [result, setResult] = useState(null)
   const [revealResult, setRevealResult] = useState(null)
   const [error, setError] = useState('')
-  const [status, setStatus] = useState('Connect a Solana wallet to start your first world drop.')
+  const [status, setStatus] = useState('Connect a Solana wallet to start your first round.')
   const [isBusy, setIsBusy] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(90)
   const [currentLocationIndex, setCurrentLocationIndex] = useState(1)
@@ -195,7 +195,7 @@ export function useGameSession() {
       setPhase('ready')
       setStatus(
         provider
-          ? 'Wallet verified. Start a world drop and pin the map.'
+          ? 'Wallet verified. Start a round and pin the map.'
           : 'Demo wallet verified. Add your Google Maps key to enable the full panorama flow.',
       )
       return {
@@ -278,7 +278,7 @@ export function useGameSession() {
     try {
       const checkout = await apiClient.checkoutIntent(session.token, paymentRoundId)
       setQuota(checkout.quota)
-      setStatus('Paid attempt unlocked. Your world drop is ready.')
+      setStatus('Paid attempt unlocked. Your round is ready.')
       return await startRound()
     } catch (caughtError) {
       setError(caughtError.message)

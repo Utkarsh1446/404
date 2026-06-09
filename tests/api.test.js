@@ -8,7 +8,6 @@ import nacl from 'tweetnacl'
 import { Keypair } from '@solana/web3.js'
 import { createApp } from '../server/app.js'
 import { haversineDistanceKm } from '../server/lib/geo.js'
-import { DROP_CYCLE_MS } from '../server/lib/drop-schedule.js'
 
 function createTestApp() {
   const storageFile = path.join(
@@ -95,7 +94,7 @@ test('quota is wallet-specific and starts with three free rounds', async () => {
   assert.equal(secondQuota.body.freeRemaining, 3)
 })
 
-test('starting and guessing a round stores one submitted guess and reveals later', async () => {
+test('starting and guessing a regular round reveals immediately', async () => {
   const app = createTestApp()
   const auth = await authenticate(app)
 
@@ -103,6 +102,10 @@ test('starting and guessing a round stores one submitted guess and reveals later
     .post('/api/rounds/start')
     .set('Authorization', `Bearer ${auth.token}`)
     .expect(200)
+
+  assert.equal(round.body.roundLocationCount, 2)
+  assert.equal(round.body.meta.gameMode, 'regular')
+  assert.equal(round.body.meta.timeLimitSeconds, 90)
 
   const guess = await request(app)
     .post(`/api/rounds/${round.body.roundId}/guess`)
@@ -113,7 +116,9 @@ test('starting and guessing a round stores one submitted guess and reveals later
     })
     .expect(200)
 
-  assert.ok(guess.body.pendingReveal)
+  assert.equal(guess.body.result.rewardEligible, true)
+  assert.equal(guess.body.result.winner, null)
+  assert.equal(guess.body.pendingReveal, undefined)
 
   await request(app)
     .post(`/api/rounds/${round.body.roundId}/guess`)
@@ -124,126 +129,86 @@ test('starting and guessing a round stores one submitted guess and reveals later
     })
     .expect(409)
 
-  await request(app)
+  const result = await request(app)
     .get(`/api/rounds/${round.body.roundId}/result`)
     .set('Authorization', `Bearer ${auth.token}`)
-    .expect(425)
+    .expect(200)
 
-  const originalNow = Date.now
-  Date.now = () => guess.body.pendingReveal.revealEndsAt + 1
-
-  try {
-    const result = await request(app)
-      .get(`/api/rounds/${round.body.roundId}/result`)
-      .set('Authorization', `Bearer ${auth.token}`)
-      .expect(200)
-
-    assert.equal(result.body.result.rewardEligible, true)
-    assert.equal(result.body.result.winner.walletAddress, auth.walletAddress)
-  } finally {
-    Date.now = originalNow
-  }
+  assert.equal(result.body.result.rewardEligible, true)
+  assert.equal(result.body.result.winner, null)
 })
 
-test('the first correct submitted guess wins after reveal', async () => {
+test('regular rounds continue to a second 90 second location', async () => {
   const app = createTestApp()
-  const first = await authenticate(app)
-  const second = await authenticate(app)
+  const auth = await authenticate(app)
 
   const firstRound = await request(app)
     .post('/api/rounds/start')
-    .set('Authorization', `Bearer ${first.token}`)
-    .expect(200)
-
-  const secondRound = await request(app)
-    .post('/api/rounds/start')
-    .set('Authorization', `Bearer ${second.token}`)
+    .set('Authorization', `Bearer ${auth.token}`)
     .expect(200)
 
   await request(app)
     .post(`/api/rounds/${firstRound.body.roundId}/guess`)
-    .set('Authorization', `Bearer ${first.token}`)
+    .set('Authorization', `Bearer ${auth.token}`)
     .send({
       guessLat: firstRound.body.panorama.position.lat,
       guessLng: firstRound.body.panorama.position.lng,
     })
     .expect(200)
 
-  const secondGuess = await request(app)
-    .post(`/api/rounds/${secondRound.body.roundId}/guess`)
-    .set('Authorization', `Bearer ${second.token}`)
-    .send({
-      guessLat: secondRound.body.panorama.position.lat,
-      guessLng: secondRound.body.panorama.position.lng,
-    })
+  const secondRound = await request(app)
+    .post(`/api/rounds/${firstRound.body.roundId}/continue`)
+    .set('Authorization', `Bearer ${auth.token}`)
     .expect(200)
 
-  const originalNow = Date.now
-  Date.now = () => secondGuess.body.pendingReveal.revealEndsAt + 1
-
-  try {
-    const result = await request(app)
-      .get(`/api/rounds/${secondRound.body.roundId}/result`)
-      .set('Authorization', `Bearer ${second.token}`)
-      .expect(200)
-
-    assert.equal(result.body.result.winner.walletAddress, first.walletAddress)
-  } finally {
-    Date.now = originalNow
-  }
+  assert.equal(secondRound.body.sequenceIndex, 2)
+  assert.equal(secondRound.body.roundLocationCount, 2)
+  assert.equal(secondRound.body.meta.gameMode, 'regular')
+  assert.equal(secondRound.body.meta.timeLimitSeconds, 90)
+  assert.notEqual(secondRound.body.roundId, firstRound.body.roundId)
+  assert.notDeepEqual(
+    secondRound.body.panorama.position,
+    firstRound.body.panorama.position,
+  )
 })
 
 test('fourth round requires payment and mocked checkout unlocks one paid attempt', async () => {
   const app = createTestApp()
   const auth = await authenticate(app)
-  const originalNow = Date.now
-  const baseNow = Math.floor(originalNow() / DROP_CYCLE_MS) * DROP_CYCLE_MS
 
-  try {
-    for (let index = 0; index < 3; index += 1) {
-      Date.now = () => baseNow + index * DROP_CYCLE_MS + 1000
-      const round = await request(app)
-        .post('/api/rounds/start')
-        .set('Authorization', `Bearer ${auth.token}`)
-        .expect(200)
-
-      const guess = await request(app)
-        .post(`/api/rounds/${round.body.roundId}/guess`)
-        .set('Authorization', `Bearer ${auth.token}`)
-        .send({
-          guessLat: round.body.panorama.position.lat,
-          guessLng: round.body.panorama.position.lng,
-        })
-        .expect(200)
-
-      Date.now = () => guess.body.pendingReveal.revealEndsAt + 1
-      await request(app)
-        .get(`/api/rounds/${round.body.roundId}/result`)
-        .set('Authorization', `Bearer ${auth.token}`)
-        .expect(200)
-    }
-
-    Date.now = () => baseNow + 3 * DROP_CYCLE_MS + 1000
-
-    const blocked = await request(app)
+  for (let index = 0; index < 3; index += 1) {
+    const round = await request(app)
       .post('/api/rounds/start')
       .set('Authorization', `Bearer ${auth.token}`)
-      .expect(402)
+      .expect(200)
 
     await request(app)
-      .post(`/api/attempts/${blocked.body.payload.roundId}/checkout-intent`)
+      .post(`/api/rounds/${round.body.roundId}/guess`)
       .set('Authorization', `Bearer ${auth.token}`)
+      .send({
+        guessLat: round.body.panorama.position.lat,
+        guessLng: round.body.panorama.position.lng,
+      })
       .expect(200)
-
-    const unlocked = await request(app)
-      .post('/api/rounds/start')
-      .set('Authorization', `Bearer ${auth.token}`)
-      .expect(200)
-
-    assert.equal(unlocked.body.attemptType, 'paid')
-  } finally {
-    Date.now = originalNow
   }
+
+  const blocked = await request(app)
+    .post('/api/rounds/start')
+    .set('Authorization', `Bearer ${auth.token}`)
+    .expect(402)
+
+  await request(app)
+    .post(`/api/attempts/${blocked.body.payload.roundId}/checkout-intent`)
+    .set('Authorization', `Bearer ${auth.token}`)
+    .expect(200)
+
+  const unlocked = await request(app)
+    .post('/api/rounds/start')
+    .set('Authorization', `Bearer ${auth.token}`)
+    .expect(200)
+
+  assert.equal(unlocked.body.attemptType, 'paid')
+  assert.equal(unlocked.body.meta.timeLimitSeconds, 90)
 })
 
 test('haversine distance is accurate enough for known coordinates', () => {
