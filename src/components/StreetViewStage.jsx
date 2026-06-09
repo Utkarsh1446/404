@@ -35,15 +35,9 @@ export function StreetViewStage({ round }) {
   )
   const hasValidPanorama = Boolean(round?.panorama?.position)
   const imageUrl = buildStreetViewImage(round)
-  const shouldUseStaticStreetView = round?.meta?.gameMode === 'drop' && Boolean(imageUrl)
 
   useEffect(() => {
-    if (
-      shouldUseStaticStreetView ||
-      !hasValidPanorama ||
-      !containerRef.current ||
-      !clientConfig.googleMapsApiKey
-    ) {
+    if (!hasValidPanorama || !containerRef.current || !clientConfig.googleMapsApiKey) {
       return undefined
     }
 
@@ -120,15 +114,14 @@ export function StreetViewStage({ round }) {
           }, 3000)
         }
 
-        if (round.panorama.panoId) {
-          mountPanorama({
-            pano: round.panorama.panoId,
-            position: round.panorama.position,
-          })
-          return
-        }
-
         const panoramaRequests = [
+          ...(round.panorama.panoId
+            ? [
+                {
+                  pano: round.panorama.panoId,
+                },
+              ]
+            : []),
           {
             location: round.panorama.position,
             radius: 250,
@@ -184,7 +177,7 @@ export function StreetViewStage({ round }) {
       window.clearTimeout(fallbackTimeoutId)
       panoramaListeners.forEach((listener) => listener?.remove?.())
     }
-  }, [hasValidPanorama, round, shouldUseStaticStreetView])
+  }, [hasValidPanorama, round])
 
   if (!round) {
     return (
@@ -216,8 +209,8 @@ export function StreetViewStage({ round }) {
   }
 
   return (
-    <div className={`street-stage ${loadState === 'fallback' || shouldUseStaticStreetView ? 'is-fallback' : ''}`}>
-      {loadState === 'fallback' || shouldUseStaticStreetView ? (
+    <div className={`street-stage ${loadState === 'fallback' ? 'is-fallback' : ''}`}>
+      {loadState === 'fallback' ? (
         <img
           key={`${round.roundId}-${imageUrl}`}
           className="street-stage-image"
