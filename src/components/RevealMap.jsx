@@ -8,18 +8,33 @@ export function RevealMap({ revealResult }) {
   const [loadState, setLoadState] = useState(
     clientConfig.googleMapsApiKey ? 'loading' : 'missing-key',
   )
+  const guessLat = revealResult?.guess?.lat
+  const guessLng = revealResult?.guess?.lng
+  const answerLat = revealResult?.answer?.lat
+  const answerLng = revealResult?.answer?.lng
 
   useEffect(() => {
-    if (!revealResult || !mapNodeRef.current) return undefined
+    if (
+      guessLat == null ||
+      guessLng == null ||
+      answerLat == null ||
+      answerLng == null ||
+      !mapNodeRef.current
+    ) {
+      return undefined
+    }
 
     let cancelled = false
+    setLoadState('loading')
+    mapRef.current = null
+    mapNodeRef.current.replaceChildren()
 
     loadGoogleMaps()
       .then((google) => {
         if (cancelled || !mapNodeRef.current) return
 
-        const guess = revealResult.guess
-        const answer = revealResult.answer
+        const guess = { lat: guessLat, lng: guessLng }
+        const answer = { lat: answerLat, lng: answerLng }
 
         mapRef.current = new google.maps.Map(mapNodeRef.current, {
           center: guess,
@@ -93,7 +108,7 @@ export function RevealMap({ revealResult }) {
     return () => {
       cancelled = true
     }
-  }, [revealResult])
+  }, [answerLat, answerLng, guessLat, guessLng])
 
   if (loadState === 'missing-key') {
     return <div className="reveal-map-placeholder">Reveal map unavailable.</div>
