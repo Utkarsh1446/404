@@ -719,7 +719,7 @@ function MultiplayerLobby({
   )
 }
 
-function MultiplayerLeaderboard({ room, onLeave, voice }) {
+function MultiplayerLeaderboard({ room, onLeave }) {
   return (
     <div className="multiplayer-lobby multiplayer-results">
       <button className="hud-top hud-brand" type="button" aria-label="Go to homepage" onClick={onLeave}>
@@ -749,8 +749,6 @@ function MultiplayerLeaderboard({ room, onLeave, voice }) {
         <HoverButton className="submit-button" type="button" onClick={onLeave}>
           Back Home
         </HoverButton>
-
-        <MultiplayerVoicePanel voice={voice} />
       </div>
     </div>
   )
@@ -1565,7 +1563,6 @@ function App() {
             <MultiplayerLeaderboard
               room={multiplayerRoom}
               onLeave={handleLeaveMultiplayer}
-              voice={multiplayerVoice}
             />
           ) : (
             <MultiplayerGame
