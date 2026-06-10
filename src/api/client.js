@@ -50,6 +50,34 @@ export const apiClient = {
   startDrop(token) {
     return apiFetch('/api/drops/start', { method: 'POST', token })
   },
+  createMultiplayerRoom(token) {
+    return apiFetch('/api/multiplayer/rooms', { method: 'POST', token })
+  },
+  joinMultiplayerRoom(token, code) {
+    return apiFetch(`/api/multiplayer/rooms/${code}/join`, {
+      method: 'POST',
+      token,
+    })
+  },
+  getMultiplayerRoom(token, code) {
+    return apiFetch(`/api/multiplayer/rooms/${code}`, { token })
+  },
+  readyMultiplayerRoom(token, code) {
+    return apiFetch(`/api/multiplayer/rooms/${code}/ready`, {
+      method: 'POST',
+      token,
+    })
+  },
+  submitMultiplayerGuess(token, code, guess) {
+    return apiFetch(`/api/multiplayer/rooms/${code}/guess`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({
+        guessLat: guess.lat,
+        guessLng: guess.lng,
+      }),
+    })
+  },
   continueRound(token, roundId) {
     return apiFetch(`/api/rounds/${roundId}/continue`, {
       method: 'POST',

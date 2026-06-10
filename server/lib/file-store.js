@@ -8,6 +8,7 @@ function createInitialState() {
     sessions: [],
     rounds: [],
     guesses: [],
+    multiplayerRooms: [],
     dropParticipations: [],
     dropSettlements: [],
     dailyAttemptLedger: [],

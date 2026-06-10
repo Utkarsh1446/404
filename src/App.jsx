@@ -355,6 +355,255 @@ function DropDetailModal({ detailState, error, isLoading, onClose }) {
   )
 }
 
+function MultiplayerJoinModal({
+  code,
+  error,
+  isBusy,
+  onChangeCode,
+  onClose,
+  onJoin,
+}) {
+  return (
+    <div className="multiplayer-modal-backdrop" role="dialog" aria-modal="true" aria-label="Join room">
+      <form className="multiplayer-join-modal" onSubmit={onJoin}>
+        <button className="drop-detail-close" type="button" aria-label="Close join room" onClick={onClose}>
+          &times;
+        </button>
+        <h2>Join Room</h2>
+        <label>
+          <span>Room code</span>
+          <input
+            autoFocus
+            maxLength={5}
+            value={code}
+            onChange={(event) => onChangeCode(event.target.value.toUpperCase())}
+            placeholder="ABCDE"
+          />
+        </label>
+        {error ? <p className="multiplayer-error">{error}</p> : null}
+        <HoverButton className="submit-button" type="submit" disabled={isBusy || code.trim().length < 5}>
+          {isBusy ? 'Joining...' : 'Join Room'}
+        </HoverButton>
+      </form>
+    </div>
+  )
+}
+
+function MultiplayerLobby({ room, error, isBusy, now, onReady, onLeave }) {
+  const secondsUntilStart = room?.countdownEndsAt
+    ? Math.max(0, Math.ceil((room.countdownEndsAt - now) / 1000))
+    : 0
+  const allReady = room.players.length >= room.minPlayers && room.players.every((player) => player.ready)
+
+  return (
+    <div className="multiplayer-lobby">
+      <button className="hud-top hud-brand" type="button" aria-label="Go to homepage" onClick={onLeave}>
+        <span className="hud-brand-logo-frame">
+          <img className="hud-brand-logo" src={notfoundLogo} alt="notfound logo" />
+        </span>
+      </button>
+
+      <div className="multiplayer-lobby-panel">
+        <div className="multiplayer-lobby-heading">
+          <span>Room Code</span>
+          <strong>{room.code}</strong>
+        </div>
+
+        <div className="multiplayer-lobby-meta">
+          <span>{room.playerCount}/{room.maxPlayers} players</span>
+          <span>5 rounds</span>
+          <span>{room.status === 'countdown' ? `Starting in ${secondsUntilStart}s` : allReady ? 'Ready to start' : 'Waiting for ready'}</span>
+        </div>
+
+        <div className="multiplayer-player-list">
+          {room.players.map((player) => (
+            <div className="multiplayer-player-row" key={player.walletAddress}>
+              <WalletAvatar value={player.walletAddress} />
+              <span>{formatWallet(player.walletAddress)}</span>
+              <strong>{player.ready ? 'Ready' : 'Waiting'}</strong>
+            </div>
+          ))}
+        </div>
+
+        {error ? <p className="multiplayer-error">{error}</p> : null}
+
+        <div className="multiplayer-lobby-actions">
+          <HoverButton className="landing-play-button" type="button" onClick={onReady} disabled={isBusy || room.currentPlayer?.ready || room.status !== 'waiting'}>
+            {room.currentPlayer?.ready ? 'Ready' : 'Ready'}
+          </HoverButton>
+          <HoverButton className="landing-play-button" type="button" onClick={onLeave}>
+            Leave
+          </HoverButton>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MultiplayerLeaderboard({ room, onLeave }) {
+  return (
+    <div className="multiplayer-lobby multiplayer-results">
+      <button className="hud-top hud-brand" type="button" aria-label="Go to homepage" onClick={onLeave}>
+        <span className="hud-brand-logo-frame">
+          <img className="hud-brand-logo" src={notfoundLogo} alt="notfound logo" />
+        </span>
+      </button>
+
+      <div className="multiplayer-lobby-panel multiplayer-results-panel">
+        <div className="multiplayer-lobby-heading">
+          <span>Game Over</span>
+          <strong>Leaderboard</strong>
+        </div>
+
+        <div className="multiplayer-leaderboard">
+          {room.leaderboard.map((player) => (
+            <div className="multiplayer-leaderboard-row" key={player.walletAddress}>
+              <strong>#{player.rank}</strong>
+              <WalletAvatar value={player.walletAddress} />
+              <span>{formatWallet(player.walletAddress)}</span>
+              <span>{player.score.toLocaleString()} pts</span>
+              <span>{formatDistance(player.totalDistanceKm)}</span>
+            </div>
+          ))}
+        </div>
+
+        <HoverButton className="submit-button" type="button" onClick={onLeave}>
+          Back Home
+        </HoverButton>
+      </div>
+    </div>
+  )
+}
+
+function MultiplayerGame({
+  room,
+  selectedGuess,
+  mapExpanded,
+  error,
+  isBusy,
+  now,
+  onSelectGuess,
+  onSubmitGuess,
+  onToggleMap,
+  onLeave,
+}) {
+  const currentGuess = room.currentGuess
+  const roundResults = room.roundResults ?? []
+  const ownRoundResult = currentGuess ?? roundResults.find(
+    (entry) => entry.walletAddress === room.currentPlayer?.walletAddress,
+  )
+  const revealResult = ownRoundResult && room.revealLocation
+    ? {
+        ...ownRoundResult,
+        country: room.revealLocation.country,
+        region: room.revealLocation.region,
+        answer: room.revealLocation.answer,
+      }
+    : null
+  const secondsLeft = room.activeEndsAt
+    ? Math.max(0, Math.ceil((room.activeEndsAt - now) / 1000))
+    : 0
+  const revealSecondsLeft = room.revealEndsAt
+    ? Math.max(0, Math.ceil((room.revealEndsAt - now) / 1000))
+    : 0
+  const scoreSlots = Array.from({ length: room.roundCount }, (_entry, index) => index + 1)
+  const scoreboardStyle = {
+    gridTemplateColumns: `repeat(${scoreSlots.length + 1}, minmax(104px, 1fr))`,
+  }
+
+  if (room.status === 'reveal' && revealResult) {
+    return (
+      <div className="reveal-surface">
+        <RevealMap revealResult={revealResult} />
+        <button className="hud-top hud-brand" type="button" aria-label="Go to homepage" onClick={onLeave}>
+          <span className="hud-brand-logo-frame">
+            <img className="hud-brand-logo" src={notfoundLogo} alt="notfound logo" />
+          </span>
+        </button>
+        <div className="hud-top hud-scoreboard multiplayer-scoreboard" style={scoreboardStyle}>
+          {scoreSlots.map((slot) => (
+            <div className={`score-cell ${room.roundIndex === slot ? 'active' : ''}`} key={slot}>
+              <span>R{slot}</span>
+              <strong>{slot < room.roundIndex ? 'Done' : slot === room.roundIndex ? 'Reveal' : '-'}</strong>
+              <small>{slot === room.roundIndex ? formatClock(revealSecondsLeft) : '-'}</small>
+            </div>
+          ))}
+          <div className="score-cell total-cell">
+            <span>Total</span>
+            <strong>{room.currentPlayer?.score?.toLocaleString() ?? 0}</strong>
+            <small>{room.playerCount} players</small>
+          </div>
+        </div>
+        <div className="reveal-bottom-bar">
+          <div className="reveal-metric">
+            <strong>{formatDistance(revealResult.distanceKm)}</strong>
+            <span>distance</span>
+          </div>
+          <div className="multiplayer-reveal-note">Next round starts automatically</div>
+          <div className="reveal-metric reveal-score">
+            <strong>{revealResult.score.toLocaleString()}</strong>
+            <span>score</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="play-surface">
+      <StreetViewStage round={room.currentRound} />
+      <button className="hud-top hud-brand" type="button" aria-label="Go to homepage" onClick={onLeave}>
+        <span className="hud-brand-logo-frame">
+          <img className="hud-brand-logo" src={notfoundLogo} alt="notfound logo" />
+        </span>
+      </button>
+      <div className="hud-top hud-scoreboard multiplayer-scoreboard" style={scoreboardStyle}>
+        {scoreSlots.map((slot) => (
+          <div className={`score-cell ${room.roundIndex === slot ? 'active' : ''}`} key={slot}>
+            <span>R{slot}</span>
+            <strong>{slot < room.roundIndex ? 'Done' : slot === room.roundIndex ? 'Live' : '-'}</strong>
+            <small>{slot === room.roundIndex ? formatClock(secondsLeft) : '-'}</small>
+          </div>
+        ))}
+        <div className="score-cell total-cell">
+          <span>Total</span>
+          <strong>{room.currentPlayer?.score?.toLocaleString() ?? 0}</strong>
+          <small>{room.playerCount} players</small>
+        </div>
+      </div>
+      <div className="timer-pod">
+        <span>Round {room.roundIndex}/5</span>
+        <strong>{formatClock(secondsLeft)}</strong>
+      </div>
+      <div className={`guess-overlay ${mapExpanded ? 'expanded' : ''}`}>
+        <div className="guess-overlay-toolbar">
+          <HoverButton className="map-toggle" type="button" onClick={onToggleMap}>
+            {mapExpanded ? 'Minimize map' : 'Expand map'}
+          </HoverButton>
+        </div>
+        <GuessMap
+          selectedGuess={selectedGuess}
+          onSelectGuess={onSelectGuess}
+          disabled={Boolean(currentGuess) || room.status !== 'playing'}
+          isExpanded={mapExpanded}
+          onRequestExpand={onToggleMap}
+        />
+        <div className="guess-overlay-footer">
+          <HoverButton
+            className="submit-button guess-submit guess-submit-full"
+            type="button"
+            disabled={!selectedGuess || Boolean(currentGuess) || room.status !== 'playing' || isBusy}
+            onClick={onSubmitGuess}
+          >
+            {currentGuess ? 'Waiting for players' : selectedGuess ? 'Guess' : 'Place your pin on the map'}
+          </HoverButton>
+        </div>
+        {error ? <p className="multiplayer-error">{error}</p> : null}
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [showLanding, setShowLanding] = useState(true)
   const [mapExpanded, setMapExpanded] = useState(false)
@@ -362,6 +611,13 @@ function App() {
   const [selectedDropDetail, setSelectedDropDetail] = useState(null)
   const [dropDetailError, setDropDetailError] = useState('')
   const [isDropDetailLoading, setIsDropDetailLoading] = useState(false)
+  const [multiplayerRoom, setMultiplayerRoom] = useState(null)
+  const [multiplayerJoinCode, setMultiplayerJoinCode] = useState('')
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false)
+  const [multiplayerError, setMultiplayerError] = useState('')
+  const [isMultiplayerBusy, setIsMultiplayerBusy] = useState(false)
+  const [multiplayerGuess, setMultiplayerGuess] = useState(null)
+  const [multiplayerMapExpanded, setMultiplayerMapExpanded] = useState(false)
   const [route, setRoute] = useState(() =>
     typeof window !== 'undefined' && window.location.pathname === '/wallet' ? '/wallet' : '/',
   )
@@ -410,6 +666,23 @@ function App() {
 
     return () => window.clearInterval(intervalId)
   }, [])
+
+  useEffect(() => {
+    if (!session?.token || !multiplayerRoom?.code) return undefined
+
+    const syncRoom = async () => {
+      try {
+        const nextRoom = await apiClient.getMultiplayerRoom(session.token, multiplayerRoom.code)
+        setMultiplayerRoom(nextRoom)
+        setMultiplayerError('')
+      } catch (caughtError) {
+        setMultiplayerError(caughtError.message)
+      }
+    }
+
+    const intervalId = window.setInterval(syncRoom, 1000)
+    return () => window.clearInterval(intervalId)
+  }, [multiplayerRoom?.code, session?.token])
 
   function navigateTo(path) {
     const nextPath = path === '/wallet' ? '/wallet' : '/'
@@ -491,6 +764,10 @@ function App() {
 
   function handleHomeClick() {
     resetForNextRound()
+    setMultiplayerRoom(null)
+    setMultiplayerGuess(null)
+    setMultiplayerError('')
+    setMultiplayerMapExpanded(false)
     setShowLanding(true)
     setMapExpanded(false)
     navigateTo('/')
@@ -498,6 +775,101 @@ function App() {
 
   async function handleLandingWalletConnect() {
     await connectWallet()
+  }
+
+  async function getMultiplayerSession() {
+    const nextSession = session ?? (await connectWallet())
+    return nextSession?.token ? nextSession : null
+  }
+
+  async function handleCreateRoom() {
+    setMultiplayerError('')
+    setIsMultiplayerBusy(true)
+
+    try {
+      const nextSession = await getMultiplayerSession()
+      if (!nextSession?.token) return
+      const room = await apiClient.createMultiplayerRoom(nextSession.token)
+      setMultiplayerRoom(room)
+      setMultiplayerGuess(null)
+      setShowLanding(false)
+      navigateTo('/')
+    } catch (caughtError) {
+      setMultiplayerError(caughtError.message)
+    } finally {
+      setIsMultiplayerBusy(false)
+    }
+  }
+
+  async function handleJoinRoomSubmit(event) {
+    event.preventDefault()
+    setMultiplayerError('')
+    setIsMultiplayerBusy(true)
+
+    try {
+      const nextSession = await getMultiplayerSession()
+      if (!nextSession?.token) return
+      const room = await apiClient.joinMultiplayerRoom(
+        nextSession.token,
+        multiplayerJoinCode.trim().toUpperCase(),
+      )
+      setMultiplayerRoom(room)
+      setMultiplayerGuess(null)
+      setIsJoinModalOpen(false)
+      setShowLanding(false)
+      navigateTo('/')
+    } catch (caughtError) {
+      setMultiplayerError(caughtError.message)
+    } finally {
+      setIsMultiplayerBusy(false)
+    }
+  }
+
+  async function handleMultiplayerReady() {
+    if (!session?.token || !multiplayerRoom?.code) return
+
+    setMultiplayerError('')
+    setIsMultiplayerBusy(true)
+
+    try {
+      const room = await apiClient.readyMultiplayerRoom(session.token, multiplayerRoom.code)
+      setMultiplayerRoom(room)
+    } catch (caughtError) {
+      setMultiplayerError(caughtError.message)
+    } finally {
+      setIsMultiplayerBusy(false)
+    }
+  }
+
+  async function handleMultiplayerGuessSubmit() {
+    if (!session?.token || !multiplayerRoom?.code || !multiplayerGuess) return
+
+    setMultiplayerError('')
+    setIsMultiplayerBusy(true)
+
+    try {
+      const room = await apiClient.submitMultiplayerGuess(
+        session.token,
+        multiplayerRoom.code,
+        multiplayerGuess,
+      )
+      setMultiplayerRoom(room)
+      setMultiplayerGuess(null)
+      setMultiplayerMapExpanded(false)
+    } catch (caughtError) {
+      setMultiplayerError(caughtError.message)
+    } finally {
+      setIsMultiplayerBusy(false)
+    }
+  }
+
+  function handleLeaveMultiplayer() {
+    setMultiplayerRoom(null)
+    setMultiplayerGuess(null)
+    setMultiplayerError('')
+    setMultiplayerMapExpanded(false)
+    setShowLanding(true)
+    navigateTo('/')
   }
 
   function handleWalletRoute() {
@@ -821,7 +1193,33 @@ function App() {
       ) : null}
 
       <section className="viewport-frame" id="play">
-        {showLanding && route === '/wallet' ? (
+        {multiplayerRoom ? (
+          multiplayerRoom.status === 'waiting' || multiplayerRoom.status === 'countdown' ? (
+            <MultiplayerLobby
+              room={multiplayerRoom}
+              error={multiplayerError}
+              isBusy={isMultiplayerBusy}
+              now={now}
+              onReady={handleMultiplayerReady}
+              onLeave={handleLeaveMultiplayer}
+            />
+          ) : multiplayerRoom.status === 'finished' ? (
+            <MultiplayerLeaderboard room={multiplayerRoom} onLeave={handleLeaveMultiplayer} />
+          ) : (
+            <MultiplayerGame
+              room={multiplayerRoom}
+              selectedGuess={multiplayerGuess}
+              mapExpanded={multiplayerMapExpanded}
+              error={multiplayerError}
+              isBusy={isMultiplayerBusy}
+              now={now}
+              onSelectGuess={setMultiplayerGuess}
+              onSubmitGuess={handleMultiplayerGuessSubmit}
+              onToggleMap={() => setMultiplayerMapExpanded((current) => !current)}
+              onLeave={handleLeaveMultiplayer}
+            />
+          )
+        ) : showLanding && route === '/wallet' ? (
           <WalletPage profile={profile} session={session} onConnectWallet={handleLandingWalletConnect} />
         ) : showLanding ? (
           <div className="landing-screen">
@@ -924,10 +1322,23 @@ function App() {
                       <span className="landing-bento-title-line">Friends</span>
                     </h2>
                     <div className="landing-actions landing-bento-feature-actions">
-                      <HoverButton className="landing-play-button" type="button">
+                      <HoverButton
+                        className="landing-play-button"
+                        type="button"
+                        disabled={isMultiplayerBusy}
+                        onClick={handleCreateRoom}
+                      >
                         CREATE ROOM
                       </HoverButton>
-                      <HoverButton className="landing-play-button" type="button">
+                      <HoverButton
+                        className="landing-play-button"
+                        type="button"
+                        disabled={isMultiplayerBusy}
+                        onClick={() => {
+                          setMultiplayerError('')
+                          setIsJoinModalOpen(true)
+                        }}
+                      >
                         JOIN ROOM
                       </HoverButton>
                     </div>
@@ -1198,6 +1609,19 @@ function App() {
         isLoading={isDropDetailLoading}
         onClose={handleDropDetailClose}
       />
+      {isJoinModalOpen ? (
+        <MultiplayerJoinModal
+          code={multiplayerJoinCode}
+          error={multiplayerError}
+          isBusy={isMultiplayerBusy}
+          onChangeCode={setMultiplayerJoinCode}
+          onClose={() => {
+            setIsJoinModalOpen(false)
+            setMultiplayerError('')
+          }}
+          onJoin={handleJoinRoomSubmit}
+        />
+      ) : null}
       <ResultModal result={result} onNextRound={handleNextRound} />
     </main>
   )

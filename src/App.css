@@ -1997,6 +1997,188 @@
   box-shadow: 0 18px 34px rgba(91, 53, 194, 0.32);
 }
 
+.multiplayer-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(43, 24, 108, 0.64);
+  backdrop-filter: blur(18px);
+}
+
+.multiplayer-join-modal {
+  position: relative;
+  display: grid;
+  gap: 22px;
+  width: min(420px, 100%);
+  padding: 34px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #321675;
+  box-shadow: 0 28px 70px rgba(25, 13, 74, 0.32);
+}
+
+.multiplayer-join-modal h2 {
+  margin: 0;
+  font-family: var(--font-season-serif);
+  font-size: clamp(2.4rem, 6vw, 4rem);
+  line-height: 0.9;
+}
+
+.multiplayer-join-modal label {
+  display: grid;
+  gap: 8px;
+  color: rgba(50, 22, 117, 0.72);
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.multiplayer-join-modal input {
+  width: 100%;
+  border: 1px solid rgba(92, 63, 174, 0.22);
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: #ffffff;
+  color: #321675;
+  font: inherit;
+  font-size: 1.8rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.multiplayer-lobby {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 100%;
+  padding: 120px 28px 42px;
+  background:
+    radial-gradient(circle at 70% 35%, rgba(255, 255, 255, 0.14), transparent 24%),
+    linear-gradient(180deg, #7348f2 0%, #5428d2 100%);
+}
+
+.multiplayer-lobby-panel {
+  display: grid;
+  gap: 22px;
+  width: min(760px, 100%);
+  padding: clamp(24px, 5vw, 44px);
+  border-radius: 34px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  box-shadow: 0 24px 70px rgba(30, 14, 88, 0.24);
+}
+
+.multiplayer-lobby-heading {
+  display: grid;
+  gap: 8px;
+}
+
+.multiplayer-lobby-heading span,
+.multiplayer-lobby-meta span,
+.multiplayer-player-row strong {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.multiplayer-lobby-heading strong {
+  font-family: var(--font-season-serif);
+  font-size: clamp(3.2rem, 8vw, 6rem);
+  line-height: 0.86;
+  letter-spacing: 0.06em;
+}
+
+.multiplayer-lobby-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.multiplayer-lobby-meta span {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.multiplayer-player-list,
+.multiplayer-leaderboard {
+  display: grid;
+  gap: 8px;
+}
+
+.multiplayer-player-row,
+.multiplayer-leaderboard-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 54px;
+  padding: 8px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.multiplayer-player-row > span,
+.multiplayer-leaderboard-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiplayer-lobby-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.multiplayer-error {
+  margin: 0;
+  color: #ffdf70;
+  font-size: 0.95rem;
+}
+
+.multiplayer-scoreboard {
+  max-width: calc(100vw - 36px);
+}
+
+.multiplayer-reveal-note {
+  display: grid;
+  place-items: center;
+  min-height: 72px;
+  padding: 0 24px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #8b5cf6 0%, #5b35c2 100%);
+  border: 1px solid rgba(190, 168, 255, 0.42);
+  color: #ffffff;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.multiplayer-results-panel {
+  width: min(900px, 100%);
+}
+
+.multiplayer-leaderboard-row {
+  grid-template-columns: 58px auto minmax(0, 1fr) minmax(92px, auto) minmax(92px, auto);
+}
+
+.multiplayer-leaderboard-row > strong {
+  color: #ffdf70;
+  font-size: 1.35rem;
+}
+
 @media (max-width: 760px) {
   .drop-detail-modal {
     grid-template-columns: 1fr;
@@ -2015,6 +2197,14 @@
 
   .drop-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .multiplayer-leaderboard-row {
+    grid-template-columns: 42px auto minmax(0, 1fr);
+  }
+
+  .multiplayer-leaderboard-row > span:nth-last-child(-n + 2) {
+    grid-column: 3;
   }
 }
 

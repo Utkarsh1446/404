@@ -169,6 +169,69 @@ export function createApp(options = {}) {
     }
   })
 
+  app.post('/api/multiplayer/rooms', requireAuth, (req, res, next) => {
+    try {
+      res.json(gameService.createMultiplayerRoom(req.auth.walletAddress))
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  app.post('/api/multiplayer/rooms/:code/join', requireAuth, (req, res, next) => {
+    try {
+      res.json(
+        gameService.joinMultiplayerRoom(req.auth.walletAddress, req.params.code),
+      )
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  app.get('/api/multiplayer/rooms/:code', requireAuth, (req, res, next) => {
+    try {
+      res.json(
+        gameService.getMultiplayerRoom(req.auth.walletAddress, req.params.code),
+      )
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  app.post('/api/multiplayer/rooms/:code/ready', requireAuth, (req, res, next) => {
+    try {
+      res.json(
+        gameService.setMultiplayerReady(req.auth.walletAddress, req.params.code),
+      )
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  app.post('/api/multiplayer/rooms/:code/guess', requireAuth, (req, res, next) => {
+    try {
+      const { guessLat, guessLng } = req.body ?? {}
+
+      if (!Number.isFinite(guessLat) || !Number.isFinite(guessLng)) {
+        const error = new Error('Guess coordinates are required.')
+        error.statusCode = 400
+        throw error
+      }
+
+      res.json(
+        gameService.submitMultiplayerGuess(
+          req.auth.walletAddress,
+          req.params.code,
+          {
+            lat: guessLat,
+            lng: guessLng,
+          },
+        ),
+      )
+    } catch (error) {
+      next(error)
+    }
+  })
+
   app.post('/api/attempts/:roundId/checkout-intent', requireAuth, (req, res, next) => {
     try {
       res.json(

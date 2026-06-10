@@ -23,6 +23,7 @@ function createTestApp() {
       sessions: [],
       rounds: [],
       guesses: [],
+      multiplayerRooms: [],
       dailyAttemptLedger: [],
       rewardEvents: [],
     }),
@@ -480,6 +481,81 @@ test('completed active drops cannot be replayed after re-authentication', async 
     assert.equal(blockedAfterCompleted.body.payload.code, 'DROP_ALREADY_PLAYED')
   } finally {
     restoreNow()
+  }
+})
+
+test('multiplayer room starts after everyone is ready and accepts guesses', async () => {
+  const app = createTestApp()
+  const first = await authenticate(app)
+  const second = await authenticate(app)
+  const originalNow = Date.now
+  let now = originalNow()
+  Date.now = () => now
+
+  try {
+    const created = await request(app)
+      .post('/api/multiplayer/rooms')
+      .set('Authorization', `Bearer ${first.token}`)
+      .expect(200)
+
+    assert.equal(created.body.status, 'waiting')
+    assert.equal(created.body.playerCount, 1)
+    assert.equal(created.body.roundCount, 5)
+
+    const joined = await request(app)
+      .post(`/api/multiplayer/rooms/${created.body.code}/join`)
+      .set('Authorization', `Bearer ${second.token}`)
+      .expect(200)
+
+    assert.equal(joined.body.playerCount, 2)
+
+    await request(app)
+      .post(`/api/multiplayer/rooms/${created.body.code}/ready`)
+      .set('Authorization', `Bearer ${first.token}`)
+      .expect(200)
+
+    const countdown = await request(app)
+      .post(`/api/multiplayer/rooms/${created.body.code}/ready`)
+      .set('Authorization', `Bearer ${second.token}`)
+      .expect(200)
+
+    assert.equal(countdown.body.status, 'countdown')
+
+    now += 5_100
+
+    const playing = await request(app)
+      .get(`/api/multiplayer/rooms/${created.body.code}`)
+      .set('Authorization', `Bearer ${first.token}`)
+      .expect(200)
+
+    assert.equal(playing.body.status, 'playing')
+    assert.equal(playing.body.roundIndex, 1)
+    assert.equal(playing.body.currentRound.roundLocationCount, 5)
+
+    await request(app)
+      .post(`/api/multiplayer/rooms/${created.body.code}/guess`)
+      .set('Authorization', `Bearer ${first.token}`)
+      .send({
+        guessLat: playing.body.currentRound.panorama.position.lat,
+        guessLng: playing.body.currentRound.panorama.position.lng,
+      })
+      .expect(200)
+
+    const reveal = await request(app)
+      .post(`/api/multiplayer/rooms/${created.body.code}/guess`)
+      .set('Authorization', `Bearer ${second.token}`)
+      .send({
+        guessLat: playing.body.currentRound.panorama.position.lat,
+        guessLng: playing.body.currentRound.panorama.position.lng,
+      })
+      .expect(200)
+
+    assert.equal(reveal.body.status, 'reveal')
+    assert.equal(reveal.body.roundResults.length, 2)
+    assert.equal(reveal.body.leaderboard.length, 2)
+    assert.ok(reveal.body.leaderboard[0].score > 0)
+  } finally {
+    Date.now = originalNow
   }
 })
 

@@ -16,6 +16,11 @@ import {
 
 const REGULAR_ROUND_LOCATION_COUNT = 2
 const REGULAR_ROUND_TIME_LIMIT_MS = 90 * 1000
+const MULTIPLAYER_ROUND_LOCATION_COUNT = 5
+const MULTIPLAYER_MIN_PLAYERS = 2
+const MULTIPLAYER_MAX_PLAYERS = 20
+const MULTIPLAYER_COUNTDOWN_MS = 5 * 1000
+const MULTIPLAYER_REVEAL_MS = 7 * 1000
 const DEFAULT_TOKEN_BALANCE = 300
 
 function getActiveLocations(locations, label) {
@@ -71,9 +76,36 @@ function getWinnerForDrop(state, dropCycleNumber) {
 }
 
 function ensureStateCollections(state) {
+  state.multiplayerRooms ??= []
   state.dropParticipations ??= []
   state.dropSettlements ??= []
   state.rewardEvents ??= []
+}
+
+function generateRoomCode(state) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    let code = ''
+    for (let index = 0; index < 5; index += 1) {
+      code += alphabet[Math.floor(Math.random() * alphabet.length)]
+    }
+
+    if (!state.multiplayerRooms.some((room) => room.code === code)) {
+      return code
+    }
+  }
+
+  return crypto.randomUUID().slice(0, 5).toUpperCase()
+}
+
+function pickMultiplayerLocations(state) {
+  const locations = getActiveRegularLocations()
+  const offset = state.multiplayerRooms.length % locations.length
+
+  return Array.from({ length: MULTIPLAYER_ROUND_LOCATION_COUNT }, (_entry, index) =>
+    locations[(offset + index) % locations.length].id,
+  )
 }
 
 function ensurePlayerAccount(player) {
@@ -243,6 +275,42 @@ function makeRoundPayload(round, location, quota, timestamp = Date.now()) {
   }
 }
 
+function makeMultiplayerRoundPayload(room, timestamp = Date.now()) {
+  if (room.status !== 'playing' && room.status !== 'reveal') return null
+
+  const location = getLocationById(room.locationIds[(room.roundIndex ?? 1) - 1])
+  if (!location) return null
+
+  const activeEndsAt = room.activeEndsAt ?? timestamp + REGULAR_ROUND_TIME_LIMIT_MS
+
+  return {
+    roundId: `${room.id}:${room.roundIndex}`,
+    status: room.status,
+    sequenceIndex: room.roundIndex,
+    roundLocationCount: room.roundCount,
+    attemptType: 'multiplayer',
+    quota: null,
+    panorama: {
+      position: {
+        lat: location.panorama.lat,
+        lng: location.panorama.lng,
+      },
+      panoId: location.panorama.panoId,
+      pov: location.panorama.pov,
+      zoom: location.panorama.zoom,
+    },
+    meta: {
+      gameMode: 'multiplayer',
+      roomCode: room.code,
+      worldMode: true,
+      movingAllowed: true,
+      timeLimitSeconds: Math.max(0, Math.ceil((activeEndsAt - timestamp) / 1000)),
+      activeEndsAt,
+      revealEndsAt: room.revealEndsAt ?? activeEndsAt,
+    },
+  }
+}
+
 function getLocationById(locationId) {
   return [...regularGameLocations, ...curatedLocations].find((location) => location.id === locationId)
 }
@@ -258,6 +326,130 @@ function summarizeDropLocation(location) {
       lat: location.panorama.lat,
       lng: location.panorama.lng,
     },
+  }
+}
+
+function summarizeMultiplayerPlayer(player) {
+  if (!player) return null
+
+  return {
+    walletAddress: player.walletAddress,
+    ready: Boolean(player.ready),
+    score: player.score ?? 0,
+    roundsCompleted: player.roundsCompleted ?? 0,
+    totalDistanceKm: Number((player.totalDistanceKm ?? 0).toFixed(2)),
+  }
+}
+
+function getRoomCurrentGuess(room, walletAddress) {
+  return room.guesses.find(
+    (guess) =>
+      guess.walletAddress === walletAddress &&
+      guess.roundIndex === room.roundIndex,
+  )
+}
+
+function getRoomRoundResults(room) {
+  return room.guesses
+    .filter((guess) => guess.roundIndex === room.roundIndex)
+    .sort((first, second) => second.score - first.score || first.distanceKm - second.distanceKm)
+}
+
+function getRoomLeaderboard(room) {
+  return room.players
+    .map(summarizeMultiplayerPlayer)
+    .sort((first, second) => second.score - first.score || first.totalDistanceKm - second.totalDistanceKm)
+    .map((player, index) => ({
+      ...player,
+      rank: index + 1,
+    }))
+}
+
+function shouldRevealMultiplayerRound(room, timestamp) {
+  if (timestamp >= room.activeEndsAt) return true
+  return room.players.every((player) => Boolean(getRoomCurrentGuess(room, player.walletAddress)))
+}
+
+function startMultiplayerRound(room, timestamp) {
+  room.status = 'playing'
+  room.currentRoundStartedAt = timestamp
+  room.activeEndsAt = timestamp + REGULAR_ROUND_TIME_LIMIT_MS
+  room.revealEndsAt = null
+  room.updatedAt = new Date(timestamp).toISOString()
+}
+
+function revealMultiplayerRound(room, timestamp) {
+  room.status = 'reveal'
+  room.revealEndsAt = timestamp + MULTIPLAYER_REVEAL_MS
+  room.updatedAt = new Date(timestamp).toISOString()
+}
+
+function progressMultiplayerRoom(room, timestamp = Date.now()) {
+  if (room.status === 'countdown' && timestamp >= room.countdownEndsAt) {
+    startMultiplayerRound(room, timestamp)
+  }
+
+  if (room.status === 'playing' && shouldRevealMultiplayerRound(room, timestamp)) {
+    revealMultiplayerRound(room, timestamp)
+  }
+
+  if (room.status === 'reveal' && timestamp >= room.revealEndsAt) {
+    if (room.roundIndex >= room.roundCount) {
+      room.status = 'finished'
+      room.finishedAt = new Date(timestamp).toISOString()
+      room.updatedAt = room.finishedAt
+    } else {
+      room.roundIndex += 1
+      startMultiplayerRound(room, timestamp)
+    }
+  }
+
+  return room
+}
+
+function summarizeMultiplayerRoom(room, walletAddress, timestamp = Date.now()) {
+  progressMultiplayerRoom(room, timestamp)
+
+  const currentGuess = getRoomCurrentGuess(room, walletAddress)
+  const currentRound = makeMultiplayerRoundPayload(room, timestamp)
+  const location =
+    room.status === 'reveal' || room.status === 'finished'
+      ? getLocationById(room.locationIds[(room.roundIndex ?? 1) - 1])
+      : null
+
+  return {
+    id: room.id,
+    code: room.code,
+    status: room.status,
+    hostWalletAddress: room.hostWalletAddress,
+    minPlayers: MULTIPLAYER_MIN_PLAYERS,
+    maxPlayers: room.maxPlayers,
+    roundIndex: room.roundIndex,
+    roundCount: room.roundCount,
+    playerCount: room.players.length,
+    countdownEndsAt: room.countdownEndsAt ?? null,
+    activeEndsAt: room.activeEndsAt ?? null,
+    revealEndsAt: room.revealEndsAt ?? null,
+    currentPlayer: summarizeMultiplayerPlayer(
+      room.players.find((player) => player.walletAddress === walletAddress),
+    ),
+    players: room.players.map(summarizeMultiplayerPlayer),
+    leaderboard: getRoomLeaderboard(room),
+    currentRound,
+    currentGuess: currentGuess ?? null,
+    roundResults: room.status === 'reveal' || room.status === 'finished'
+      ? getRoomRoundResults(room)
+      : [],
+    revealLocation: location
+      ? {
+          country: location.country,
+          region: location.region,
+          answer: {
+            lat: location.panorama.lat,
+            lng: location.panorama.lng,
+          },
+        }
+      : null,
   }
 }
 
@@ -863,14 +1055,234 @@ export function createGameService({ store, rewardThresholdKm }) {
     })
   }
 
+  function createMultiplayerRoom(walletAddress) {
+    return store.update((state) => {
+      ensureStateCollections(state)
+      getOrCreatePlayer(state, walletAddress)
+
+      const now = Date.now()
+      const room = {
+        id: crypto.randomUUID(),
+        code: generateRoomCode(state),
+        hostWalletAddress: walletAddress,
+        status: 'waiting',
+        minPlayers: MULTIPLAYER_MIN_PLAYERS,
+        maxPlayers: MULTIPLAYER_MAX_PLAYERS,
+        roundCount: MULTIPLAYER_ROUND_LOCATION_COUNT,
+        roundIndex: 0,
+        locationIds: [],
+        guesses: [],
+        players: [
+          {
+            walletAddress,
+            ready: false,
+            score: 0,
+            totalDistanceKm: 0,
+            roundsCompleted: 0,
+            joinedAt: new Date(now).toISOString(),
+          },
+        ],
+        createdAt: new Date(now).toISOString(),
+        updatedAt: new Date(now).toISOString(),
+      }
+
+      state.multiplayerRooms.push(room)
+
+      return summarizeMultiplayerRoom(room, walletAddress, now)
+    })
+  }
+
+  function joinMultiplayerRoom(walletAddress, rawCode) {
+    return store.update((state) => {
+      ensureStateCollections(state)
+      getOrCreatePlayer(state, walletAddress)
+
+      const code = String(rawCode ?? '').trim().toUpperCase()
+      const room = state.multiplayerRooms.find((entry) => entry.code === code)
+
+      if (!room) {
+        const error = new Error('Room code not found.')
+        error.statusCode = 404
+        throw error
+      }
+
+      progressMultiplayerRoom(room)
+
+      if (room.status !== 'waiting') {
+        const error = new Error('This room has already started.')
+        error.statusCode = 409
+        throw error
+      }
+
+      if (room.players.length >= room.maxPlayers) {
+        const error = new Error('This room is full.')
+        error.statusCode = 409
+        throw error
+      }
+
+      const existingPlayer = room.players.find((player) => player.walletAddress === walletAddress)
+      if (!existingPlayer) {
+        room.players.push({
+          walletAddress,
+          ready: false,
+          score: 0,
+          totalDistanceKm: 0,
+          roundsCompleted: 0,
+          joinedAt: new Date().toISOString(),
+        })
+        room.updatedAt = new Date().toISOString()
+      }
+
+      return summarizeMultiplayerRoom(room, walletAddress)
+    })
+  }
+
+  function getMultiplayerRoom(walletAddress, rawCode) {
+    return store.update((state) => {
+      ensureStateCollections(state)
+
+      const code = String(rawCode ?? '').trim().toUpperCase()
+      const room = state.multiplayerRooms.find((entry) => entry.code === code)
+
+      if (!room) {
+        const error = new Error('Room code not found.')
+        error.statusCode = 404
+        throw error
+      }
+
+      const player = room.players.find((entry) => entry.walletAddress === walletAddress)
+      if (!player) {
+        const error = new Error('You are not in this room.')
+        error.statusCode = 403
+        throw error
+      }
+
+      return summarizeMultiplayerRoom(room, walletAddress)
+    })
+  }
+
+  function setMultiplayerReady(walletAddress, rawCode) {
+    return store.update((state) => {
+      ensureStateCollections(state)
+
+      const code = String(rawCode ?? '').trim().toUpperCase()
+      const room = state.multiplayerRooms.find((entry) => entry.code === code)
+
+      if (!room) {
+        const error = new Error('Room code not found.')
+        error.statusCode = 404
+        throw error
+      }
+
+      progressMultiplayerRoom(room)
+
+      if (room.status !== 'waiting') {
+        return summarizeMultiplayerRoom(room, walletAddress)
+      }
+
+      const player = room.players.find((entry) => entry.walletAddress === walletAddress)
+      if (!player) {
+        const error = new Error('You are not in this room.')
+        error.statusCode = 403
+        throw error
+      }
+
+      player.ready = true
+      room.updatedAt = new Date().toISOString()
+
+      if (
+        room.players.length >= MULTIPLAYER_MIN_PLAYERS &&
+        room.players.every((entry) => entry.ready)
+      ) {
+        const now = Date.now()
+        room.status = 'countdown'
+        room.countdownEndsAt = now + MULTIPLAYER_COUNTDOWN_MS
+        room.roundIndex = 1
+        room.locationIds = pickMultiplayerLocations(state)
+        room.updatedAt = new Date(now).toISOString()
+      }
+
+      return summarizeMultiplayerRoom(room, walletAddress)
+    })
+  }
+
+  function submitMultiplayerGuess(walletAddress, rawCode, guess) {
+    return store.update((state) => {
+      ensureStateCollections(state)
+
+      const code = String(rawCode ?? '').trim().toUpperCase()
+      const room = state.multiplayerRooms.find((entry) => entry.code === code)
+
+      if (!room) {
+        const error = new Error('Room code not found.')
+        error.statusCode = 404
+        throw error
+      }
+
+      progressMultiplayerRoom(room)
+
+      if (room.status !== 'playing') {
+        const error = new Error('Room is not accepting guesses.')
+        error.statusCode = 409
+        throw error
+      }
+
+      const player = room.players.find((entry) => entry.walletAddress === walletAddress)
+      if (!player) {
+        const error = new Error('You are not in this room.')
+        error.statusCode = 403
+        throw error
+      }
+
+      if (getRoomCurrentGuess(room, walletAddress)) {
+        return summarizeMultiplayerRoom(room, walletAddress)
+      }
+
+      const location = getLocationById(room.locationIds[room.roundIndex - 1])
+      const answer = { lat: location.panorama.lat, lng: location.panorama.lng }
+      const distanceKm = haversineDistanceKm(answer, guess)
+      const score = distanceToScore(distanceKm)
+      const now = Date.now()
+      const result = {
+        id: crypto.randomUUID(),
+        walletAddress,
+        roundIndex: room.roundIndex,
+        guess,
+        answer,
+        distanceKm: Number(distanceKm.toFixed(2)),
+        score,
+        country: location.country,
+        region: location.region,
+        createdAt: new Date(now).toISOString(),
+      }
+
+      room.guesses.push(result)
+      player.score = (player.score ?? 0) + score
+      player.totalDistanceKm = (player.totalDistanceKm ?? 0) + result.distanceKm
+      player.roundsCompleted = (player.roundsCompleted ?? 0) + 1
+      room.updatedAt = result.createdAt
+
+      if (shouldRevealMultiplayerRound(room, now)) {
+        revealMultiplayerRound(room, now)
+      }
+
+      return summarizeMultiplayerRoom(room, walletAddress, now)
+    })
+  }
+
   return {
     continueRound,
+    createMultiplayerRoom,
     getDropDetails,
+    getMultiplayerRoom,
     getProfile,
     getQuota,
+    joinMultiplayerRoom,
+    setMultiplayerReady,
     startDropRound,
     startRound,
     checkoutAttempt,
+    submitMultiplayerGuess,
     submitGuess,
     getRoundResult,
   }
