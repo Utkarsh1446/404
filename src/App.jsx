@@ -200,6 +200,10 @@ function formatCountdown(ms) {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+function formatPlayerName(player) {
+  return player?.username || formatWallet(player?.walletAddress ?? '')
+}
+
 function hashDropCycle(cycleNumber) {
   let hash = 2166136261
   const input = `notfound-drop-${cycleNumber}`
@@ -220,13 +224,16 @@ function WalletPage({ profile, session, onConnectWallet }) {
   const spBalance = profile?.spBalance ?? 0
   const dropsParticipated = profile?.dropsParticipated ?? 0
   const dropsWon = profile?.dropsWon ?? 0
+  const walletTitle = profile?.username
+    ? `${profile.username}'s wallet`
+    : 'Your wallet'
 
   return (
     <div className="wallet-page">
       <div className="wallet-page-shell">
         <div className="wallet-page-heading">
           <p className="wallet-page-kicker">Wallet</p>
-          <h1>{session ? 'Your wallet' : 'Connect your wallet'}</h1>
+          <h1>{session ? walletTitle : 'Connect your wallet'}</h1>
         </div>
 
         {session ? (
@@ -571,6 +578,70 @@ function MultiplayerVoicePanel({ voice }) {
   )
 }
 
+function MultiplayerGameVoiceControls({ voice }) {
+  const label = voice.isConnected
+    ? voice.isMuted
+      ? 'Unmute'
+      : 'Mute'
+    : voice.isConnecting
+      ? 'Joining...'
+      : 'Join Voice'
+
+  return (
+    <div className="multiplayer-game-voice">
+      <HoverButton
+        className="landing-play-button multiplayer-game-voice-button"
+        type="button"
+        onClick={voice.isConnected ? voice.toggleMute : voice.joinVoice}
+        disabled={voice.isConnecting}
+      >
+        {label}
+      </HoverButton>
+      {voice.voiceError ? <p className="multiplayer-error">{voice.voiceError}</p> : null}
+    </div>
+  )
+}
+
+function MultiplayerPlayersTray({ room, isExpanded, onToggle }) {
+  const rankedPlayers = [...room.players].sort(
+    (first, second) => second.score - first.score || formatPlayerName(first).localeCompare(formatPlayerName(second)),
+  )
+
+  return (
+    <section
+      className={`multiplayer-player-tray ${isExpanded ? 'is-expanded' : ''}`}
+      style={{ '--tray-map': `url(${worldUvDots})` }}
+    >
+      <button
+        className="multiplayer-player-tray-toggle"
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isExpanded}
+      >
+        <div className="multiplayer-player-tray-avatars" aria-hidden="true">
+          {rankedPlayers.slice(0, 8).map((player) => (
+            <WalletAvatar key={player.walletAddress} value={player.walletAddress} />
+          ))}
+        </div>
+        <span>{isExpanded ? 'Hide players' : `${room.playerCount} players`}</span>
+      </button>
+
+      {isExpanded ? (
+        <div className="multiplayer-player-tray-board">
+          {rankedPlayers.map((player, index) => (
+            <div className="multiplayer-player-score-row" key={player.walletAddress}>
+              <strong>#{index + 1}</strong>
+              <WalletAvatar value={player.walletAddress} />
+              <span>{formatPlayerName(player)}</span>
+              <em>{player.score.toLocaleString()} pts</em>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 function MultiplayerLobby({
   room,
   error,
@@ -613,10 +684,10 @@ function MultiplayerLobby({
           {room.players.map((player) => (
             <div className="multiplayer-player-row" key={player.walletAddress}>
               <WalletAvatar value={player.walletAddress} />
-              <span>{formatWallet(player.walletAddress)}</span>
+              <span>{formatPlayerName(player)}</span>
               <strong className={notReadySet.has(player.walletAddress) ? 'is-not-ready' : ''}>
                 {notReadySet.has(player.walletAddress)
-                  ? `${formatWallet(player.walletAddress)} not ready`
+                  ? `${formatPlayerName(player)} not ready`
                   : player.ready
                     ? 'Ready'
                     : 'Waiting'}
@@ -668,7 +739,7 @@ function MultiplayerLeaderboard({ room, onLeave, voice }) {
             <div className="multiplayer-leaderboard-row" key={player.walletAddress}>
               <strong>#{player.rank}</strong>
               <WalletAvatar value={player.walletAddress} />
-              <span>{formatWallet(player.walletAddress)}</span>
+              <span>{formatPlayerName(player)}</span>
               <span>{player.score.toLocaleString()} pts</span>
               <span>{formatDistance(player.totalDistanceKm)}</span>
             </div>
@@ -692,9 +763,11 @@ function MultiplayerGame({
   error,
   isBusy,
   now,
+  playersExpanded,
   onSelectGuess,
   onSubmitGuess,
   onToggleMap,
+  onTogglePlayers,
   onLeave,
   voice,
 }) {
@@ -786,7 +859,12 @@ function MultiplayerGame({
         <span>Round {room.roundIndex}/5</span>
         <strong>{formatClock(secondsLeft)}</strong>
       </div>
-      <MultiplayerVoicePanel voice={voice} />
+      <MultiplayerGameVoiceControls voice={voice} />
+      <MultiplayerPlayersTray
+        room={room}
+        isExpanded={playersExpanded}
+        onToggle={onTogglePlayers}
+      />
       <div className={`guess-overlay ${mapExpanded ? 'expanded' : ''}`}>
         <div className="guess-overlay-toolbar">
           <HoverButton className="map-toggle" type="button" onClick={onToggleMap}>
@@ -831,6 +909,7 @@ function App() {
   const [isMultiplayerBusy, setIsMultiplayerBusy] = useState(false)
   const [multiplayerGuess, setMultiplayerGuess] = useState(null)
   const [multiplayerMapExpanded, setMultiplayerMapExpanded] = useState(false)
+  const [multiplayerPlayersExpanded, setMultiplayerPlayersExpanded] = useState(false)
   const [usernameDraft, setUsernameDraft] = useState('')
   const [usernameError, setUsernameError] = useState('')
   const [isUsernameSaving, setIsUsernameSaving] = useState(false)
@@ -993,6 +1072,7 @@ function App() {
     setMultiplayerError('')
     setMultiplayerNotReadyWallets([])
     setMultiplayerMapExpanded(false)
+    setMultiplayerPlayersExpanded(false)
     setShowLanding(true)
     setMapExpanded(false)
     navigateTo('/')
@@ -1033,6 +1113,7 @@ function App() {
       setMultiplayerRoom(room)
       setMultiplayerGuess(null)
       setMultiplayerNotReadyWallets([])
+      setMultiplayerPlayersExpanded(false)
       setShowLanding(false)
       navigateTo('/')
     } catch (caughtError) {
@@ -1057,6 +1138,7 @@ function App() {
       setMultiplayerRoom(room)
       setMultiplayerGuess(null)
       setMultiplayerNotReadyWallets([])
+      setMultiplayerPlayersExpanded(false)
       setIsJoinModalOpen(false)
       setShowLanding(false)
       navigateTo('/')
@@ -1133,6 +1215,7 @@ function App() {
     setMultiplayerError('')
     setMultiplayerNotReadyWallets([])
     setMultiplayerMapExpanded(false)
+    setMultiplayerPlayersExpanded(false)
     setShowLanding(true)
     navigateTo('/')
   }
@@ -1485,9 +1568,11 @@ function App() {
               error={multiplayerError}
               isBusy={isMultiplayerBusy}
               now={now}
+              playersExpanded={multiplayerPlayersExpanded}
               onSelectGuess={setMultiplayerGuess}
               onSubmitGuess={handleMultiplayerGuessSubmit}
               onToggleMap={() => setMultiplayerMapExpanded((current) => !current)}
+              onTogglePlayers={() => setMultiplayerPlayersExpanded((current) => !current)}
               onLeave={handleLeaveMultiplayer}
               voice={multiplayerVoice}
             />

@@ -2205,6 +2205,124 @@
   box-shadow: 0 18px 42px rgba(30, 14, 88, 0.28);
 }
 
+.multiplayer-game-voice {
+  position: absolute;
+  z-index: 6;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.multiplayer-game-voice-button {
+  min-width: 118px;
+  min-height: 52px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: rgba(38, 24, 84, 0.94);
+  color: #ffffff;
+  box-shadow: 0 14px 34px rgba(30, 14, 88, 0.28);
+}
+
+.multiplayer-player-tray {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 18px;
+  width: min(520px, calc(100vw - 420px));
+  min-width: 320px;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.multiplayer-player-tray-toggle,
+.multiplayer-player-tray-board {
+  pointer-events: auto;
+}
+
+.multiplayer-player-tray-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  max-width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  padding: 8px 18px 8px 10px;
+  background: rgba(38, 24, 84, 0.88);
+  color: #ffffff;
+  font: inherit;
+  font-weight: var(--season-weight-medium);
+  cursor: pointer;
+  box-shadow: 0 18px 42px rgba(30, 14, 88, 0.24);
+  backdrop-filter: blur(16px);
+}
+
+.multiplayer-player-tray-avatars {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.multiplayer-player-tray-avatars .wallet-avatar {
+  width: 36px;
+  height: 36px;
+  margin-left: -10px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+}
+
+.multiplayer-player-tray-avatars .wallet-avatar:first-child {
+  margin-left: 0;
+}
+
+.multiplayer-player-tray-board {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  width: min(720px, 100vw - 520px);
+  min-width: 420px;
+  max-height: 30vh;
+  padding: 18px;
+  border-radius: 24px;
+  overflow: auto;
+  background:
+    linear-gradient(180deg, rgba(58, 34, 132, 0.88), rgba(39, 22, 97, 0.92)),
+    var(--tray-map) center / cover no-repeat;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  box-shadow: 0 24px 70px rgba(30, 14, 88, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.multiplayer-player-score-row {
+  display: grid;
+  grid-template-columns: 44px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.multiplayer-player-score-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiplayer-player-score-row > strong,
+.multiplayer-player-score-row > em {
+  color: #ffdf70;
+  font-style: normal;
+  white-space: nowrap;
+}
+
 .multiplayer-voice-panel > div:first-child {
   display: grid;
   gap: 2px;
@@ -2462,6 +2580,31 @@ button:disabled {
   .landing-action-note {
     white-space: normal;
   }
+
+  .multiplayer-game-voice {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .multiplayer-player-tray {
+    bottom: min(48vh, 392px);
+    width: min(520px, calc(100vw - 24px));
+    min-width: 0;
+  }
+
+  .multiplayer-player-tray-board {
+    width: min(520px, calc(100vw - 24px));
+    min-width: 0;
+  }
+
+  .multiplayer-player-score-row {
+    grid-template-columns: 36px auto minmax(0, 1fr);
+  }
+
+  .multiplayer-player-score-row > em {
+    grid-column: 3;
+  }
+
   .result-grid,
   .result-pins {
     grid-template-columns: 1fr;

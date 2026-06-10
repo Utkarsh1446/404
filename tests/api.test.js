@@ -541,6 +541,19 @@ test('multiplayer room starts after everyone is ready and accepts guesses', asyn
   const app = createTestApp()
   const first = await authenticate(app)
   const second = await authenticate(app)
+
+  await request(app)
+    .patch('/api/me/profile')
+    .set('Authorization', `Bearer ${first.token}`)
+    .send({ username: 'Host_Player' })
+    .expect(200)
+
+  await request(app)
+    .patch('/api/me/profile')
+    .set('Authorization', `Bearer ${second.token}`)
+    .send({ username: 'Guest_Player' })
+    .expect(200)
+
   const originalNow = Date.now
   let now = originalNow()
   Date.now = () => now
@@ -561,6 +574,10 @@ test('multiplayer room starts after everyone is ready and accepts guesses', asyn
       .expect(200)
 
     assert.equal(joined.body.playerCount, 2)
+    assert.deepEqual(
+      joined.body.players.map((player) => player.username),
+      ['Host_Player', 'Guest_Player'],
+    )
 
     const blockedStart = await request(app)
       .post(`/api/multiplayer/rooms/${created.body.code}/start`)
