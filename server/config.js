@@ -9,6 +9,7 @@ try {
 
 const projectRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 const defaultStorageFile = fileURLToPath(new URL('./data/runtime-store.json', import.meta.url))
+const storageFileEnv = process.env.STORAGE_FILE
 
 function resolveStorageFile(storageFile) {
   if (!storageFile) {
@@ -23,7 +24,8 @@ export const serverConfig = {
   browserOrigin: process.env.BROWSER_ORIGIN ?? 'http://127.0.0.1:5173',
   rewardThresholdKm: Number(process.env.REWARD_THRESHOLD_KM ?? 50),
   challengeTtlMs: Number(process.env.CHALLENGE_TTL_MS ?? 10 * 60 * 1000),
-  storageFile: resolveStorageFile(process.env.STORAGE_FILE),
+  storageFile: resolveStorageFile(storageFileEnv),
+  storageFileConfigured: Boolean(storageFileEnv),
   livekitUrl: process.env.LIVEKIT_URL ?? '',
   livekitApiKey: process.env.LIVEKIT_API_KEY ?? '',
   livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? '',

@@ -33,7 +33,11 @@ function authMiddleware(store) {
 }
 
 export function createApp(options = {}) {
-  const config = { ...serverConfig, ...options }
+  const config = {
+    ...serverConfig,
+    ...options,
+    storageFileConfigured: Boolean(options.storageFile) || serverConfig.storageFileConfigured,
+  }
   const store = createFileStore(config.storageFile)
   const gameService = createGameService({
     store,
@@ -60,7 +64,20 @@ export function createApp(options = {}) {
   })
 
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true })
+    const usingRenderDisk = config.storageFile.startsWith('/var/data/')
+
+    res.json({
+      ok: true,
+      storage: {
+        file: config.storageFile,
+        configured: Boolean(config.storageFileConfigured),
+        usingRenderDisk,
+        warning:
+          process.env.RENDER && !usingRenderDisk
+            ? 'Render deploys need STORAGE_FILE on a persistent disk, for example /var/data/runtime-store.json.'
+            : null,
+      },
+    })
   })
 
   app.get('/api/drops/:cycleNumber', (req, res, next) => {

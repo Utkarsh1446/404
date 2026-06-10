@@ -129,6 +129,19 @@ test('invalid signatures are rejected', async () => {
     .expect(401)
 })
 
+test('health exposes storage persistence diagnostics', async () => {
+  const app = createTestApp()
+
+  const health = await request(app)
+    .get('/api/health')
+    .expect(200)
+
+  assert.equal(health.body.ok, true)
+  assert.equal(typeof health.body.storage.file, 'string')
+  assert.equal(health.body.storage.configured, true)
+  assert.equal(typeof health.body.storage.usingRenderDisk, 'boolean')
+})
+
 test('quota is wallet-specific and starts with three free rounds', async () => {
   const app = createTestApp()
   const first = await authenticate(app)
