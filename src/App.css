@@ -358,7 +358,7 @@
   position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  height: clamp(152px, 25vh, 270px);
+  height: clamp(190px, 31.25vh, 338px);
   aspect-ratio: auto;
   min-height: 0;
   padding: clamp(5px, 0.6vw, 8px);
@@ -2680,7 +2680,7 @@ button:disabled {
 
   .landing-drop-card {
     border-radius: 18px;
-    height: clamp(112px, 17vh, 176px);
+    height: clamp(140px, 21.25vh, 220px);
   }
 
   .landing-world {
