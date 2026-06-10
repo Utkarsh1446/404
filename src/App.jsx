@@ -270,7 +270,10 @@ function WalletPage({ profile, session, onConnectWallet }) {
           <div className="wallet-bento-grid">
             <section className="wallet-bento wallet-bento-balance">
               <span>NOTF balance</span>
-              <strong>{tokenBalance.toLocaleString()} NOTF</strong>
+              <strong className="wallet-notf-balance">
+                <span>{tokenBalance.toLocaleString()} NOTF</span>
+                <TokenPinIcon className="wallet-notf-icon" />
+              </strong>
               <p>Available for paid plays and future game actions.</p>
             </section>
 
@@ -1824,6 +1827,11 @@ function App() {
                       >
                         {landingPlayButtonLabel}
                       </HoverButton>
+                      {shouldShowTokenPlayCost ? (
+                        <p className="landing-balance-note">
+                          Balance: {(profile?.tokenBalance ?? 0).toLocaleString()} NOTF
+                        </p>
+                      ) : null}
                     </div>
                     {error ? <p className="landing-error">{error}</p> : null}
                   </div>

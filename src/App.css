@@ -660,6 +660,26 @@
   line-height: 0.95;
 }
 
+.wallet-notf-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wallet-notf-balance span {
+  color: inherit;
+  font: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.wallet-notf-icon {
+  width: clamp(28px, 3vw, 46px);
+  height: clamp(34px, 3.6vw, 56px);
+  flex: 0 0 auto;
+  color: #f0181f;
+}
+
 .wallet-bento p {
   margin: 0;
   max-width: 28ch;
@@ -1136,6 +1156,16 @@
   height: 26px;
   flex: 0 0 auto;
   color: #f0181f;
+}
+
+.landing-balance-note {
+  width: 100%;
+  margin: -4px 0 0;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: clamp(0.58rem, 0.85vw, 0.78rem);
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .landing-action-note {
