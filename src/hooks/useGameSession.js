@@ -32,6 +32,16 @@ function hasRoundPanorama(round) {
   return Boolean(round?.panorama?.position)
 }
 
+function getRoundElapsedSeconds(round) {
+  const timeLimitSeconds = round?.meta?.timeLimitSeconds ?? 90
+  const activeEndsAt = round?.meta?.activeEndsAt
+
+  if (!activeEndsAt) return timeLimitSeconds
+
+  const remainingSeconds = Math.max(0, Math.ceil((activeEndsAt - Date.now()) / 1000))
+  return Math.max(0, timeLimitSeconds - remainingSeconds)
+}
+
 export function useGameSession() {
   const [session, setSession] = useState(loadStoredSession)
   const [phase, setPhase] = useState('disconnected')
@@ -145,7 +155,11 @@ export function useGameSession() {
 
     try {
       const payload = await apiClient.getResult(authToken, roundId)
-      const nextResults = [...locationResults, payload.result]
+      const revealedResult = {
+        ...payload.result,
+        elapsedSeconds: getRoundElapsedSeconds(activeRound),
+      }
+      const nextResults = [...locationResults, revealedResult]
       const totalRewardSp = nextResults.reduce((sum, entry) => sum + entry.rewardSp, 0)
       const totalScore = nextResults.reduce((sum, entry) => sum + entry.score, 0)
       const rewardEligibleCount = nextResults.filter((entry) => entry.rewardEligible).length
@@ -157,7 +171,7 @@ export function useGameSession() {
       setLocationResults(nextResults)
       setPendingRevealRoundId(null)
       setRevealResult({
-        ...payload.result,
+        ...revealedResult,
         stopIndex: currentLocationIndex,
         stopCount: activeRoundLocationCount,
       })
@@ -166,7 +180,7 @@ export function useGameSession() {
         totalRewardSp,
         totalScore,
         rewardEligibleCount,
-        thresholdKm: payload.result.thresholdKm,
+        thresholdKm: revealedResult.thresholdKm,
         averageDistanceKm: Number(averageDistanceKm.toFixed(2)),
       })
       setPhase('reveal')
@@ -175,7 +189,7 @@ export function useGameSession() {
           ? payload.result.winner
             ? `Reveal live. Winner: ${payload.result.winner.walletAddress.slice(0, 4)}...${payload.result.winner.walletAddress.slice(-4)}.`
             : 'Reveal live. No correct winner for this drop.'
-          : `Reveal live. Distance: ${payload.result.distanceKm.toFixed(1)} km.`,
+          : `Reveal live. Distance: ${revealedResult.distanceKm.toFixed(1)} km.`,
       )
     } catch (caughtError) {
       if (caughtError.status === 425 && caughtError.payload?.secondsUntilReveal) {
@@ -393,7 +407,11 @@ export function useGameSession() {
         return
       }
 
-      const nextResults = [...locationResults, payload.result]
+      const revealedResult = {
+        ...payload.result,
+        elapsedSeconds: getRoundElapsedSeconds(activeRound),
+      }
+      const nextResults = [...locationResults, revealedResult]
       setQuota(payload.quota)
       if (payload.profile) setProfile(payload.profile)
       setLocationResults(nextResults)
@@ -402,7 +420,7 @@ export function useGameSession() {
       if (currentLocationIndex < activeRoundLocationCount) {
         setPendingNextRound({ needsFetch: true })
         setRevealResult({
-          ...payload.result,
+          ...revealedResult,
           stopIndex: currentLocationIndex,
           stopCount: activeRoundLocationCount,
         })
@@ -418,7 +436,7 @@ export function useGameSession() {
         nextResults.reduce((sum, entry) => sum + entry.distanceKm, 0) / nextResults.length
 
       setRevealResult({
-        ...payload.result,
+        ...revealedResult,
         stopIndex: currentLocationIndex,
         stopCount: activeRoundLocationCount,
       })
@@ -427,7 +445,7 @@ export function useGameSession() {
         totalRewardSp,
         totalScore,
         rewardEligibleCount,
-        thresholdKm: payload.result.thresholdKm,
+        thresholdKm: revealedResult.thresholdKm,
         averageDistanceKm: Number(averageDistanceKm.toFixed(2)),
       })
       setPhase('reveal')

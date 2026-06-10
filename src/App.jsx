@@ -588,7 +588,7 @@ function App() {
     },
   ]
 
-  const elapsedSeconds = Math.max(
+  const currentRoundElapsedSeconds = Math.max(
     0,
     (activeRound?.meta?.timeLimitSeconds ?? 90) - secondsLeft,
   )
@@ -746,6 +746,27 @@ function App() {
   const completedLocations = locationResults.length
   const isFinalReveal = phase === 'reveal' && currentLocationIndex === roundLocationCount
   const isDropReveal = activeRound?.meta?.gameMode === 'drop'
+  const completedElapsedSeconds = locationResults.reduce(
+    (sum, entry) => sum + (entry.elapsedSeconds ?? 0),
+    0,
+  )
+  const totalElapsedSeconds =
+    phase === 'playing' || phase === 'submitted'
+      ? completedElapsedSeconds + currentRoundElapsedSeconds
+      : completedElapsedSeconds
+  const getScoreSlotTime = (slot) => {
+    const resultForSlot = locationResults[slot - 1]
+
+    if (resultForSlot?.elapsedSeconds !== undefined) {
+      return formatClock(resultForSlot.elapsedSeconds)
+    }
+
+    if (currentLocationIndex === slot && (phase === 'playing' || phase === 'submitted')) {
+      return formatClock(secondsLeft)
+    }
+
+    return '-'
+  }
   const scoreSlots = Array.from({ length: roundLocationCount }, (_entry, index) => index + 1)
   const scoreboardStyle = {
     gridTemplateColumns: `repeat(${scoreSlots.length + 1}, minmax(126px, 1fr))`,
@@ -784,15 +805,11 @@ function App() {
             phase === 'quota_blocked'
               ? 'unlock $1 round'
               : session
-                ? (
-                    <span className="connected-wallet-cta">
-                      <WalletAvatar value={session.walletAddress} />
-                      <span>Wallet</span>
-                    </span>
-                  )
+                ? <WalletAvatar value={session.walletAddress} />
                 : 'connect wallet'
           }
-          ctaClassName={session && phase !== 'quota_blocked' ? 'is-connected-wallet' : ''}
+          ctaClassName={session && phase !== 'quota_blocked' ? 'is-connected-wallet is-avatar' : ''}
+          onLogoClick={handleHomeClick}
           onCtaClick={
             phase === 'quota_blocked'
               ? handleLandingPrimaryAction
@@ -1063,13 +1080,13 @@ function App() {
                 <div className={`score-cell ${currentLocationIndex === slot ? 'active' : ''}`} key={slot}>
                   <span>R{slot}</span>
                   <strong>{locationResults[slot - 1] ? locationResults[slot - 1].score : '-'}</strong>
-                  <small>{currentLocationIndex === slot ? formatClock(secondsLeft) : '-'}</small>
+                  <small>{getScoreSlotTime(slot)}</small>
                 </div>
               ))}
               <div className="score-cell total-cell">
                 <span>Total</span>
                 <strong>{completedLocations}/{roundLocationCount}</strong>
-                <small>{formatClock(elapsedSeconds)}</small>
+                <small>{formatClock(totalElapsedSeconds)}</small>
               </div>
             </div>
 
@@ -1127,15 +1144,13 @@ function App() {
                 <div className={`score-cell ${currentLocationIndex === slot ? 'active' : ''}`} key={slot}>
                   <span>R{slot}</span>
                   <strong>{locationResults[slot - 1] ? locationResults[slot - 1].score : '-'}</strong>
-                  <small>
-                    {currentLocationIndex === slot && phase !== 'result' ? formatClock(secondsLeft) : '-'}
-                  </small>
+                  <small>{getScoreSlotTime(slot)}</small>
                 </div>
               ))}
               <div className="score-cell total-cell">
                 <span>Total</span>
                 <strong>{completedLocations}/{roundLocationCount}</strong>
-                <small>{formatClock(elapsedSeconds)}</small>
+                <small>{formatClock(totalElapsedSeconds)}</small>
               </div>
             </div>
 

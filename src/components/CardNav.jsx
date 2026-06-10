@@ -17,6 +17,7 @@ const CardNav = ({
   ctaLabel = 'Get Started',
   onCtaClick,
   ctaClassName = '',
+  onLogoClick,
 }) => {
   const [isHamburgerOpen, setIsHamburgerOpen] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -160,9 +161,14 @@ const CardNav = ({
             <span className="hamburger-line" />
           </HoverButton>
 
-          <div className="logo-container">
+          <button
+            className="logo-container"
+            type="button"
+            aria-label="Go to homepage"
+            onClick={onLogoClick}
+          >
             <img src={logo} alt={logoAlt} className="logo" />
-          </div>
+          </button>
 
           <HoverButton
             type="button"
