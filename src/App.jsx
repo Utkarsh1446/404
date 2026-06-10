@@ -1728,18 +1728,20 @@ function App() {
                         <span role="columnheader">Correct Guess</span>
                         <span role="columnheader">Est. Rewards</span>
                       </div>
-                      {LANDING_LEADERBOARD.map((player) => (
-                        <div className="landing-leaderboard-row" role="row" key={player.rank}>
-                          <span className="landing-leaderboard-rank" role="cell">
-                            {player.rank}
-                          </span>
-                          <span className="landing-leaderboard-avatar" role="cell">
-                            <WalletAvatar value={`landing-${player.rank}`} />
-                          </span>
-                          <span role="cell">{player.correctGuesses}</span>
-                          <span role="cell">${ESTIMATED_REWARD_PER_PLAYER}</span>
-                        </div>
-                      ))}
+                      <div className="landing-leaderboard-body" role="rowgroup">
+                        {LANDING_LEADERBOARD.map((player) => (
+                          <div className="landing-leaderboard-row" role="row" key={player.rank}>
+                            <span className="landing-leaderboard-rank" role="cell">
+                              {player.rank}
+                            </span>
+                            <span className="landing-leaderboard-avatar" role="cell">
+                              <WalletAvatar value={`landing-${player.rank}`} />
+                            </span>
+                            <span role="cell">{player.correctGuesses}</span>
+                            <span role="cell">${ESTIMATED_REWARD_PER_PLAYER}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </section>

@@ -1,33 +1,18 @@
-import { useId } from 'react'
+const TAPBACK_AVATAR_BASE_URL = 'https://tapback.co/api/avatar'
 
-const avatarModules = import.meta.glob('../assets/avatars/faces/avatar-*.png', {
-  eager: true,
-  import: 'default',
-  query: '?url',
-})
+function getAvatarName(value) {
+  const normalized = String(value || 'superpumped-player')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 
-const avatarImages = Object.entries(avatarModules)
-  .sort(([left], [right]) => left.localeCompare(right))
-  .map(([, source]) => source)
-
-function hashValue(value = '') {
-  return [...value].reduce((hash, char) => {
-    return (hash * 31 + char.charCodeAt(0)) >>> 0
-  }, 2166136261)
-}
-
-function chooseAvatar(seed) {
-  if (!avatarImages.length) {
-    return ''
-  }
-
-  return avatarImages[hashValue(seed) % avatarImages.length]
+  return normalized || 'superpumped-player'
 }
 
 export function WalletAvatar({ value }) {
-  const fallbackSeed = useId()
-
-  const avatarSource = chooseAvatar(String(value || fallbackSeed))
+  const avatarName = getAvatarName(value)
+  const avatarSource = `${TAPBACK_AVATAR_BASE_URL}/${encodeURIComponent(avatarName)}.webp`
 
   return (
     <span className="wallet-avatar" aria-label="Wallet avatar">
