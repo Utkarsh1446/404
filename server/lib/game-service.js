@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import { AccessToken } from 'livekit-server-sdk'
 import { curatedLocations, regularGameLocations } from '../data/locations.js'
 import {
   DROP_ACTIVE_MS,
@@ -464,7 +465,7 @@ function pruneInvalidOpenRounds(state, walletAddress) {
   })
 }
 
-export function createGameService({ store, rewardThresholdKm }) {
+export function createGameService({ store, rewardThresholdKm, livekit }) {
   function getOrCreatePlayer(state, walletAddress) {
     let player = state.players.find((entry) => entry.walletAddress === walletAddress)
 
@@ -1270,9 +1271,61 @@ export function createGameService({ store, rewardThresholdKm }) {
     })
   }
 
+  async function createMultiplayerVoiceToken(walletAddress, rawCode) {
+    const roomName = store.update((state) => {
+      ensureStateCollections(state)
+
+      const code = String(rawCode ?? '').trim().toUpperCase()
+      const room = state.multiplayerRooms.find((entry) => entry.code === code)
+
+      if (!room) {
+        const error = new Error('Room code not found.')
+        error.statusCode = 404
+        throw error
+      }
+
+      const player = room.players.find((entry) => entry.walletAddress === walletAddress)
+      if (!player) {
+        const error = new Error('You are not in this room.')
+        error.statusCode = 403
+        throw error
+      }
+
+      return `notfound-${room.code}`
+    })
+
+    if (!livekit?.url || !livekit?.apiKey || !livekit?.apiSecret) {
+      const error = new Error('Voice chat is not configured yet.')
+      error.statusCode = 503
+      error.payload = { code: 'LIVEKIT_NOT_CONFIGURED' }
+      throw error
+    }
+
+    const accessToken = new AccessToken(livekit.apiKey, livekit.apiSecret, {
+      identity: walletAddress,
+      name: walletAddress,
+      ttl: '2h',
+    })
+
+    accessToken.addGrant({
+      room: roomName,
+      roomJoin: true,
+      canPublish: true,
+      canPublishData: true,
+      canSubscribe: true,
+    })
+
+    return {
+      url: livekit.url,
+      token: await accessToken.toJwt(),
+      roomName,
+    }
+  }
+
   return {
     continueRound,
     createMultiplayerRoom,
+    createMultiplayerVoiceToken,
     getDropDetails,
     getMultiplayerRoom,
     getProfile,

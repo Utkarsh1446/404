@@ -24,4 +24,7 @@ export const serverConfig = {
   rewardThresholdKm: Number(process.env.REWARD_THRESHOLD_KM ?? 50),
   challengeTtlMs: Number(process.env.CHALLENGE_TTL_MS ?? 10 * 60 * 1000),
   storageFile: resolveStorageFile(process.env.STORAGE_FILE),
+  livekitUrl: process.env.LIVEKIT_URL ?? '',
+  livekitApiKey: process.env.LIVEKIT_API_KEY ?? '',
+  livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? '',
 }

@@ -559,6 +559,29 @@ test('multiplayer room starts after everyone is ready and accepts guesses', asyn
   }
 })
 
+test('multiplayer voice token requires LiveKit configuration and room membership', async () => {
+  const app = createTestApp()
+  const first = await authenticate(app)
+  const outsider = await authenticate(app)
+
+  const created = await request(app)
+    .post('/api/multiplayer/rooms')
+    .set('Authorization', `Bearer ${first.token}`)
+    .expect(200)
+
+  const notConfigured = await request(app)
+    .post(`/api/multiplayer/rooms/${created.body.code}/voice-token`)
+    .set('Authorization', `Bearer ${first.token}`)
+    .expect(503)
+
+  assert.equal(notConfigured.body.payload.code, 'LIVEKIT_NOT_CONFIGURED')
+
+  await request(app)
+    .post(`/api/multiplayer/rooms/${created.body.code}/voice-token`)
+    .set('Authorization', `Bearer ${outsider.token}`)
+    .expect(403)
+})
+
 test('fourth round requires payment and mocked checkout unlocks one paid attempt', async () => {
   const app = createTestApp()
   const auth = await authenticate(app)

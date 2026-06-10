@@ -38,6 +38,11 @@ export function createApp(options = {}) {
   const gameService = createGameService({
     store,
     rewardThresholdKm: config.rewardThresholdKm,
+    livekit: {
+      url: config.livekitUrl,
+      apiKey: config.livekitApiKey,
+      apiSecret: config.livekitApiSecret,
+    },
   })
 
   const app = express()
@@ -225,6 +230,19 @@ export function createApp(options = {}) {
             lat: guessLat,
             lng: guessLng,
           },
+        ),
+      )
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  app.post('/api/multiplayer/rooms/:code/voice-token', requireAuth, async (req, res, next) => {
+    try {
+      res.json(
+        await gameService.createMultiplayerVoiceToken(
+          req.auth.walletAddress,
+          req.params.code,
         ),
       )
     } catch (error) {

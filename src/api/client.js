@@ -78,6 +78,12 @@ export const apiClient = {
       }),
     })
   },
+  getMultiplayerVoiceToken(token, code) {
+    return apiFetch(`/api/multiplayer/rooms/${code}/voice-token`, {
+      method: 'POST',
+      token,
+    })
+  },
   continueRound(token, roundId) {
     return apiFetch(`/api/rounds/${roundId}/continue`, {
       method: 'POST',
