@@ -238,12 +238,12 @@ export function StreetViewStage({ round }) {
 
   return (
     <div className={`street-stage ${loadState === 'fallback' ? 'is-fallback' : ''}`}>
-      {loadState === 'fallback' ? (
+      {loadState === 'loading' || loadState === 'fallback' ? (
         <img
           key={`${round.roundId}-${imageUrl}`}
           className="street-stage-image"
           src={imageUrl}
-          alt="Street View fallback"
+          alt="Street View loading preview"
           draggable="false"
         />
       ) : null}
