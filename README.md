@@ -1,6 +1,6 @@
 # 404 notfound
 
-GeoGuessr-style MVP with a React/Vite frontend, an Express API, Solana wallet sign-in, regular two-location rounds, separate scheduled Drops, server-authoritative quota enforcement, and mocked payment/reward rails.
+Guess locations and earn money with a React/Vite frontend, an Express API, Solana wallet sign-in, regular two-location rounds, separate scheduled Drops, server-authoritative quota enforcement, and mocked payment/reward rails.
 
 ## Setup
 
