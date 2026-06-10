@@ -92,7 +92,7 @@ const CardNav = ({
         }}
       >
         <div className="card-nav-top">
-          <HoverButton
+          <button
             type="button"
             className={`hamburger-menu ${isHamburgerOpen ? 'open' : ''}`}
             onClick={toggleMenu}
@@ -101,7 +101,7 @@ const CardNav = ({
           >
             <span className="hamburger-line" />
             <span className="hamburger-line" />
-          </HoverButton>
+          </button>
 
           <button
             className="logo-container"
@@ -127,7 +127,11 @@ const CardNav = ({
             <div
               key={`${item.label}-${idx}`}
               className="nav-card"
-              style={{ backgroundColor: item.bgColor, color: item.textColor }}
+              style={{
+                '--nav-card-index': idx,
+                backgroundColor: item.bgColor,
+                color: item.textColor,
+              }}
               onClick={item.onClick}
               role={item.onClick ? 'button' : undefined}
               tabIndex={item.onClick ? 0 : undefined}

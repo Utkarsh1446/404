@@ -1,6 +1,7 @@
 .app-shell {
   width: 100%;
   height: 100vh;
+  height: 100dvh;
   min-width: 0;
   overflow: hidden;
   padding: 0;
@@ -328,7 +329,7 @@
   z-index: 4;
   display: grid;
   gap: 12px;
-  padding: 114px clamp(28px, 6vw, 86px) 0;
+  padding: clamp(92px, 12vh, 122px) clamp(24px, 5vw, 78px) 0;
   flex: 0 0 auto;
 }
 
@@ -347,7 +348,8 @@
 .landing-drops-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 10px;
+  gap: clamp(6px, 0.7vw, 10px);
+  min-width: 0;
 }
 
 .landing-drop-card {
@@ -356,9 +358,10 @@
   position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  aspect-ratio: 1;
+  height: clamp(96px, 18vh, 190px);
+  aspect-ratio: auto;
   min-height: 0;
-  padding: 8px;
+  padding: clamp(5px, 0.6vw, 8px);
   overflow: visible;
   background: transparent;
   color: inherit;
@@ -484,7 +487,7 @@
   position: relative;
   z-index: 1;
   min-height: 0;
-  margin: 10px 10px 0;
+  margin: clamp(5px, 0.65vw, 10px) clamp(5px, 0.65vw, 10px) 0;
   overflow: hidden;
   background: #d9cbb0;
 }
@@ -533,8 +536,8 @@
   align-items: end;
   position: relative;
   z-index: 1;
-  margin: 0 10px 10px;
-  padding: 10px 10px 12px;
+  margin: 0 clamp(5px, 0.65vw, 10px) clamp(5px, 0.65vw, 10px);
+  padding: clamp(6px, 0.7vw, 10px);
   background: #ffffff;
 }
 
@@ -767,26 +770,27 @@
   flex: 1 1 auto;
   min-height: 0;
   padding:
-    clamp(18px, 3vh, 30px)
-    clamp(34px, 6vw, 86px)
-    clamp(22px, 4vh, 38px)
-    clamp(28px, 5vw, 72px);
-  padding-right: clamp(390px, 34vw, 540px);
+    clamp(12px, 2.2vh, 24px)
+    clamp(28px, 5vw, 78px)
+    clamp(14px, 2.6vh, 28px)
+    clamp(24px, 4.4vw, 66px);
+  padding-right: clamp(340px, 31vw, 500px);
   overflow: hidden;
 }
 
 .landing-bento-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: clamp(10px, 1.25vw, 18px);
   height: 100%;
   min-height: 0;
-  max-width: min(66vw, 1280px);
+  max-width: min(64vw, 1120px);
 }
 
 .landing-bento {
-  min-height: clamp(250px, 34vh, 420px);
-  border-radius: 34px;
+  min-height: 0;
+  height: 100%;
+  border-radius: clamp(22px, 2.4vw, 34px);
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 18px 48px rgba(44, 19, 118, 0.18);
@@ -797,7 +801,7 @@
 .landing-bento-rewards {
   display: flex;
   align-items: flex-start;
-  padding: clamp(24px, 4vw, 42px);
+  padding: clamp(18px, min(2.6vw, 4vh), 38px);
 }
 
 .landing-bento-rewards {
@@ -828,6 +832,7 @@
   padding-top: 0;
   width: 100%;
   height: 100%;
+  justify-content: space-between;
 }
 
 .landing-rewards {
@@ -840,7 +845,7 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: clamp(8px, 1.4vw, 16px);
+  gap: clamp(5px, min(1vw, 1.4vh), 14px);
 }
 
 .landing-rewards-summary {
@@ -854,7 +859,7 @@
 
 .landing-rewards-counter {
   font-family: var(--font-season-serif);
-  font-size: clamp(3rem, 4.8vw, 5.6rem);
+  font-size: clamp(2.4rem, min(4.4vw, 7.5vh), 5.3rem);
   font-weight: var(--season-weight-strong);
   line-height: 0.88;
   color: #ffffff;
@@ -873,7 +878,8 @@
 
 .landing-leaderboard-body {
   display: grid;
-  grid-auto-rows: minmax(0, 1fr);
+  grid-auto-rows: minmax(15px, 1fr);
+  align-content: stretch;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -888,13 +894,13 @@
 .landing-leaderboard-row {
   display: grid;
   min-width: 0;
-  min-height: clamp(12px, 1.55vw, 25px);
+  min-height: clamp(13px, min(1.45vw, 2.5vh), 25px);
   grid-template-columns: minmax(18px, 0.42fr) minmax(20px, 0.48fr) minmax(42px, 1fr) minmax(50px, 1.1fr);
   align-items: center;
   gap: clamp(3px, 0.55vw, 8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.9);
-  font-size: clamp(0.48rem, 0.72vw, 0.82rem);
+  font-size: clamp(0.48rem, min(0.72vw, 1.35vh), 0.82rem);
   line-height: 1.15;
 }
 
@@ -1021,7 +1027,7 @@
   flex-direction: column;
   gap: 4px;
   font-family: var(--font-season-serif);
-  font-size: clamp(3rem, 4.8vw, 5.6rem);
+  font-size: clamp(2.4rem, min(4.4vw, 7.5vh), 5.3rem);
   font-weight: var(--season-weight-strong);
   line-height: 0.88;
   letter-spacing: 0;
@@ -1039,7 +1045,7 @@
 .landing-bento-title {
   margin: 0;
   font-family: var(--font-season-serif);
-  font-size: clamp(3rem, 4.8vw, 5.6rem);
+  font-size: clamp(2.4rem, min(4.4vw, 7.5vh), 5.3rem);
   font-weight: var(--season-weight-strong);
   line-height: 0.88;
   color: #ffffff;
@@ -1062,14 +1068,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .landing-bento-feature-actions {
   width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(6px, 0.8vw, 12px);
-  flex-wrap: nowrap;
-  margin-top: clamp(10px, 2.2vh, 24px);
+  margin-top: clamp(8px, 1.6vh, 20px);
 }
 
 .landing-play-button {
@@ -1080,8 +1087,8 @@
 }
 
 .landing-bento-feature-actions .landing-play-button {
+  width: 100%;
   min-width: 0;
-  flex: 1 1 0;
   min-height: clamp(40px, 4.4vw, 52px);
   padding-inline: clamp(12px, 1.6vw, 22px);
   font-size: clamp(0.42rem, 0.8vw, 0.88rem);
@@ -1113,14 +1120,14 @@
 }
 
 .earth-showcase {
-  --earth-size: clamp(260px, 28vw, 420px);
+  --earth-size: clamp(240px, min(27vw, 42vh), 400px);
   position: absolute;
   right: clamp(18px, 4vw, 72px);
   top: 50%;
   z-index: 2;
-  width: min(34vw, 430px);
-  height: min(50vh, 470px);
-  min-height: 320px;
+  width: min(33vw, 430px);
+  height: min(46vh, 430px);
+  min-height: 260px;
   transform: translateY(-45%);
 }
 
@@ -2397,8 +2404,26 @@
 }
 
 .multiplayer-results {
-  background: rgba(43, 24, 108, 0.58);
-  backdrop-filter: blur(18px);
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 18% 12%, rgba(154, 112, 255, 0.34), transparent 58%),
+    radial-gradient(100% 86% at 86% 78%, rgba(91, 34, 214, 0.38), transparent 62%),
+    linear-gradient(135deg, rgba(42, 16, 112, 0.62), rgba(69, 30, 166, 0.52));
+  backdrop-filter: blur(24px) saturate(1.2);
+}
+
+.multiplayer-results::before {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.08), transparent 34%, rgba(190, 168, 255, 0.12) 72%, transparent),
+    radial-gradient(90% 80% at 50% 45%, rgba(124, 60, 255, 0.28), transparent 66%);
+  filter: blur(42px);
+  opacity: 0.92;
 }
 
 .multiplayer-results .multiplayer-lobby-heading {
@@ -2512,13 +2537,13 @@ button:disabled {
   }
 
   .landing-world {
-    padding-inline: clamp(24px, 4vw, 54px);
-    padding-right: clamp(320px, 30vw, 420px);
+    padding-inline: clamp(20px, 3.5vw, 48px);
+    padding-right: clamp(280px, 28vw, 390px);
   }
 
   .landing-bento-grid {
     grid-template-columns: minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 1.15fr);
-    max-width: min(66vw, 760px);
+    max-width: min(67vw, 760px);
   }
 
   .landing-bento-copy,
@@ -2548,30 +2573,30 @@ button:disabled {
   }
 
   .earth-showcase {
-    --earth-size: clamp(220px, 22vw, 320px);
-    width: min(30vw, 340px);
+    --earth-size: clamp(200px, min(22vw, 36vh), 310px);
+    width: min(29vw, 330px);
     min-height: 250px;
-    height: min(42vh, 360px);
+    height: min(39vh, 340px);
   }
 }
 
 @media (max-width: 980px) {
   .landing-world {
-    padding-right: 24px;
+    padding-right: clamp(20px, 3.5vw, 48px);
   }
 
   .landing-bento-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.2fr);
     max-width: 100%;
   }
 
   .landing-bento {
-    min-height: 220px;
+    min-height: 0;
   }
 
   .landing-copy h1,
   .landing-bento-title {
-    font-size: clamp(2.2rem, 6vw, 3.8rem);
+    font-size: clamp(1.75rem, min(4.6vw, 5.6vh), 3.5rem);
   }
 
   .landing-play-button {
@@ -2625,25 +2650,26 @@ button:disabled {
 
   .landing-drops-band {
     gap: 10px;
-    padding: 112px 18px 0;
+    padding: clamp(84px, 10vh, 104px) 18px 0;
   }
 
   .landing-drops-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .landing-drop-card {
     border-radius: 18px;
+    height: clamp(78px, 13vh, 128px);
   }
 
   .landing-world {
-    padding: 16px 18px 24px;
+    padding: 12px 18px 18px;
   }
 
   .landing-bento-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.2fr);
+    gap: 10px;
   }
 
   .landing-bento {
@@ -2653,7 +2679,7 @@ button:disabled {
   .landing-bento-copy,
   .landing-bento-empty,
   .landing-bento-rewards {
-    min-height: 180px;
+    min-height: 0;
   }
 
   .landing-copy {
@@ -2663,11 +2689,11 @@ button:disabled {
 
   .landing-copy h1 {
     max-width: 720px;
-    font-size: clamp(2.8rem, 11vw, 4.5rem);
+    font-size: clamp(1.45rem, min(4.8vw, 5vh), 2.7rem);
   }
 
   .landing-bento-title {
-    font-size: clamp(2rem, 9vw, 3.4rem);
+    font-size: clamp(1.45rem, min(4.8vw, 5vh), 2.7rem);
   }
 
   .landing-caption {
