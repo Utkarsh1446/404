@@ -41,6 +41,9 @@ export const apiClient = {
   getProfile(token) {
     return apiFetch('/api/me/profile', { token })
   },
+  getDropDetails(dropCycleNumber) {
+    return apiFetch(`/api/drops/${dropCycleNumber}`)
+  },
   startRound(token) {
     return apiFetch('/api/rounds/start', { method: 'POST', token })
   },

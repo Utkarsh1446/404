@@ -7,6 +7,7 @@ import request from 'supertest'
 import nacl from 'tweetnacl'
 import { Keypair } from '@solana/web3.js'
 import { createApp } from '../server/app.js'
+import { DROP_CYCLE_MS } from '../server/lib/drop-schedule.js'
 import { haversineDistanceKm } from '../server/lib/geo.js'
 
 function createTestApp() {
@@ -211,6 +212,81 @@ test('drop settlement credits only the first correct wallet', async () => {
 
   assert.equal(secondProfile.body.spBalance, 0)
   assert.equal(secondProfile.body.dropsParticipated, 1)
+})
+
+test('ended drop details reveal the place, winner, and amount publicly', async () => {
+  const app = createTestApp()
+  const first = await authenticate(app)
+  const second = await authenticate(app)
+
+  const firstRound = await request(app)
+    .post('/api/drops/start')
+    .set('Authorization', `Bearer ${first.token}`)
+    .expect(200)
+  const secondRound = await request(app)
+    .post('/api/drops/start')
+    .set('Authorization', `Bearer ${second.token}`)
+    .expect(200)
+
+  await request(app)
+    .post(`/api/rounds/${firstRound.body.roundId}/guess`)
+    .set('Authorization', `Bearer ${first.token}`)
+    .send({
+      guessLat: firstRound.body.panorama.position.lat,
+      guessLng: firstRound.body.panorama.position.lng,
+    })
+    .expect(200)
+
+  await request(app)
+    .post(`/api/rounds/${secondRound.body.roundId}/guess`)
+    .set('Authorization', `Bearer ${second.token}`)
+    .send({
+      guessLat: secondRound.body.panorama.position.lat,
+      guessLng: secondRound.body.panorama.position.lng,
+    })
+    .expect(200)
+
+  const originalCycle = firstRound.body.meta.dropCycleNumber
+  const endedCycle = Math.floor(Date.now() / DROP_CYCLE_MS) - 1
+  const storageFile = app.locals.config.storageFile
+  const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
+
+  state.rounds
+    .filter((round) => round.dropCycleNumber === originalCycle)
+    .forEach((round) => {
+      round.dropCycleNumber = endedCycle
+      round.activeEndsAt = Date.now() - 130_000
+      round.revealEndsAt = Date.now() - 1
+    })
+  state.guesses
+    .filter((guess) => guess.dropCycleNumber === originalCycle)
+    .forEach((guess) => {
+      guess.dropCycleNumber = endedCycle
+    })
+  state.dropParticipations
+    .filter((participation) => participation.dropCycleNumber === originalCycle)
+    .forEach((participation) => {
+      participation.dropCycleNumber = endedCycle
+    })
+  fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
+
+  const details = await request(app)
+    .get(`/api/drops/${endedCycle}`)
+    .expect(200)
+
+  assert.equal(details.body.status, 'completed')
+  assert.equal(details.body.winner.walletAddress, first.walletAddress)
+  assert.equal(details.body.participantsCount, 2)
+  assert.ok(details.body.location.region)
+  assert.ok(details.body.winner.rewardSp > 0)
+
+  const firstProfile = await request(app)
+    .get('/api/me/profile')
+    .set('Authorization', `Bearer ${first.token}`)
+    .expect(200)
+
+  assert.equal(firstProfile.body.spBalance, details.body.winner.rewardSp)
+  assert.equal(firstProfile.body.dropsWon, 1)
 })
 
 test('regular rounds continue to a second 90 second location', async () => {

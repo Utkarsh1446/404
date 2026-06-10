@@ -9,6 +9,7 @@ import { RevealMap } from './components/RevealMap'
 import { ResultModal } from './components/ResultModal'
 import { StreetViewStage } from './components/StreetViewStage'
 import { WalletAvatar } from './components/WalletAvatar'
+import { apiClient } from './api/client'
 import { useGameSession } from './hooks/useGameSession'
 import { formatWallet } from './lib/formatters'
 
@@ -296,10 +297,72 @@ function TokenPinIcon({ className = '' }) {
   )
 }
 
+function DropDetailModal({ detailState, error, isLoading, onClose }) {
+  if (!detailState) return null
+
+  const drop = detailState.drop
+  const details = detailState.details
+  const placeName = details?.location?.region ?? drop.location?.city ?? 'Drop location'
+  const rewardSp = details?.winner?.rewardSp ?? details?.rewardSp ?? drop.location?.rewardSp ?? 20
+  const winnerLabel = details?.winner?.walletAddress
+    ? formatWallet(details.winner.walletAddress)
+    : details?.status === 'completed'
+      ? 'No winner'
+      : 'Reveal pending'
+  const participantLabel = details?.participantsCount === 1 ? '1 player' : `${details?.participantsCount ?? 0} players`
+
+  return (
+    <div className="drop-detail-backdrop" role="dialog" aria-modal="true" aria-label="Drop result">
+      <div className="drop-detail-modal">
+        <button className="drop-detail-close" type="button" aria-label="Close drop details" onClick={onClose}>
+          &times;
+        </button>
+
+        <div className="drop-detail-postcard">
+          <img alt={placeName} src={drop.location?.image} />
+          <span>{placeName}</span>
+        </div>
+
+        <div className="drop-detail-copy">
+          <span className="eyebrow">Drop result</span>
+          <h2>{isLoading ? 'Loading drop...' : placeName}</h2>
+          {error ? <p className="drop-detail-error">{error}</p> : null}
+
+          <div className="drop-detail-grid">
+            <div>
+              <span>Place</span>
+              <strong>{placeName}</strong>
+            </div>
+            <div>
+              <span>Winner</span>
+              <strong>{isLoading ? '-' : winnerLabel}</strong>
+            </div>
+            <div>
+              <span>Winning amount</span>
+              <strong>{isLoading ? '-' : `${rewardSp} SP`}</strong>
+            </div>
+            <div>
+              <span>Players</span>
+              <strong>{isLoading ? '-' : participantLabel}</strong>
+            </div>
+          </div>
+
+          <HoverButton className="submit-button" type="button" onClick={onClose}>
+            Back to drops
+          </HoverButton>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [showLanding, setShowLanding] = useState(true)
   const [mapExpanded, setMapExpanded] = useState(false)
   const [now, setNow] = useState(() => Date.now())
+  const [selectedDropDetail, setSelectedDropDetail] = useState(null)
+  const [dropDetailError, setDropDetailError] = useState('')
+  const [isDropDetailLoading, setIsDropDetailLoading] = useState(false)
   const [route, setRoute] = useState(() =>
     typeof window !== 'undefined' && window.location.pathname === '/wallet' ? '/wallet' : '/',
   )
@@ -383,6 +446,29 @@ function App() {
     if (result?.status === 'started') {
       setShowLanding(false)
     }
+  }
+
+  async function handleDropDetailOpen(drop) {
+    if (!Number.isFinite(drop?.cycleNumber) || isBusy) return
+
+    setDropDetailError('')
+    setSelectedDropDetail({ drop, details: null })
+    setIsDropDetailLoading(true)
+
+    try {
+      const details = await apiClient.getDropDetails(drop.cycleNumber)
+      setSelectedDropDetail({ drop, details })
+    } catch (detailError) {
+      setDropDetailError(detailError.message ?? 'Could not load drop details.')
+    } finally {
+      setIsDropDetailLoading(false)
+    }
+  }
+
+  function handleDropDetailClose() {
+    setSelectedDropDetail(null)
+    setDropDetailError('')
+    setIsDropDetailLoading(false)
   }
 
   async function handleRevealAdvance() {
@@ -552,6 +638,7 @@ function App() {
         return {
           key: `${cycleNumber}-past`,
           state: 'past',
+          cycleNumber,
           location,
           startsAt,
           endsAt,
@@ -563,6 +650,7 @@ function App() {
         return {
           key: `${cycleNumber}-live`,
           state: 'live',
+          cycleNumber,
           location,
           startsAt,
           endsAt,
@@ -574,6 +662,7 @@ function App() {
         return {
           key: `${cycleNumber}-reveal`,
           state: 'reveal',
+          cycleNumber,
           location,
           startsAt,
           endsAt,
@@ -585,6 +674,7 @@ function App() {
       return {
         key: `${cycleNumber}-upcoming`,
         state: 'upcoming',
+        cycleNumber,
         location,
         startsAt,
         endsAt,
@@ -720,54 +810,66 @@ function App() {
           <div className="landing-screen">
             <div className="landing-drops-band">
               <div className="landing-drops-grid">
-                {landingDrops.map((drop) => (
-                  <button
-                    aria-label={
-                      drop.state === 'live'
-                        ? `Play active ${drop.location.city} drop`
-                        : undefined
-                    }
-                    className={`landing-drop-card is-${drop.state}`}
-                    disabled={drop.state !== 'live' || isBusy}
-                    key={drop.key}
-                    onClick={drop.state === 'live' ? handleDropEntry : undefined}
-                    type="button"
-                  >
-                    {drop.state === 'empty' ? (
-                      <div className="landing-drop-empty-mark">DROPS</div>
-                    ) : (
-                      <>
-                        <div className="landing-drop-media">
-                          {drop.state === 'past' ? (
-                            <img alt={drop.location.city} src={drop.location.image} />
-                          ) : (
-                            <div className="landing-drop-placeholder" aria-hidden="true">
-                              ?
+                {landingDrops.map((drop) => {
+                  const canPlayDrop = drop.state === 'live'
+                  const canViewDrop = drop.state === 'past' || drop.state === 'reveal'
+                  const clickHandler = canPlayDrop
+                    ? handleDropEntry
+                    : canViewDrop
+                      ? () => handleDropDetailOpen(drop)
+                      : undefined
+
+                  return (
+                    <button
+                      aria-label={
+                        canPlayDrop
+                          ? `Play active ${drop.location.city} drop`
+                          : canViewDrop
+                            ? `View ${drop.location.city} drop details`
+                            : undefined
+                      }
+                      className={`landing-drop-card is-${drop.state}`}
+                      disabled={(!canPlayDrop && !canViewDrop) || isBusy}
+                      key={drop.key}
+                      onClick={clickHandler}
+                      type="button"
+                    >
+                      {drop.state === 'empty' ? (
+                        <div className="landing-drop-empty-mark">DROPS</div>
+                      ) : (
+                        <>
+                          <div className="landing-drop-media">
+                            {drop.state === 'past' ? (
+                              <img alt={drop.location.city} src={drop.location.image} />
+                            ) : (
+                              <div className="landing-drop-placeholder" aria-hidden="true">
+                                ?
+                              </div>
+                            )}
+                          </div>
+                          <div className="landing-drop-body">
+                            <div className="landing-drop-copy">
+                              <span className="landing-drop-state">
+                                {drop.state === 'past'
+                                  ? 'Past'
+                                  : drop.state === 'reveal'
+                                    ? 'Reveal In'
+                                    : drop.state === 'live'
+                                    ? 'Ends in'
+                                    : 'Starts in'}
+                              </span>
+                              <h2>{drop.state === 'past' ? drop.location.city : drop.countdown}</h2>
                             </div>
-                          )}
-                        </div>
-                        <div className="landing-drop-body">
-                          <div className="landing-drop-copy">
-                            <span className="landing-drop-state">
-                              {drop.state === 'past'
-                                ? 'Past'
-                                : drop.state === 'reveal'
-                                  ? 'Reveal In'
-                                  : drop.state === 'live'
-                                  ? 'Ends in'
-                                  : 'Starts in'}
-                            </span>
-                            <h2>{drop.state === 'past' ? drop.location.city : drop.countdown}</h2>
+                            <div className="landing-drop-reward-block">
+                              <span className="landing-drop-state">Win</span>
+                              <h2 className="landing-drop-amount">$20</h2>
+                            </div>
                           </div>
-                          <div className="landing-drop-reward-block">
-                            <span className="landing-drop-state">Win</span>
-                            <h2 className="landing-drop-amount">$20</h2>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </button>
-                ))}
+                        </>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -1073,6 +1175,12 @@ function App() {
         )}
       </section>
 
+      <DropDetailModal
+        detailState={selectedDropDetail}
+        error={dropDetailError}
+        isLoading={isDropDetailLoading}
+        onClose={handleDropDetailClose}
+      />
       <ResultModal result={result} onNextRound={handleNextRound} />
     </main>
   )

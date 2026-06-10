@@ -73,6 +73,7 @@ export function StreetViewStage({ round }) {
           })
 
           const panorama = panoramaRef.current
+          let hasFinalizedReady = false
 
           const finalizeReady = () => {
             if (cancelled || !panorama) return
@@ -81,8 +82,11 @@ export function StreetViewStage({ round }) {
             if (panoValue && positionValue) {
               setLoadState('ready')
               google.maps.event.trigger(panorama, 'resize')
-              panorama.setPov(round.panorama.pov)
-              panorama.setZoom(round.panorama.zoom)
+              if (!hasFinalizedReady) {
+                panorama.setPov(round.panorama.pov)
+                panorama.setZoom(round.panorama.zoom)
+                hasFinalizedReady = true
+              }
               window.clearTimeout(fallbackTimeoutId)
             }
           }

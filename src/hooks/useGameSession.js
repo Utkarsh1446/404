@@ -111,18 +111,31 @@ export function useGameSession() {
       return undefined
     }
 
+    const deadline =
+      phase === 'submitted'
+        ? activeRound?.meta?.revealEndsAt
+        : activeRound?.meta?.activeEndsAt
+
+    if (!deadline) {
+      return undefined
+    }
+
+    const syncSecondsLeft = () => {
+      const nextSecondsLeft = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+      setSecondsLeft(nextSecondsLeft)
+
+      if (nextSecondsLeft <= 0) {
+        window.clearInterval(timerRef.current)
+      }
+    }
+
+    syncSecondsLeft()
     timerRef.current = window.setInterval(() => {
-      setSecondsLeft((current) => {
-        if (current <= 1) {
-          window.clearInterval(timerRef.current)
-          return 0
-        }
-        return current - 1
-      })
+      syncSecondsLeft()
     }, 1000)
 
     return () => window.clearInterval(timerRef.current)
-  }, [phase])
+  }, [activeRound?.meta?.activeEndsAt, activeRound?.meta?.revealEndsAt, phase])
 
   const loadRevealResult = useCallback(async (roundId) => {
     if (!authToken) return

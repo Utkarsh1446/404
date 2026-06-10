@@ -58,6 +58,14 @@ export function createApp(options = {}) {
     res.json({ ok: true })
   })
 
+  app.get('/api/drops/:cycleNumber', (req, res, next) => {
+    try {
+      res.json(gameService.getDropDetails(req.params.cycleNumber))
+    } catch (error) {
+      next(error)
+    }
+  })
+
   app.post('/api/auth/wallet/challenge', (req, res, next) => {
     try {
       const { walletAddress } = req.body ?? {}

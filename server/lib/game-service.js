@@ -1,6 +1,12 @@
 import crypto from 'node:crypto'
 import { curatedLocations, regularGameLocations } from '../data/locations.js'
-import { getScheduledDrop } from './drop-schedule.js'
+import {
+  DROP_ACTIVE_MS,
+  DROP_CYCLE_MS,
+  DROP_REVEAL_MS,
+  getScheduledDrop,
+  pickDropLocation,
+} from './drop-schedule.js'
 import { distanceToScore, haversineDistanceKm } from './geo.js'
 import {
   ensureLedgerEntry,
@@ -239,6 +245,20 @@ function makeRoundPayload(round, location, quota, timestamp = Date.now()) {
 
 function getLocationById(locationId) {
   return [...regularGameLocations, ...curatedLocations].find((location) => location.id === locationId)
+}
+
+function summarizeDropLocation(location) {
+  return {
+    id: location.id,
+    country: location.country,
+    region: location.region,
+    rewardSp: location.rewardSp,
+    difficulty: location.difficulty,
+    panorama: {
+      lat: location.panorama.lat,
+      lng: location.panorama.lng,
+    },
+  }
 }
 
 function pruneInvalidOpenRounds(state, walletAddress) {
@@ -787,8 +807,65 @@ export function createGameService({ store, rewardThresholdKm }) {
     })
   }
 
+  function getDropDetails(dropCycleNumber) {
+    return store.update((state) => {
+      ensureStateCollections(state)
+
+      const cycleNumber = Number(dropCycleNumber)
+      if (!Number.isInteger(cycleNumber) || cycleNumber < 0) {
+        const error = new Error('Drop cycle number is invalid.')
+        error.statusCode = 400
+        throw error
+      }
+
+      const now = Date.now()
+      const cycleStartAt = cycleNumber * DROP_CYCLE_MS
+      const activeEndsAt = cycleStartAt + DROP_ACTIVE_MS
+      const revealEndsAt = activeEndsAt + DROP_REVEAL_MS
+      const location = pickDropLocation(getActiveDropLocations(), cycleNumber)
+      const status =
+        now < activeEndsAt
+          ? 'active'
+          : now < revealEndsAt
+            ? 'reveal'
+            : 'completed'
+      const settlement =
+        status === 'completed'
+          ? settleDropWinner(state, cycleNumber, now)
+          : state.dropSettlements.find(
+              (entry) => entry.dropCycleNumber === cycleNumber,
+            )
+      const winner =
+        settlement?.winnerWalletAddress
+          ? {
+              walletAddress: settlement.winnerWalletAddress,
+              rewardSp: settlement.rewardSp,
+              guessedAt: getWinnerForDrop(state, cycleNumber)?.guessedAt ?? null,
+              distanceKm: getWinnerForDrop(state, cycleNumber)?.distanceKm ?? null,
+              score: getWinnerForDrop(state, cycleNumber)?.score ?? null,
+            }
+          : null
+      const participantsCount = state.dropParticipations.filter(
+        (entry) => entry.dropCycleNumber === cycleNumber,
+      ).length
+
+      return {
+        dropCycleNumber: cycleNumber,
+        status,
+        startsAt: cycleStartAt,
+        activeEndsAt,
+        revealEndsAt,
+        location: summarizeDropLocation(location),
+        rewardSp: settlement?.rewardSp ?? location.rewardSp,
+        participantsCount,
+        winner,
+      }
+    })
+  }
+
   return {
     continueRound,
+    getDropDetails,
     getProfile,
     getQuota,
     startDropRound,
