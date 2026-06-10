@@ -3,5 +3,6 @@ export function formatWallet(address) {
 }
 
 export function formatDistance(distanceKm) {
+  if (!Number.isFinite(distanceKm)) return 'Times Up'
   return `${distanceKm.toFixed(1)} km`
 }

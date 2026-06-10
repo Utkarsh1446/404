@@ -208,6 +208,68 @@ function creditPlayerSp(state, walletAddress, rewardSp) {
   player.updatedAt = new Date().toISOString()
 }
 
+function finalizeTimedOutRound(state, round, rewardThresholdKm, timestamp = Date.now()) {
+  if (round.result?.timedOut) return round.result
+
+  const location = getLocationById(round.locationId)
+  const answer = location
+    ? { lat: location.panorama.lat, lng: location.panorama.lng }
+    : null
+
+  if (round.consumeQuotaOnSubmit && !round.quotaConsumed) {
+    const ledger = ensureLedgerEntry(state, round.walletAddress, getDayKey())
+
+    if (round.attemptType === 'free') {
+      ledger.freeUsed += 1
+    } else if (ledger.paidCredits > 0) {
+      ledger.paidCredits -= 1
+      ledger.paidConsumed += 1
+    }
+
+    ledger.updatedAt = new Date(timestamp).toISOString()
+    round.quotaConsumed = true
+  }
+
+  round.status = round.gameMode === 'drop' ? 'submitted' : 'completed'
+  round.updatedAt = new Date(timestamp).toISOString()
+  round.timedOutAt = round.updatedAt
+  round.result = {
+    distanceKm: null,
+    score: 0,
+    rewardEligible: false,
+    rewardSp: 0,
+    thresholdKm: rewardThresholdKm,
+    guess: null,
+    answer,
+    country: location?.country ?? '',
+    region: location?.region ?? '',
+    revealEndsAt: round.revealEndsAt,
+    timedOut: true,
+  }
+
+  if (round.gameMode === 'drop') {
+    upsertDropParticipation(state, round, {
+      status: 'timed_out',
+      guessedAt: null,
+      distanceKm: null,
+      score: 0,
+      rewardEligible: false,
+    })
+  } else {
+    state.rewardEvents.push({
+      id: crypto.randomUUID(),
+      roundId: round.id,
+      walletAddress: round.walletAddress,
+      rewardSp: 0,
+      rewardEligible: false,
+      type: 'regular_round_timeout',
+      createdAt: round.updatedAt,
+    })
+  }
+
+  return round.result
+}
+
 function settleDropWinner(state, dropCycleNumber, timestamp = Date.now()) {
   ensureStateCollections(state)
   const existingSettlement = state.dropSettlements.find(
@@ -485,13 +547,16 @@ function summarizeMultiplayerRoom(state, room, walletAddress, timestamp = Date.n
   }
 }
 
-function pruneInvalidOpenRounds(state, walletAddress) {
+function pruneInvalidOpenRounds(state, walletAddress, rewardThresholdKm) {
   const now = Date.now()
 
   state.rounds = state.rounds.filter((round) => {
     if (round.walletAddress !== walletAddress) return true
     if (round.status !== 'active' && round.status !== 'awaiting_payment') return true
-    if (round.status === 'active' && round.gameMode === 'regular' && round.activeEndsAt <= now) return false
+    if (round.status === 'active' && round.gameMode === 'regular' && round.activeEndsAt <= now) {
+      finalizeTimedOutRound(state, round, rewardThresholdKm, now)
+      return true
+    }
     return Boolean(getLocationById(round.locationId))
   })
 }
@@ -558,7 +623,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
   function getQuota(walletAddress) {
     return store.update((state) => {
       getOrCreatePlayer(state, walletAddress)
-      pruneInvalidOpenRounds(state, walletAddress)
+      pruneInvalidOpenRounds(state, walletAddress, rewardThresholdKm)
       const ledger = ensureLedgerEntry(state, walletAddress, getDayKey())
       ledger.updatedAt = new Date().toISOString()
       return summarizeQuota(ledger)
@@ -568,7 +633,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
   function startRound(walletAddress) {
     return store.update((state) => {
       getOrCreatePlayer(state, walletAddress)
-      pruneInvalidOpenRounds(state, walletAddress)
+      pruneInvalidOpenRounds(state, walletAddress, rewardThresholdKm)
       const now = Date.now()
 
       const existingRound = state.rounds.find(
@@ -657,7 +722,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
   function startDropRound(walletAddress) {
     return store.update((state) => {
       getOrCreatePlayer(state, walletAddress)
-      pruneInvalidOpenRounds(state, walletAddress)
+      pruneInvalidOpenRounds(state, walletAddress, rewardThresholdKm)
 
       const now = Date.now()
       const scheduledDrop = getScheduledDrop(getActiveDropLocations(), now)
@@ -742,7 +807,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
 
   function continueRound(walletAddress, roundId) {
     return store.update((state) => {
-      pruneInvalidOpenRounds(state, walletAddress)
+      pruneInvalidOpenRounds(state, walletAddress, rewardThresholdKm)
       const sourceRound = state.rounds.find(
         (entry) => entry.id === roundId && entry.walletAddress === walletAddress,
       )
@@ -824,7 +889,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
 
   function checkoutAttempt(walletAddress, roundId) {
     return store.update((state) => {
-      pruneInvalidOpenRounds(state, walletAddress)
+      pruneInvalidOpenRounds(state, walletAddress, rewardThresholdKm)
       const round = state.rounds.find(
         (entry) => entry.id === roundId && entry.walletAddress === walletAddress,
       )
@@ -859,7 +924,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
 
   function submitGuess(walletAddress, roundId, guess) {
     return store.update((state) => {
-      pruneInvalidOpenRounds(state, walletAddress)
+      pruneInvalidOpenRounds(state, walletAddress, rewardThresholdKm)
       const round = state.rounds.find(
         (entry) => entry.id === roundId && entry.walletAddress === walletAddress,
       )
@@ -918,6 +983,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
           ledger.paidCredits -= 1
           ledger.paidConsumed += 1
         }
+        round.quotaConsumed = true
       }
 
       ledger.updatedAt = new Date().toISOString()
@@ -999,18 +1065,24 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
 
   function getRoundResult(walletAddress, roundId) {
     return store.update((state) => {
-      pruneInvalidOpenRounds(state, walletAddress)
       const round = state.rounds.find(
         (entry) => entry.id === roundId && entry.walletAddress === walletAddress,
       )
+      const now = Date.now()
+
+      if (
+        round &&
+        (round.status === 'active' || round.status === 'closed') &&
+        now >= round.activeEndsAt
+      ) {
+        finalizeTimedOutRound(state, round, rewardThresholdKm, now)
+      }
 
       if (!round || (round.status !== 'submitted' && round.status !== 'completed') || !round.result) {
         const error = new Error('Round result is not ready.')
         error.statusCode = 404
         throw error
       }
-
-      const now = Date.now()
 
       if (now < round.revealEndsAt) {
         const error = new Error('Reveal is still counting down.')

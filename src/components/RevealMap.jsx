@@ -15,8 +15,6 @@ export function RevealMap({ revealResult }) {
 
   useEffect(() => {
     if (
-      guessLat == null ||
-      guessLng == null ||
       answerLat == null ||
       answerLng == null ||
       !mapNodeRef.current
@@ -33,12 +31,12 @@ export function RevealMap({ revealResult }) {
       .then((google) => {
         if (cancelled || !mapNodeRef.current) return
 
-        const guess = { lat: guessLat, lng: guessLng }
         const answer = { lat: answerLat, lng: answerLng }
+        const guess = guessLat == null || guessLng == null ? null : { lat: guessLat, lng: guessLng }
 
         mapRef.current = new google.maps.Map(mapNodeRef.current, {
-          center: guess,
-          zoom: 3,
+          center: guess ?? answer,
+          zoom: guess ? 3 : 6,
           disableDefaultUI: false,
           streetViewControl: false,
           mapTypeControl: false,
@@ -48,21 +46,23 @@ export function RevealMap({ revealResult }) {
         })
 
         const bounds = new google.maps.LatLngBounds()
-        bounds.extend(guess)
+        if (guess) bounds.extend(guess)
         bounds.extend(answer)
 
-        new google.maps.Marker({
-          map: mapRef.current,
-          position: guess,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            fillColor: '#dc2626',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 3,
-            scale: 10,
-          },
-        })
+        if (guess) {
+          new google.maps.Marker({
+            map: mapRef.current,
+            position: guess,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: '#dc2626',
+              fillOpacity: 1,
+              strokeColor: '#ffffff',
+              strokeWeight: 3,
+              scale: 10,
+            },
+          })
+        }
 
         new google.maps.Marker({
           map: mapRef.current,
@@ -77,26 +77,30 @@ export function RevealMap({ revealResult }) {
           },
         })
 
-        new google.maps.Polyline({
-          map: mapRef.current,
-          path: [guess, answer],
-          strokeColor: '#111111',
-          strokeOpacity: 0,
-          icons: [
-            {
-              icon: {
-                path: 'M 0,-1 0,1',
-                strokeOpacity: 1,
-                strokeWeight: 3,
-                scale: 4,
+        if (guess) {
+          new google.maps.Polyline({
+            map: mapRef.current,
+            path: [guess, answer],
+            strokeColor: '#111111',
+            strokeOpacity: 0,
+            icons: [
+              {
+                icon: {
+                  path: 'M 0,-1 0,1',
+                  strokeOpacity: 1,
+                  strokeWeight: 3,
+                  scale: 4,
+                },
+                offset: '0',
+                repeat: '14px',
               },
-              offset: '0',
-              repeat: '14px',
-            },
-          ],
-        })
+            ],
+          })
+        }
 
-        mapRef.current.fitBounds(bounds, 80)
+        if (guess) {
+          mapRef.current.fitBounds(bounds, 80)
+        }
         setLoadState('ready')
       })
       .catch(() => {

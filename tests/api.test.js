@@ -271,6 +271,33 @@ test('starting and guessing a regular round reveals immediately', async () => {
   assert.equal(result.body.result.winner, null)
 })
 
+test('timed out regular rounds return a Times Up result', async () => {
+  const app = createTestApp()
+  const auth = await authenticate(app)
+
+  const round = await request(app)
+    .post('/api/rounds/start')
+    .set('Authorization', `Bearer ${auth.token}`)
+    .expect(200)
+
+  const storageFile = app.locals.config.storageFile
+  const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
+  const storedRound = state.rounds.find((entry) => entry.id === round.body.roundId)
+  storedRound.activeEndsAt = Date.now() - 1
+  storedRound.revealEndsAt = Date.now() - 1
+  fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
+
+  const result = await request(app)
+    .get(`/api/rounds/${round.body.roundId}/result`)
+    .set('Authorization', `Bearer ${auth.token}`)
+    .expect(200)
+
+  assert.equal(result.body.result.timedOut, true)
+  assert.equal(result.body.result.score, 0)
+  assert.equal(result.body.result.distanceKm, null)
+  assert.equal(result.body.result.rewardEligible, false)
+})
+
 test('drop settlement credits only the first correct wallet', async () => {
   const restoreNow = useActiveDropClock()
   const app = createTestApp()

@@ -93,6 +93,7 @@ export function useGameSession() {
   const [pendingFinalSummary, setPendingFinalSummary] = useState(null)
   const [pendingRevealRoundId, setPendingRevealRoundId] = useState(null)
   const timerRef = useRef(null)
+  const timeoutResultRoundRef = useRef(null)
   const authToken = session?.token
   const activeRoundLocationCount = activeRound?.roundLocationCount ?? ROUND_LOCATION_COUNT
 
@@ -133,6 +134,7 @@ export function useGameSession() {
     setPendingNextRound(null)
     setPendingFinalSummary(null)
     setPendingRevealRoundId(null)
+    timeoutResultRoundRef.current = null
     setQuota(round.quota)
     setPhase('playing')
     setSecondsLeft(round.meta?.timeLimitSeconds ?? 90)
@@ -213,7 +215,7 @@ export function useGameSession() {
     return () => window.clearInterval(timerRef.current)
   }, [activeRound?.meta?.activeEndsAt, activeRound?.meta?.revealEndsAt, phase])
 
-  const loadRevealResult = useCallback(async (roundId) => {
+  const loadRevealResult = useCallback(async (roundId, options = {}) => {
     if (!authToken) return
 
     setIsBusy(true)
@@ -223,14 +225,18 @@ export function useGameSession() {
       const payload = await apiClient.getResult(authToken, roundId)
       const revealedResult = {
         ...payload.result,
+        timedOut: Boolean(payload.result.timedOut || options.timedOut),
         elapsedSeconds: getRoundElapsedSeconds(activeRound),
       }
       const nextResults = [...locationResults, revealedResult]
       const totalRewardSp = nextResults.reduce((sum, entry) => sum + entry.rewardSp, 0)
       const totalScore = nextResults.reduce((sum, entry) => sum + entry.score, 0)
       const rewardEligibleCount = nextResults.filter((entry) => entry.rewardEligible).length
+      const distanceResults = nextResults.filter((entry) => Number.isFinite(entry.distanceKm))
       const averageDistanceKm =
-        nextResults.reduce((sum, entry) => sum + entry.distanceKm, 0) / nextResults.length
+        distanceResults.length > 0
+          ? distanceResults.reduce((sum, entry) => sum + entry.distanceKm, 0) / distanceResults.length
+          : null
 
       setQuota(payload.quota)
       if (payload.profile) setProfile(payload.profile)
@@ -247,11 +253,15 @@ export function useGameSession() {
         totalScore,
         rewardEligibleCount,
         thresholdKm: revealedResult.thresholdKm,
-        averageDistanceKm: Number(averageDistanceKm.toFixed(2)),
+        averageDistanceKm: Number.isFinite(averageDistanceKm)
+          ? Number(averageDistanceKm.toFixed(2))
+          : null,
       })
       setPhase('reveal')
       setStatus(
-        activeRound?.meta?.gameMode === 'drop'
+        revealedResult.timedOut
+          ? 'Times Up.'
+          : activeRound?.meta?.gameMode === 'drop'
           ? payload.result.winner
             ? `Reveal live. Winner: ${payload.result.winner.walletAddress.slice(0, 4)}...${payload.result.winner.walletAddress.slice(-4)}.`
             : 'Reveal live. No correct winner for this drop.'
@@ -259,8 +269,10 @@ export function useGameSession() {
       )
     } catch (caughtError) {
       if (caughtError.status === 425 && caughtError.payload?.secondsUntilReveal) {
+        setPendingRevealRoundId(roundId)
         setSecondsLeft(caughtError.payload.secondsUntilReveal)
-        setStatus('Guess submitted. Reveal is still counting down.')
+        setPhase('submitted')
+        setStatus(options.timedOut ? 'Times Up. Reveal countdown is live.' : 'Guess submitted. Reveal is still counting down.')
       } else {
         setError(caughtError.message)
       }
@@ -268,6 +280,21 @@ export function useGameSession() {
       setIsBusy(false)
     }
   }, [activeRound, activeRoundLocationCount, authToken, currentLocationIndex, locationResults])
+
+  useEffect(() => {
+    if (phase !== 'playing' || secondsLeft !== 0 || !activeRound?.roundId) {
+      return
+    }
+
+    if (timeoutResultRoundRef.current === activeRound.roundId) {
+      return
+    }
+
+    timeoutResultRoundRef.current = activeRound.roundId
+    setSelectedGuess(null)
+    setStatus('Times Up.')
+    void loadRevealResult(activeRound.roundId, { timedOut: true })
+  }, [activeRound?.roundId, loadRevealResult, phase, secondsLeft])
 
   useEffect(() => {
     if (phase !== 'submitted' || secondsLeft !== 0 || !pendingRevealRoundId) {
@@ -536,8 +563,11 @@ export function useGameSession() {
       const totalRewardSp = nextResults.reduce((sum, entry) => sum + entry.rewardSp, 0)
       const totalScore = nextResults.reduce((sum, entry) => sum + entry.score, 0)
       const rewardEligibleCount = nextResults.filter((entry) => entry.rewardEligible).length
+      const distanceResults = nextResults.filter((entry) => Number.isFinite(entry.distanceKm))
       const averageDistanceKm =
-        nextResults.reduce((sum, entry) => sum + entry.distanceKm, 0) / nextResults.length
+        distanceResults.length > 0
+          ? distanceResults.reduce((sum, entry) => sum + entry.distanceKm, 0) / distanceResults.length
+          : null
 
       setRevealResult({
         ...revealedResult,
@@ -550,7 +580,9 @@ export function useGameSession() {
         totalScore,
         rewardEligibleCount,
         thresholdKm: revealedResult.thresholdKm,
-        averageDistanceKm: Number(averageDistanceKm.toFixed(2)),
+        averageDistanceKm: Number.isFinite(averageDistanceKm)
+          ? Number(averageDistanceKm.toFixed(2))
+          : null,
       })
       setPhase('reveal')
       setStatus(
@@ -559,6 +591,16 @@ export function useGameSession() {
           : 'Round complete. No SP this time, but the reveal is live.',
       )
     } catch (caughtError) {
+      if (
+        caughtError.status === 409 &&
+        (caughtError.payload?.code === 'ROUND_CLOSED' || caughtError.payload?.code === 'DROP_CLOSED')
+      ) {
+        setSelectedGuess(null)
+        setStatus('Times Up.')
+        void loadRevealResult(activeRound.roundId, { timedOut: true })
+        return
+      }
+
       setPhase('playing')
       setError(caughtError.message)
     } finally {

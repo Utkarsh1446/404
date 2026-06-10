@@ -774,6 +774,8 @@ function MultiplayerGame({
   const ownRoundResult = currentGuess ?? roundResults.find(
     (entry) => entry.walletAddress === room.currentPlayer?.walletAddress,
   )
+  const didCurrentPlayerTimeOut =
+    (room.status === 'reveal' || room.status === 'finished') && !ownRoundResult
   const revealResult = ownRoundResult && room.revealLocation
     ? {
         ...ownRoundResult,
@@ -781,6 +783,20 @@ function MultiplayerGame({
         region: room.revealLocation.region,
         answer: room.revealLocation.answer,
       }
+    : didCurrentPlayerTimeOut && room.revealLocation
+      ? {
+          timedOut: true,
+          distanceKm: null,
+          score: 0,
+          country: room.revealLocation.country,
+          region: room.revealLocation.region,
+          answer: room.revealLocation.panorama
+            ? {
+                lat: room.revealLocation.panorama.lat,
+                lng: room.revealLocation.panorama.lng,
+              }
+            : null,
+        }
     : null
   const secondsLeft = room.activeEndsAt
     ? Math.max(0, Math.ceil((room.activeEndsAt - now) / 1000))
@@ -818,7 +834,7 @@ function MultiplayerGame({
         </div>
         <div className="reveal-bottom-bar">
           <div className="reveal-metric">
-            <strong>{formatDistance(revealResult.distanceKm)}</strong>
+            <strong>{revealResult.timedOut ? 'Times Up' : formatDistance(revealResult.distanceKm)}</strong>
             <span>distance</span>
           </div>
           <div className="multiplayer-reveal-note">Next round starts automatically</div>
@@ -1868,10 +1884,14 @@ function App() {
               <div className="reveal-metric">
                 <strong>
                   {isDropReveal
-                    ? revealResult.winner
-                      ? formatWallet(revealResult.winner.walletAddress)
-                      : 'No winner'
-                    : formatDistance(revealResult.distanceKm)}
+                    ? revealResult.timedOut
+                      ? 'Times Up'
+                      : revealResult.winner
+                        ? formatWallet(revealResult.winner.walletAddress)
+                        : 'No winner'
+                    : revealResult.timedOut
+                      ? 'Times Up'
+                      : formatDistance(revealResult.distanceKm)}
                 </strong>
                 <span>{isDropReveal ? 'winner' : 'distance'}</span>
               </div>
