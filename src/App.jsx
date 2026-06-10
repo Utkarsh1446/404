@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Room, RoomEvent } from 'livekit-client'
+import { Room, RoomEvent, Track } from 'livekit-client'
 import './App.css'
 import notfoundLogo from './assets/notfound-logo.svg'
 import worldUvDots from './assets/maps/world-uv-dots.svg'
@@ -392,6 +392,7 @@ function MultiplayerJoinModal({
 
 function MultiplayerVoicePanel({ roomCode, session }) {
   const livekitRoomRef = useRef(null)
+  const remoteAudioRootRef = useRef(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [participantCount, setParticipantCount] = useState(1)
@@ -401,6 +402,7 @@ function MultiplayerVoicePanel({ roomCode, session }) {
   useEffect(() => () => {
     livekitRoomRef.current?.disconnect()
     livekitRoomRef.current = null
+    remoteAudioRootRef.current?.replaceChildren()
   }, [])
 
   async function handleJoinVoice() {
@@ -420,17 +422,44 @@ function MultiplayerVoicePanel({ roomCode, session }) {
         setParticipantCount(nextRoom.remoteParticipants.size + 1)
         setIsMuted(!nextRoom.localParticipant.isMicrophoneEnabled)
       }
+      const attachRemoteAudioTrack = (track) => {
+        if (track.kind !== Track.Kind.Audio || !remoteAudioRootRef.current) return
+
+        const element = track.attach()
+        element.autoplay = true
+        element.dataset.livekitRemoteAudio = 'true'
+        remoteAudioRootRef.current.appendChild(element)
+      }
+      const detachRemoteAudioTrack = (track) => {
+        if (track.kind !== Track.Kind.Audio) return
+
+        track.detach().forEach((element) => element.remove())
+      }
+      const attachExistingRemoteAudio = () => {
+        nextRoom.remoteParticipants.forEach((participant) => {
+          participant.trackPublications.forEach((publication) => {
+            if (publication.track) {
+              attachRemoteAudioTrack(publication.track)
+            }
+          })
+        })
+      }
 
       nextRoom.on(RoomEvent.ParticipantConnected, syncParticipants)
       nextRoom.on(RoomEvent.ParticipantDisconnected, syncParticipants)
+      nextRoom.on(RoomEvent.TrackSubscribed, attachRemoteAudioTrack)
+      nextRoom.on(RoomEvent.TrackUnsubscribed, detachRemoteAudioTrack)
       nextRoom.on(RoomEvent.LocalTrackPublished, syncParticipants)
       nextRoom.on(RoomEvent.LocalTrackUnpublished, syncParticipants)
       nextRoom.on(RoomEvent.Disconnected, () => {
         setIsConnected(false)
         setParticipantCount(1)
+        remoteAudioRootRef.current?.replaceChildren()
       })
 
       await nextRoom.connect(voice.url, voice.token)
+      attachExistingRemoteAudio()
+      await nextRoom.startAudio()
       await nextRoom.localParticipant.setMicrophoneEnabled(true)
       livekitRoomRef.current = nextRoom
       syncParticipants()
@@ -454,6 +483,7 @@ function MultiplayerVoicePanel({ roomCode, session }) {
   function handleLeaveVoice() {
     livekitRoomRef.current?.disconnect()
     livekitRoomRef.current = null
+    remoteAudioRootRef.current?.replaceChildren()
     setIsConnected(false)
     setParticipantCount(1)
   }
@@ -481,6 +511,7 @@ function MultiplayerVoicePanel({ roomCode, session }) {
       )}
 
       {voiceError ? <p className="multiplayer-error">{voiceError}</p> : null}
+      <div className="multiplayer-voice-audio" ref={remoteAudioRootRef} aria-hidden="true" />
     </div>
   )
 }

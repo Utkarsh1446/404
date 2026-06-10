@@ -2212,6 +2212,14 @@
   font-size: 0.95rem;
 }
 
+.multiplayer-voice-audio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .multiplayer-results-panel {
   width: min(900px, 100%);
 }
