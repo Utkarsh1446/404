@@ -171,17 +171,16 @@
   height: 40px;
   border-radius: 999px;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 42%, #ffffff 0%, #f1edf9 72%, #ded7ed 100%);
+  background: #f4f0ff;
   box-shadow: 0 8px 18px rgba(17, 17, 17, 0.12), inset 0 0 0 1px rgba(17, 17, 17, 0.08);
 }
 
 .wallet-avatar-image {
-  width: 86%;
-  height: 86%;
+  width: 100%;
+  height: 100%;
   display: block;
   object-fit: contain;
   object-position: center;
-  transform: translateY(1px);
 }
 
 .card-nav-cta-button:hover {

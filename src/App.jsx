@@ -1565,7 +1565,7 @@ function App() {
                             {player.rank}
                           </span>
                           <span className="landing-leaderboard-avatar" role="cell">
-                            <WalletAvatar />
+                            <WalletAvatar value={`landing-${player.rank}`} />
                           </span>
                           <span role="cell">{player.correctGuesses}</span>
                           <span role="cell">${ESTIMATED_REWARD_PER_PLAYER}</span>

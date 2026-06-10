@@ -425,6 +425,9 @@
       "createdAt": "2026-06-08T18:08:34.381Z"
     }
   ],
+  "multiplayerRooms": [],
+  "dropParticipations": [],
+  "dropSettlements": [],
   "dailyAttemptLedger": [
     {
       "walletAddress": "2wEtK6P4hNvFfqwv4LwdCgB9A22aewQcZcuDXU72vFQo",
