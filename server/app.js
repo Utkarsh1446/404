@@ -84,7 +84,7 @@ export function createApp(options = {}) {
 
   app.post('/api/auth/wallet/verify', (req, res, next) => {
     try {
-      const { walletAddress, message, signature } = req.body ?? {}
+      const { walletAddress, message, signature, username } = req.body ?? {}
 
       const payload = store.update((state) => {
         const challenge = state.authChallenges.find(
@@ -129,11 +129,21 @@ export function createApp(options = {}) {
         return { token }
       })
 
+      let profile = gameService.getProfile(walletAddress)
+
+      if (username && !profile.hasUsername) {
+        try {
+          profile = gameService.updateProfile(walletAddress, { username })
+        } catch {
+          profile = gameService.getProfile(walletAddress)
+        }
+      }
+
       res.json({
         token: payload.token,
         walletAddress,
         quota: gameService.getQuota(walletAddress),
-        profile: gameService.getProfile(walletAddress),
+        profile,
       })
     } catch (error) {
       next(error)
