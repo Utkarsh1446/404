@@ -2245,10 +2245,6 @@
   z-index: 4;
 }
 
-.multiplayer-player-tray.is-expanded .multiplayer-player-tray-board {
-  margin-left: 340px;
-}
-
 .multiplayer-player-tray-toggle,
 .multiplayer-player-tray-board {
   pointer-events: auto;
@@ -2605,10 +2601,6 @@ button:disabled {
   .multiplayer-player-tray-board {
     width: min(520px, calc(100vw - 24px));
     min-width: 0;
-  }
-
-  .multiplayer-player-tray.is-expanded .multiplayer-player-tray-board {
-    margin-left: 0;
   }
 
   .multiplayer-player-score-row {
