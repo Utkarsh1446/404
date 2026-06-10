@@ -324,7 +324,6 @@ function DropDetailModal({ detailState, error, isLoading, onClose }) {
         </div>
 
         <div className="drop-detail-copy">
-          <span className="eyebrow">Drop result</span>
           <h2>{isLoading ? 'Loading drop...' : placeName}</h2>
           {error ? <p className="drop-detail-error">{error}</p> : null}
 
