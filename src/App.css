@@ -358,7 +358,7 @@
   position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  height: clamp(96px, 18vh, 190px);
+  height: clamp(126px, 21vh, 222px);
   aspect-ratio: auto;
   min-height: 0;
   padding: clamp(5px, 0.6vw, 8px);
@@ -782,7 +782,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(10px, 1.25vw, 18px);
-  height: 100%;
+  height: min(100%, clamp(390px, 56vh, 540px));
   min-height: 0;
   max-width: min(64vw, 1120px);
 }
@@ -2680,7 +2680,7 @@ button:disabled {
 
   .landing-drop-card {
     border-radius: 18px;
-    height: clamp(78px, 13vh, 128px);
+    height: clamp(94px, 14.5vh, 150px);
   }
 
   .landing-world {
@@ -2690,6 +2690,7 @@ button:disabled {
   .landing-bento-grid {
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.2fr);
     gap: 10px;
+    height: min(100%, clamp(360px, 58vh, 600px));
   }
 
   .landing-bento {
