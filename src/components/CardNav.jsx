@@ -1,5 +1,4 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
-import { gsap } from 'gsap'
 import { GoArrowUpRight } from 'react-icons/go'
 import { HoverButton } from './HoverButton'
 import './CardNav.css'
@@ -21,9 +20,8 @@ const CardNav = ({
 }) => {
   const [isHamburgerOpen, setIsHamburgerOpen] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [expandedHeight, setExpandedHeight] = useState(260)
   const navRef = useRef(null)
-  const cardsRef = useRef([])
-  const tlRef = useRef(null)
 
   const calculateHeight = useCallback(() => {
     const navEl = navRef.current
@@ -60,86 +58,26 @@ const CardNav = ({
     return 260
   }, [])
 
-  const createTimeline = useCallback(() => {
-    const navEl = navRef.current
-    if (!navEl) return null
-
-    gsap.set(navEl, { height: 60, overflow: 'hidden' })
-    gsap.set(cardsRef.current, { y: 50, opacity: 0 })
-
-    const timeline = gsap.timeline({ paused: true })
-
-    timeline.to(navEl, {
-      height: calculateHeight,
-      duration: 0.4,
-      ease,
-    })
-
-    timeline.to(cardsRef.current, {
-      y: 0,
-      opacity: 1,
-      duration: 0.4,
-      ease,
-      stagger: 0.08,
-    }, '-=0.1')
-
-    return timeline
-  }, [calculateHeight, ease])
-
-  useLayoutEffect(() => {
-    const timeline = createTimeline()
-    tlRef.current = timeline
-
-    return () => {
-      timeline?.kill()
-      tlRef.current = null
-    }
-  }, [createTimeline, items])
-
   useLayoutEffect(() => {
     const handleResize = () => {
-      if (!tlRef.current) return
-
       if (isExpanded) {
-        const newHeight = calculateHeight()
-        gsap.set(navRef.current, { height: newHeight })
-
-        tlRef.current.kill()
-        const newTl = createTimeline()
-        if (newTl) {
-          newTl.progress(1)
-          tlRef.current = newTl
-        }
-      } else {
-        tlRef.current.kill()
-        const newTl = createTimeline()
-        if (newTl) {
-          tlRef.current = newTl
-        }
+        setExpandedHeight(calculateHeight())
       }
     }
 
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [calculateHeight, createTimeline, isExpanded, items])
+  }, [calculateHeight, isExpanded])
 
   const toggleMenu = () => {
-    const timeline = tlRef.current
-    if (!timeline) return
-
     if (!isExpanded) {
+      setExpandedHeight(calculateHeight())
       setIsHamburgerOpen(true)
       setIsExpanded(true)
-      timeline.play(0)
     } else {
       setIsHamburgerOpen(false)
-      timeline.eventCallback('onReverseComplete', () => setIsExpanded(false))
-      timeline.reverse()
+      setIsExpanded(false)
     }
-  }
-
-  const setCardRef = (i) => (element) => {
-    if (element) cardsRef.current[i] = element
   }
 
   return (
@@ -147,7 +85,11 @@ const CardNav = ({
       <nav
         ref={navRef}
         className={`card-nav ${isExpanded ? 'open' : ''}`}
-        style={{ backgroundColor: baseColor }}
+        style={{
+          backgroundColor: baseColor,
+          height: isExpanded ? expandedHeight : 60,
+          transitionTimingFunction: ease.includes('expo') ? 'cubic-bezier(0.16, 1, 0.3, 1)' : undefined,
+        }}
       >
         <div className="card-nav-top">
           <HoverButton
@@ -185,7 +127,6 @@ const CardNav = ({
             <div
               key={`${item.label}-${idx}`}
               className="nav-card"
-              ref={setCardRef(idx)}
               style={{ backgroundColor: item.bgColor, color: item.textColor }}
               onClick={item.onClick}
               role={item.onClick ? 'button' : undefined}
