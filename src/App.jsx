@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Room, RoomEvent, Track } from 'livekit-client'
 import './App.css'
 import notfoundLogo from './assets/notfound-logo.svg'
@@ -390,29 +390,46 @@ function MultiplayerJoinModal({
   )
 }
 
-function MultiplayerVoicePanel({ roomCode, session }) {
+function getMultiplayerVoiceAudioRoot() {
+  if (typeof document === 'undefined') return null
+  return document.getElementById('multiplayer-voice-audio-root')
+}
+
+function useMultiplayerVoice(roomCode, session) {
+  const sessionToken = session?.token
   const livekitRoomRef = useRef(null)
-  const remoteAudioRootRef = useRef(null)
+  const connectedRoomCodeRef = useRef(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [participantCount, setParticipantCount] = useState(1)
   const [voiceError, setVoiceError] = useState('')
   const [isConnecting, setIsConnecting] = useState(false)
 
-  useEffect(() => () => {
+  const disconnectVoice = useCallback(() => {
     livekitRoomRef.current?.disconnect()
     livekitRoomRef.current = null
-    remoteAudioRootRef.current?.replaceChildren()
+    connectedRoomCodeRef.current = null
+    getMultiplayerVoiceAudioRoot()?.replaceChildren()
+    setIsConnected(false)
+    setParticipantCount(1)
   }, [])
 
-  async function handleJoinVoice() {
-    if (!session?.token || !roomCode || isConnecting) return
+  useEffect(() => () => {
+    disconnectVoice()
+  }, [disconnectVoice])
+
+  const joinVoice = useCallback(async () => {
+    if (!sessionToken || !roomCode || isConnecting) return
+    if (livekitRoomRef.current && connectedRoomCodeRef.current === roomCode) {
+      setIsConnected(true)
+      return
+    }
 
     setVoiceError('')
     setIsConnecting(true)
 
     try {
-      const voice = await apiClient.getMultiplayerVoiceToken(session.token, roomCode)
+      const voice = await apiClient.getMultiplayerVoiceToken(sessionToken, roomCode)
       const nextRoom = new Room({
         adaptiveStream: true,
         dynacast: true,
@@ -423,12 +440,13 @@ function MultiplayerVoicePanel({ roomCode, session }) {
         setIsMuted(!nextRoom.localParticipant.isMicrophoneEnabled)
       }
       const attachRemoteAudioTrack = (track) => {
-        if (track.kind !== Track.Kind.Audio || !remoteAudioRootRef.current) return
+        const remoteAudioRoot = getMultiplayerVoiceAudioRoot()
+        if (track.kind !== Track.Kind.Audio || !remoteAudioRoot) return
 
         const element = track.attach()
         element.autoplay = true
         element.dataset.livekitRemoteAudio = 'true'
-        remoteAudioRootRef.current.appendChild(element)
+        remoteAudioRoot.appendChild(element)
       }
       const detachRemoteAudioTrack = (track) => {
         if (track.kind !== Track.Kind.Audio) return
@@ -452,9 +470,10 @@ function MultiplayerVoicePanel({ roomCode, session }) {
       nextRoom.on(RoomEvent.LocalTrackPublished, syncParticipants)
       nextRoom.on(RoomEvent.LocalTrackUnpublished, syncParticipants)
       nextRoom.on(RoomEvent.Disconnected, () => {
+        connectedRoomCodeRef.current = null
         setIsConnected(false)
         setParticipantCount(1)
-        remoteAudioRootRef.current?.replaceChildren()
+        getMultiplayerVoiceAudioRoot()?.replaceChildren()
       })
 
       await nextRoom.connect(voice.url, voice.token)
@@ -462,6 +481,7 @@ function MultiplayerVoicePanel({ roomCode, session }) {
       await nextRoom.startAudio()
       await nextRoom.localParticipant.setMicrophoneEnabled(true)
       livekitRoomRef.current = nextRoom
+      connectedRoomCodeRef.current = roomCode
       syncParticipants()
       setIsConnected(true)
     } catch (caughtError) {
@@ -469,49 +489,53 @@ function MultiplayerVoicePanel({ roomCode, session }) {
     } finally {
       setIsConnecting(false)
     }
-  }
+  }, [isConnecting, roomCode, sessionToken])
 
-  async function handleToggleMute() {
+  const toggleMute = useCallback(async () => {
     const livekitRoom = livekitRoomRef.current
     if (!livekitRoom) return
 
     const nextMuted = !isMuted
     await livekitRoom.localParticipant.setMicrophoneEnabled(!nextMuted)
     setIsMuted(nextMuted)
-  }
+  }, [isMuted])
 
-  function handleLeaveVoice() {
-    livekitRoomRef.current?.disconnect()
-    livekitRoomRef.current = null
-    remoteAudioRootRef.current?.replaceChildren()
-    setIsConnected(false)
-    setParticipantCount(1)
+  return {
+    isConnected,
+    isMuted,
+    participantCount,
+    voiceError,
+    isConnecting,
+    joinVoice,
+    toggleMute,
+    leaveVoice: disconnectVoice,
   }
+}
 
+function MultiplayerVoicePanel({ voice }) {
   return (
     <div className="multiplayer-voice-panel">
       <div>
         <span>Voice</span>
-        <strong>{isConnected ? `${participantCount} connected` : 'Not connected'}</strong>
+        <strong>{voice.isConnected ? `${voice.participantCount} connected` : 'Not connected'}</strong>
       </div>
 
-      {isConnected ? (
+      {voice.isConnected ? (
         <>
-          <HoverButton className="landing-play-button" type="button" onClick={handleToggleMute}>
-            {isMuted ? 'Unmute' : 'Mute'}
+          <HoverButton className="landing-play-button" type="button" onClick={voice.toggleMute}>
+            {voice.isMuted ? 'Unmute' : 'Mute'}
           </HoverButton>
-          <HoverButton className="landing-play-button" type="button" onClick={handleLeaveVoice}>
+          <HoverButton className="landing-play-button" type="button" onClick={voice.leaveVoice}>
             Leave Voice
           </HoverButton>
         </>
       ) : (
-        <HoverButton className="landing-play-button" type="button" onClick={handleJoinVoice} disabled={isConnecting}>
-          {isConnecting ? 'Joining...' : 'Join Voice'}
+        <HoverButton className="landing-play-button" type="button" onClick={voice.joinVoice} disabled={voice.isConnecting}>
+          {voice.isConnecting ? 'Joining...' : 'Join Voice'}
         </HoverButton>
       )}
 
-      {voiceError ? <p className="multiplayer-error">{voiceError}</p> : null}
-      <div className="multiplayer-voice-audio" ref={remoteAudioRootRef} aria-hidden="true" />
+      {voice.voiceError ? <p className="multiplayer-error">{voice.voiceError}</p> : null}
     </div>
   )
 }
@@ -522,10 +546,10 @@ function MultiplayerLobby({
   isBusy,
   now,
   notReadyWallets,
-  session,
   onReady,
   onStart,
   onLeave,
+  voice,
 }) {
   const secondsUntilStart = room?.countdownEndsAt
     ? Math.max(0, Math.ceil((room.countdownEndsAt - now) / 1000))
@@ -587,13 +611,13 @@ function MultiplayerLobby({
           </HoverButton>
         </div>
 
-        <MultiplayerVoicePanel roomCode={room.code} session={session} />
+        <MultiplayerVoicePanel voice={voice} />
       </div>
     </div>
   )
 }
 
-function MultiplayerLeaderboard({ room, session, onLeave }) {
+function MultiplayerLeaderboard({ room, onLeave, voice }) {
   return (
     <div className="multiplayer-lobby multiplayer-results">
       <button className="hud-top hud-brand" type="button" aria-label="Go to homepage" onClick={onLeave}>
@@ -624,7 +648,7 @@ function MultiplayerLeaderboard({ room, session, onLeave }) {
           Back Home
         </HoverButton>
 
-        <MultiplayerVoicePanel roomCode={room.code} session={session} />
+        <MultiplayerVoicePanel voice={voice} />
       </div>
     </div>
   )
@@ -637,11 +661,11 @@ function MultiplayerGame({
   error,
   isBusy,
   now,
-  session,
   onSelectGuess,
   onSubmitGuess,
   onToggleMap,
   onLeave,
+  voice,
 }) {
   const currentGuess = room.currentGuess
   const roundResults = room.roundResults ?? []
@@ -731,7 +755,7 @@ function MultiplayerGame({
         <span>Round {room.roundIndex}/5</span>
         <strong>{formatClock(secondsLeft)}</strong>
       </div>
-      <MultiplayerVoicePanel roomCode={room.code} session={session} />
+      <MultiplayerVoicePanel voice={voice} />
       <div className={`guess-overlay ${mapExpanded ? 'expanded' : ''}`}>
         <div className="guess-overlay-toolbar">
           <HoverButton className="map-toggle" type="button" onClick={onToggleMap}>
@@ -807,6 +831,7 @@ function App() {
     continueAfterReveal,
     resetForNextRound,
   } = useGameSession()
+  const multiplayerVoice = useMultiplayerVoice(multiplayerRoom?.code, session)
 
   useEffect(() => {
     const handlePopState = () => {
@@ -927,6 +952,7 @@ function App() {
 
   function handleHomeClick() {
     resetForNextRound()
+    multiplayerVoice.leaveVoice()
     setMultiplayerRoom(null)
     setMultiplayerGuess(null)
     setMultiplayerError('')
@@ -1051,6 +1077,7 @@ function App() {
   }
 
   function handleLeaveMultiplayer() {
+    multiplayerVoice.leaveVoice()
     setMultiplayerRoom(null)
     setMultiplayerGuess(null)
     setMultiplayerError('')
@@ -1347,7 +1374,6 @@ function App() {
     : shouldShowTokenPlayCost
       ? 'Play for 100 tokens'
       : 'Play for free'
-
   return (
     <main className="app-shell">
       {showLanding ? (
@@ -1389,16 +1415,16 @@ function App() {
               isBusy={isMultiplayerBusy}
               now={now}
               notReadyWallets={multiplayerNotReadyWallets}
-              session={session}
               onReady={handleMultiplayerReady}
               onStart={handleMultiplayerStart}
               onLeave={handleLeaveMultiplayer}
+              voice={multiplayerVoice}
             />
           ) : multiplayerRoom.status === 'finished' ? (
             <MultiplayerLeaderboard
               room={multiplayerRoom}
-              session={session}
               onLeave={handleLeaveMultiplayer}
+              voice={multiplayerVoice}
             />
           ) : (
             <MultiplayerGame
@@ -1408,11 +1434,11 @@ function App() {
               error={multiplayerError}
               isBusy={isMultiplayerBusy}
               now={now}
-              session={session}
               onSelectGuess={setMultiplayerGuess}
               onSubmitGuess={handleMultiplayerGuessSubmit}
               onToggleMap={() => setMultiplayerMapExpanded((current) => !current)}
               onLeave={handleLeaveMultiplayer}
+              voice={multiplayerVoice}
             />
           )
         ) : showLanding && route === '/wallet' ? (
@@ -1798,6 +1824,11 @@ function App() {
           </div>
         )}
       </section>
+      <div
+        id="multiplayer-voice-audio-root"
+        className="multiplayer-voice-audio"
+        aria-hidden="true"
+      />
 
       <DropDetailModal
         detailState={selectedDropDetail}
