@@ -12,6 +12,7 @@ import { distanceToScore, haversineDistanceKm } from './geo.js'
 import {
   ensureLedgerEntry,
   getDayKey,
+  PAID_ATTEMPT_COST_NOTF,
   summarizeQuota,
 } from './quota.js'
 
@@ -22,7 +23,7 @@ const MULTIPLAYER_MIN_PLAYERS = 2
 const MULTIPLAYER_MAX_PLAYERS = 20
 const MULTIPLAYER_COUNTDOWN_MS = 5 * 1000
 const MULTIPLAYER_REVEAL_MS = 7 * 1000
-const DEFAULT_TOKEN_BALANCE = 300
+const STARTER_NOTF_GRANT = 100
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,16}$/
 
 function getActiveLocations(locations, label) {
@@ -111,7 +112,11 @@ function pickMultiplayerLocations(state) {
 }
 
 function ensurePlayerAccount(player) {
-  player.tokenBalance ??= DEFAULT_TOKEN_BALANCE
+  player.tokenBalance ??= 0
+  if (!player.notfStarterGrantApplied) {
+    player.tokenBalance += STARTER_NOTF_GRANT
+    player.notfStarterGrantApplied = true
+  }
   player.spBalance ??= 0
   player.dropWins ??= 0
   if (typeof player.username === 'string') {
@@ -205,6 +210,7 @@ function creditPlayerSp(state, walletAddress, rewardSp) {
     state.players.find((entry) => entry.walletAddress === walletAddress),
   )
   player.spBalance += rewardSp
+  player.tokenBalance += rewardSp
   player.updatedAt = new Date().toISOString()
 }
 
@@ -221,8 +227,14 @@ function finalizeTimedOutRound(state, round, rewardThresholdKm, timestamp = Date
 
     if (round.attemptType === 'free') {
       ledger.freeUsed += 1
-    } else if (ledger.paidCredits > 0) {
-      ledger.paidCredits -= 1
+    } else {
+      const player = ensurePlayerAccount(
+        state.players.find((entry) => entry.walletAddress === round.walletAddress),
+      )
+      if (player.tokenBalance >= PAID_ATTEMPT_COST_NOTF) {
+        player.tokenBalance -= PAID_ATTEMPT_COST_NOTF
+        player.updatedAt = new Date(timestamp).toISOString()
+      }
       ledger.paidConsumed += 1
     }
 
@@ -312,6 +324,7 @@ function settleDropWinner(state, dropCycleNumber, timestamp = Date.now()) {
       state.players.find((entry) => entry.walletAddress === winner.walletAddress),
     )
     winnerPlayer.spBalance += rewardSp
+    winnerPlayer.tokenBalance += rewardSp
     winnerPlayer.dropWins = (winnerPlayer.dropWins ?? 0) + 1
     winnerPlayer.updatedAt = settlement.settledAt
     state.rewardEvents.push({
@@ -568,8 +581,9 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
     if (!player) {
       player = {
         walletAddress,
-        tokenBalance: DEFAULT_TOKEN_BALANCE,
+        tokenBalance: 0,
         spBalance: 0,
+        notfStarterGrantApplied: false,
         dropWins: 0,
         createdAt: new Date().toISOString(),
         lastSeenAt: new Date().toISOString(),
@@ -645,17 +659,26 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
       )
       const ledger = ensureLedgerEntry(state, walletAddress, getDayKey())
       const quota = summarizeQuota(ledger)
+      const player = getOrCreatePlayer(state, walletAddress)
 
       if (existingRound) {
         if (existingRound.status === 'awaiting_payment') {
-          const error = new Error('Extra attempts require payment.')
-          error.statusCode = 402
-          error.payload = {
-            code: 'PAYMENT_REQUIRED',
-            roundId: existingRound.id,
-            quota,
+          if (player.tokenBalance < PAID_ATTEMPT_COST_NOTF) {
+            const error = new Error('Not enough NOTF for this game.')
+            error.statusCode = 402
+            error.payload = {
+              code: 'INSUFFICIENT_NOTF',
+              roundId: existingRound.id,
+              quota,
+              costNotf: PAID_ATTEMPT_COST_NOTF,
+            }
+            throw error
           }
-          throw error
+
+          existingRound.status = 'active'
+          existingRound.activeEndsAt = now + REGULAR_ROUND_TIME_LIMIT_MS
+          existingRound.revealEndsAt = now
+          existingRound.updatedAt = new Date(now).toISOString()
         }
 
         return makeRoundPayload(
@@ -666,7 +689,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         )
       }
 
-      if (quota.freeRemaining <= 0 && quota.paidCredits <= 0) {
+      if (quota.freeRemaining <= 0 && player.tokenBalance < PAID_ATTEMPT_COST_NOTF) {
         const location = pickRegularLocation(state)
         const awaitingPaymentRound = {
           id: crypto.randomUUID(),
@@ -676,19 +699,25 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
           dropCycleNumber: null,
           activeEndsAt: now + REGULAR_ROUND_TIME_LIMIT_MS,
           revealEndsAt: now,
+          sessionRootId: null,
+          sequenceIndex: 1,
+          roundLocationCount: REGULAR_ROUND_LOCATION_COUNT,
           attemptType: 'paid',
+          consumeQuotaOnSubmit: true,
           status: 'awaiting_payment',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }
+        awaitingPaymentRound.sessionRootId = awaitingPaymentRound.id
         state.rounds.push(awaitingPaymentRound)
 
-        const error = new Error('Extra attempts require payment.')
+        const error = new Error('Not enough NOTF for this game.')
         error.statusCode = 402
         error.payload = {
-          code: 'PAYMENT_REQUIRED',
+          code: 'INSUFFICIENT_NOTF',
           roundId: awaitingPaymentRound.id,
           quota,
+          costNotf: PAID_ATTEMPT_COST_NOTF,
         }
         throw error
       }
@@ -958,13 +987,20 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
 
       const ledger = ensureLedgerEntry(state, walletAddress, getDayKey())
 
-      if (round.consumeQuotaOnSubmit && round.attemptType === 'paid' && ledger.paidCredits <= 0) {
-        const error = new Error('Paid attempt credit is required before guessing.')
+      const player = getOrCreatePlayer(state, walletAddress)
+
+      if (
+        round.consumeQuotaOnSubmit &&
+        round.attemptType === 'paid' &&
+        player.tokenBalance < PAID_ATTEMPT_COST_NOTF
+      ) {
+        const error = new Error('Not enough NOTF for this game.')
         error.statusCode = 402
         error.payload = {
-          code: 'PAYMENT_REQUIRED',
+          code: 'INSUFFICIENT_NOTF',
           roundId,
           quota: summarizeQuota(ledger),
+          costNotf: PAID_ATTEMPT_COST_NOTF,
         }
         throw error
       }
@@ -980,7 +1016,8 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         if (round.attemptType === 'free') {
           ledger.freeUsed += 1
         } else {
-          ledger.paidCredits -= 1
+          player.tokenBalance -= PAID_ATTEMPT_COST_NOTF
+          player.updatedAt = new Date().toISOString()
           ledger.paidConsumed += 1
         }
         round.quotaConsumed = true

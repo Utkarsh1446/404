@@ -432,7 +432,7 @@ export function useGameSession() {
         setPaymentRoundId(caughtError.payload.roundId)
         setQuota(caughtError.payload.quota)
         setPhase('quota_blocked')
-        setStatus('Free quota exhausted. Unlock one extra round for $1.')
+        setStatus('Free quota exhausted. Each extra game costs 10 NOTF.')
         return {
           status: 'quota_blocked',
           roundId: caughtError.payload.roundId,
@@ -487,21 +487,8 @@ export function useGameSession() {
 
   async function unlockPaidRound() {
     if (!session?.token || !paymentRoundId) return { status: 'missing_payment_round' }
-
-    setIsBusy(true)
-    setError('')
-
-    try {
-      const checkout = await apiClient.checkoutIntent(session.token, paymentRoundId)
-      setQuota(checkout.quota)
-      setStatus('Paid attempt unlocked. Your round is ready.')
-      return await startRound()
-    } catch (caughtError) {
-      setError(caughtError.message)
-      return { status: 'error' }
-    } finally {
-      setIsBusy(false)
-    }
+    setStatus('Starting paid NOTF game.')
+    return startRound()
   }
 
   async function submitGuess() {
@@ -591,8 +578,8 @@ export function useGameSession() {
       setPhase('reveal')
       setStatus(
         totalRewardSp > 0
-          ? `Round complete. ${totalRewardSp} SP queued across ${rewardEligibleCount} correct locations.`
-          : 'Round complete. No SP this time, but the reveal is live.',
+          ? `Round complete. ${totalRewardSp} NOTF queued across ${rewardEligibleCount} correct locations.`
+          : 'Round complete. No NOTF this time, but the reveal is live.',
       )
       return {
         status: 'revealed',

@@ -150,7 +150,7 @@ test('quota is wallet-specific and starts with three free rounds', async () => {
 
   assert.equal(firstQuota.body.freeRemaining, 3)
   assert.equal(firstProfile.body.walletAddress, first.walletAddress)
-  assert.equal(firstProfile.body.tokenBalance, 300)
+  assert.equal(firstProfile.body.tokenBalance, 100)
   assert.equal(firstProfile.body.spBalance, 0)
   assert.equal(secondQuota.body.freeRemaining, 3)
 })
@@ -252,6 +252,7 @@ test('starting and guessing a regular round reveals immediately', async () => {
   assert.equal(guess.body.result.winner, null)
   assert.equal(guess.body.pendingReveal, undefined)
   assert.equal(guess.body.profile.spBalance, guess.body.result.rewardSp)
+  assert.equal(guess.body.profile.tokenBalance, 100 + guess.body.result.rewardSp)
 
   await request(app)
     .post(`/api/rounds/${round.body.roundId}/guess`)
@@ -348,6 +349,7 @@ test('drop settlement credits only the first correct wallet', async () => {
 
     assert.equal(firstResult.body.result.winner.walletAddress, first.walletAddress)
     assert.equal(firstResult.body.profile.spBalance, firstResult.body.result.rewardSp)
+    assert.equal(firstResult.body.profile.tokenBalance, 100 + firstResult.body.result.rewardSp)
 
     const secondProfile = await request(app)
       .get('/api/me/profile')
@@ -435,6 +437,7 @@ test('ended drop details reveal the place, winner, and amount publicly', async (
       .expect(200)
 
     assert.equal(firstProfile.body.spBalance, details.body.winner.rewardSp)
+    assert.equal(firstProfile.body.tokenBalance, 100 + details.body.winner.rewardSp)
     assert.equal(firstProfile.body.dropsWon, 1)
   } finally {
     restoreNow()
@@ -740,7 +743,7 @@ test('multiplayer voice token requires LiveKit configuration and room membership
     .expect(403)
 })
 
-test('fourth round requires payment and mocked checkout unlocks one paid attempt', async () => {
+test('fourth regular game costs ten NOTF after free plays', async () => {
   const app = createTestApp()
   const auth = await authenticate(app)
 
@@ -754,29 +757,31 @@ test('fourth round requires payment and mocked checkout unlocks one paid attempt
       .post(`/api/rounds/${round.body.roundId}/guess`)
       .set('Authorization', `Bearer ${auth.token}`)
       .send({
-        guessLat: round.body.panorama.position.lat,
-        guessLng: round.body.panorama.position.lng,
+        guessLat: 0,
+        guessLng: 0,
       })
       .expect(200)
   }
 
-  const blocked = await request(app)
-    .post('/api/rounds/start')
-    .set('Authorization', `Bearer ${auth.token}`)
-    .expect(402)
-
-  await request(app)
-    .post(`/api/attempts/${blocked.body.payload.roundId}/checkout-intent`)
-    .set('Authorization', `Bearer ${auth.token}`)
-    .expect(200)
-
-  const unlocked = await request(app)
+  const paidRound = await request(app)
     .post('/api/rounds/start')
     .set('Authorization', `Bearer ${auth.token}`)
     .expect(200)
 
-  assert.equal(unlocked.body.attemptType, 'paid')
-  assert.equal(unlocked.body.meta.timeLimitSeconds, 90)
+  assert.equal(paidRound.body.attemptType, 'paid')
+  assert.equal(paidRound.body.meta.timeLimitSeconds, 90)
+
+  const paidGuess = await request(app)
+    .post(`/api/rounds/${paidRound.body.roundId}/guess`)
+    .set('Authorization', `Bearer ${auth.token}`)
+    .send({
+      guessLat: 0,
+      guessLng: 0,
+    })
+    .expect(200)
+
+  assert.equal(paidGuess.body.profile.tokenBalance, 90)
+  assert.equal(paidGuess.body.quota.paidConsumed, 1)
 })
 
 test('haversine distance is accurate enough for known coordinates', () => {

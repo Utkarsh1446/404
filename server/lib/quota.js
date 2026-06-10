@@ -1,5 +1,5 @@
 export const DAILY_FREE_ATTEMPTS = 3
-export const PAID_ATTEMPT_PRICE_USD = 1
+export const PAID_ATTEMPT_COST_NOTF = 10
 
 export function getDayKey(date = new Date()) {
   return date.toISOString().slice(0, 10)
@@ -32,6 +32,6 @@ export function summarizeQuota(ledger) {
     freeRemaining: Math.max(0, DAILY_FREE_ATTEMPTS - ledger.freeUsed),
     paidCredits: ledger.paidCredits,
     paidConsumed: ledger.paidConsumed,
-    paidAttemptPriceUsd: PAID_ATTEMPT_PRICE_USD,
+    paidAttemptCostNotf: PAID_ATTEMPT_COST_NOTF,
   }
 }

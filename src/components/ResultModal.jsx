@@ -4,7 +4,7 @@ import { HoverButton } from './HoverButton'
 export function ResultModal({ result, onNextRound }) {
   if (!result) return null
 
-  const rewardLabel = result.totalRewardSp > 0 ? `+${result.totalRewardSp} SP` : '0 SP'
+  const rewardLabel = result.totalRewardSp > 0 ? `+${result.totalRewardSp} NOTF` : '0 NOTF'
 
   return (
     <div className="result-modal-backdrop">

@@ -251,7 +251,7 @@ function getHardDropLocation(cycleNumber) {
 }
 function WalletPage({ profile, session, onConnectWallet }) {
   const tokenBalance = profile?.tokenBalance ?? 0
-  const spBalance = profile?.spBalance ?? 0
+  const notfEarned = profile?.spBalance ?? 0
   const dropsParticipated = profile?.dropsParticipated ?? 0
   const dropsWon = profile?.dropsWon ?? 0
   const walletTitle = profile?.username
@@ -269,9 +269,9 @@ function WalletPage({ profile, session, onConnectWallet }) {
         {session ? (
           <div className="wallet-bento-grid">
             <section className="wallet-bento wallet-bento-balance">
-              <span>Token balance</span>
-              <strong>{tokenBalance.toLocaleString()}</strong>
-              <p>Available for paid plays and future token actions.</p>
+              <span>NOTF balance</span>
+              <strong>{tokenBalance.toLocaleString()} NOTF</strong>
+              <p>Available for paid plays and future game actions.</p>
             </section>
 
             <section className="wallet-bento wallet-bento-address">
@@ -281,8 +281,8 @@ function WalletPage({ profile, session, onConnectWallet }) {
             </section>
 
             <section className="wallet-bento wallet-bento-earnings">
-              <span>SP earned</span>
-              <strong>{spBalance.toLocaleString()} SP</strong>
+              <span>NOTF earned</span>
+              <strong>{notfEarned.toLocaleString()} NOTF</strong>
               <p>{dropsParticipated} drops played, {dropsWon} wins recorded.</p>
             </section>
 
@@ -380,7 +380,7 @@ function DropDetailModal({ detailState, error, isLoading, onClose }) {
             </div>
             <div>
               <span>Winning amount</span>
-              <strong>{isLoading ? '-' : `${rewardSp} SP`}</strong>
+              <strong>{isLoading ? '-' : `${rewardSp} NOTF`}</strong>
             </div>
             <div>
               <span>Players</span>
@@ -432,7 +432,7 @@ function LockedDropModal({ lockedDrop, now, onClose }) {
             </div>
             <div>
               <span>Win</span>
-              <strong>$20</strong>
+              <strong>20 NOTF</strong>
             </div>
           </div>
 
@@ -1400,8 +1400,8 @@ function App() {
       onClick: handleLandingPrimaryAction,
       links: [
         {
-          label: phase === 'quota_blocked' ? 'Unlock round' : 'Start round',
-          ariaLabel: phase === 'quota_blocked' ? 'Unlock paid round' : 'Start round',
+          label: phase === 'quota_blocked' ? 'Paid game' : 'Start round',
+          ariaLabel: phase === 'quota_blocked' ? 'Start paid NOTF game' : 'Start round',
           href: '#play',
           onClick: handleLandingPrimaryAction,
         },
@@ -1650,7 +1650,7 @@ function App() {
     'Loading...'
   ) : shouldShowTokenPlayCost ? (
     <span className="landing-token-price" aria-hidden="true">
-      <span>100</span>
+      <span>10 NOTF</span>
       <TokenPinIcon className="landing-token-icon" />
     </span>
   ) : (
@@ -1659,7 +1659,7 @@ function App() {
   const landingPlayButtonAriaLabel = isBusy
     ? 'Loading'
     : shouldShowTokenPlayCost
-      ? 'Play for 100 tokens'
+      ? 'Play for 10 NOTF'
       : 'Play for free'
   const shouldShowUsernameModal = Boolean(session && profile && !profile.hasUsername)
   return (
@@ -1676,7 +1676,7 @@ function App() {
           buttonTextColor="#111111"
           ctaLabel={
             phase === 'quota_blocked'
-              ? 'unlock $1 round'
+              ? '10 NOTF'
               : session
                 ? <WalletAvatar value={session.walletAddress} />
                 : 'connect wallet'
