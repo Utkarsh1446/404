@@ -44,7 +44,11 @@ function loadStoredUsernames() {
 
 function getStoredUsername(walletAddress) {
   if (!walletAddress) return ''
-  return loadStoredUsernames()[walletAddress] ?? ''
+  const storedUsernames = loadStoredUsernames()
+  if (storedUsernames[walletAddress]) return storedUsernames[walletAddress]
+
+  const storedSession = loadStoredSession()
+  return storedSession?.walletAddress === walletAddress ? storedSession.username ?? '' : ''
 }
 
 function saveStoredUsername(walletAddress, username) {
@@ -152,10 +156,20 @@ export function useGameSession() {
       .getQuota(session.token)
       .then(async (nextQuota) => {
         const nextProfile = await apiClient.getProfile(session.token)
-        setQuota(nextQuota)
-        setProfile(
-          await resolveProfileUsername(session.token, session.walletAddress, nextProfile),
+        const resolvedProfile = await resolveProfileUsername(
+          session.token,
+          session.walletAddress,
+          nextProfile,
         )
+        setQuota(nextQuota)
+        setProfile(resolvedProfile)
+        if (resolvedProfile?.username) {
+          setSession((current) =>
+            current?.walletAddress === session.walletAddress
+              ? { ...current, username: resolvedProfile.username }
+              : current,
+          )
+        }
         setPhase((current) => (current === 'disconnected' ? 'ready' : current))
       })
       .catch(() => {
@@ -301,10 +315,12 @@ export function useGameSession() {
       const messageBytes = new TextEncoder().encode(challenge.message)
       const signatureBytes = await signMessage(messageBytes)
       const signature = bytesToBase64(signatureBytes)
+      const storedUsername = getStoredUsername(walletAddress)
       const verified = await apiClient.verifyWallet({
         walletAddress,
         message: challenge.message,
         signature,
+        username: storedUsername || undefined,
       })
       const verifiedProfile = await resolveProfileUsername(
         verified.token,
@@ -316,6 +332,7 @@ export function useGameSession() {
         token: verified.token,
         walletAddress,
         signerLabel,
+        username: verifiedProfile?.username || storedUsername || '',
       })
       setQuota(verified.quota)
       setProfile(verifiedProfile)
@@ -349,6 +366,14 @@ export function useGameSession() {
       if (nextProfile?.username) {
         saveStoredUsername(session.walletAddress, nextProfile.username)
       }
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              username: nextProfile?.username ?? current.username ?? '',
+            }
+          : current,
+      )
       setProfile(nextProfile)
       setStatus(`Signed in as ${nextProfile.username}.`)
       return nextProfile

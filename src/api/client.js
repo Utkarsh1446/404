@@ -29,10 +29,10 @@ export const apiClient = {
       body: JSON.stringify({ walletAddress }),
     })
   },
-  verifyWallet({ walletAddress, message, signature }) {
+  verifyWallet({ walletAddress, message, signature, username }) {
     return apiFetch('/api/auth/wallet/verify', {
       method: 'POST',
-      body: JSON.stringify({ walletAddress, message, signature }),
+      body: JSON.stringify({ walletAddress, message, signature, username }),
     })
   },
   getQuota(token) {

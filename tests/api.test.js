@@ -82,6 +82,24 @@ async function authenticate(app, keypair = Keypair.generate()) {
   }
 }
 
+async function createWalletSignature(app, keypair = Keypair.generate()) {
+  const walletAddress = keypair.publicKey.toBase58()
+  const challengeResponse = await request(app)
+    .post('/api/auth/wallet/challenge')
+    .send({ walletAddress })
+    .expect(200)
+  const messageBytes = new TextEncoder().encode(challengeResponse.body.message)
+  const signature = Buffer.from(
+    nacl.sign.detached(messageBytes, keypair.secretKey),
+  ).toString('base64')
+
+  return {
+    walletAddress,
+    message: challengeResponse.body.message,
+    signature,
+  }
+}
+
 function useActiveDropClock() {
   const originalNow = Date.now
   const activeDropNow = Math.floor(originalNow() / DROP_CYCLE_MS) * DROP_CYCLE_MS + 1000
@@ -179,6 +197,33 @@ test('profile username can be set once signed in and must be unique', async () =
   const reauthenticated = await authenticate(app, firstKeypair)
   assert.equal(reauthenticated.profile.hasUsername, true)
   assert.equal(reauthenticated.profile.username, 'Geo_Player')
+})
+
+test('wallet verify can restore cached username after profile loss', async () => {
+  const wallet = Keypair.generate()
+  const walletAddress = wallet.publicKey.toBase58()
+  const app = createTestAppWithState({
+    players: [{ walletAddress, createdAt: new Date().toISOString(), lastSeenAt: new Date().toISOString() }],
+    authChallenges: [],
+    sessions: [],
+    rounds: [],
+    guesses: [],
+    multiplayerRooms: [],
+    dailyAttemptLedger: [],
+    rewardEvents: [],
+  })
+  const signed = await createWalletSignature(app, wallet)
+
+  const restored = await request(app)
+    .post('/api/auth/wallet/verify')
+    .send({
+      ...signed,
+      username: 'Cached_Player',
+    })
+    .expect(200)
+
+  assert.equal(restored.body.profile.hasUsername, true)
+  assert.equal(restored.body.profile.username, 'Cached_Player')
 })
 
 test('starting and guessing a regular round reveals immediately', async () => {
