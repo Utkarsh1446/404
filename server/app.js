@@ -212,6 +212,16 @@ export function createApp(options = {}) {
     }
   })
 
+  app.post('/api/multiplayer/rooms/:code/start', requireAuth, (req, res, next) => {
+    try {
+      res.json(
+        gameService.startMultiplayerRoom(req.auth.walletAddress, req.params.code),
+      )
+    } catch (error) {
+      next(error)
+    }
+  })
+
   app.post('/api/multiplayer/rooms/:code/guess', requireAuth, (req, res, next) => {
     try {
       const { guessLat, guessLng } = req.body ?? {}

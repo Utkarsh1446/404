@@ -29,7 +29,14 @@ function createTestApp() {
     }),
   )
 
-  return createApp({ storageFile, challengeTtlMs: 60_000, rewardThresholdKm: 50 })
+  return createApp({
+    storageFile,
+    challengeTtlMs: 60_000,
+    rewardThresholdKm: 50,
+    livekitUrl: '',
+    livekitApiKey: '',
+    livekitApiSecret: '',
+  })
 }
 
 function createTestAppWithState(initialState) {
@@ -39,7 +46,14 @@ function createTestAppWithState(initialState) {
   )
   fs.writeFileSync(storageFile, JSON.stringify(initialState))
 
-  return createApp({ storageFile, challengeTtlMs: 60_000, rewardThresholdKm: 50 })
+  return createApp({
+    storageFile,
+    challengeTtlMs: 60_000,
+    rewardThresholdKm: 50,
+    livekitUrl: '',
+    livekitApiKey: '',
+    livekitApiSecret: '',
+  })
 }
 
 async function authenticate(app, keypair = Keypair.generate()) {
@@ -509,14 +523,24 @@ test('multiplayer room starts after everyone is ready and accepts guesses', asyn
 
     assert.equal(joined.body.playerCount, 2)
 
+    const blockedStart = await request(app)
+      .post(`/api/multiplayer/rooms/${created.body.code}/start`)
+      .set('Authorization', `Bearer ${first.token}`)
+      .expect(409)
+
+    assert.equal(blockedStart.body.payload.code, 'PLAYERS_NOT_READY')
+    assert.deepEqual(blockedStart.body.payload.notReadyWalletAddresses, [
+      second.walletAddress,
+    ])
+
     await request(app)
       .post(`/api/multiplayer/rooms/${created.body.code}/ready`)
-      .set('Authorization', `Bearer ${first.token}`)
+      .set('Authorization', `Bearer ${second.token}`)
       .expect(200)
 
     const countdown = await request(app)
-      .post(`/api/multiplayer/rooms/${created.body.code}/ready`)
-      .set('Authorization', `Bearer ${second.token}`)
+      .post(`/api/multiplayer/rooms/${created.body.code}/start`)
+      .set('Authorization', `Bearer ${first.token}`)
       .expect(200)
 
     assert.equal(countdown.body.status, 'countdown')

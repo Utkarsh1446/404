@@ -1076,7 +1076,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         players: [
           {
             walletAddress,
-            ready: false,
+            ready: true,
             score: 0,
             totalDistanceKm: 0,
             roundsCompleted: 0,
@@ -1191,19 +1191,64 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
       player.ready = true
       room.updatedAt = new Date().toISOString()
 
-      if (
-        room.players.length >= MULTIPLAYER_MIN_PLAYERS &&
-        room.players.every((entry) => entry.ready)
-      ) {
-        const now = Date.now()
-        room.status = 'countdown'
-        room.countdownEndsAt = now + MULTIPLAYER_COUNTDOWN_MS
-        room.roundIndex = 1
-        room.locationIds = pickMultiplayerLocations(state)
-        room.updatedAt = new Date(now).toISOString()
+      return summarizeMultiplayerRoom(room, walletAddress)
+    })
+  }
+
+  function startMultiplayerRoom(walletAddress, rawCode) {
+    return store.update((state) => {
+      ensureStateCollections(state)
+
+      const code = String(rawCode ?? '').trim().toUpperCase()
+      const room = state.multiplayerRooms.find((entry) => entry.code === code)
+
+      if (!room) {
+        const error = new Error('Room code not found.')
+        error.statusCode = 404
+        throw error
       }
 
-      return summarizeMultiplayerRoom(room, walletAddress)
+      progressMultiplayerRoom(room)
+
+      if (room.hostWalletAddress !== walletAddress) {
+        const error = new Error('Only the room creator can start this game.')
+        error.statusCode = 403
+        throw error
+      }
+
+      if (room.status !== 'waiting') {
+        return summarizeMultiplayerRoom(room, walletAddress)
+      }
+
+      if (room.players.length < MULTIPLAYER_MIN_PLAYERS) {
+        const error = new Error('At least two players are required to start.')
+        error.statusCode = 409
+        error.payload = {
+          code: 'NOT_ENOUGH_PLAYERS',
+          minPlayers: MULTIPLAYER_MIN_PLAYERS,
+        }
+        throw error
+      }
+
+      const notReadyPlayers = room.players.filter((player) => !player.ready)
+      if (notReadyPlayers.length > 0) {
+        const error = new Error('Some players are not ready.')
+        error.statusCode = 409
+        error.payload = {
+          code: 'PLAYERS_NOT_READY',
+          notReadyWalletAddresses: notReadyPlayers.map((player) => player.walletAddress),
+        }
+        throw error
+      }
+
+      const now = Date.now()
+      room.status = 'countdown'
+      room.countdownEndsAt = now + MULTIPLAYER_COUNTDOWN_MS
+      room.roundIndex = 1
+      room.locationIds = pickMultiplayerLocations(state)
+      room.updatedAt = new Date(now).toISOString()
+
+      return summarizeMultiplayerRoom(room, walletAddress, now)
     })
   }
 
@@ -1332,6 +1377,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
     getQuota,
     joinMultiplayerRoom,
     setMultiplayerReady,
+    startMultiplayerRoom,
     startDropRound,
     startRound,
     checkoutAttempt,

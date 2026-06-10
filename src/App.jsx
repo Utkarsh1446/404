@@ -485,11 +485,23 @@ function MultiplayerVoicePanel({ roomCode, session }) {
   )
 }
 
-function MultiplayerLobby({ room, error, isBusy, now, session, onReady, onLeave }) {
+function MultiplayerLobby({
+  room,
+  error,
+  isBusy,
+  now,
+  notReadyWallets,
+  session,
+  onReady,
+  onStart,
+  onLeave,
+}) {
   const secondsUntilStart = room?.countdownEndsAt
     ? Math.max(0, Math.ceil((room.countdownEndsAt - now) / 1000))
     : 0
   const allReady = room.players.length >= room.minPlayers && room.players.every((player) => player.ready)
+  const isHost = room.hostWalletAddress === room.currentPlayer?.walletAddress
+  const notReadySet = new Set(notReadyWallets)
 
   return (
     <div className="multiplayer-lobby">
@@ -516,7 +528,13 @@ function MultiplayerLobby({ room, error, isBusy, now, session, onReady, onLeave 
             <div className="multiplayer-player-row" key={player.walletAddress}>
               <WalletAvatar value={player.walletAddress} />
               <span>{formatWallet(player.walletAddress)}</span>
-              <strong>{player.ready ? 'Ready' : 'Waiting'}</strong>
+              <strong className={notReadySet.has(player.walletAddress) ? 'is-not-ready' : ''}>
+                {notReadySet.has(player.walletAddress)
+                  ? `${formatWallet(player.walletAddress)} not ready`
+                  : player.ready
+                    ? 'Ready'
+                    : 'Waiting'}
+              </strong>
             </div>
           ))}
         </div>
@@ -524,9 +542,15 @@ function MultiplayerLobby({ room, error, isBusy, now, session, onReady, onLeave 
         {error ? <p className="multiplayer-error">{error}</p> : null}
 
         <div className="multiplayer-lobby-actions">
-          <HoverButton className="landing-play-button" type="button" onClick={onReady} disabled={isBusy || room.currentPlayer?.ready || room.status !== 'waiting'}>
-            {room.currentPlayer?.ready ? 'Ready' : 'Ready'}
-          </HoverButton>
+          {isHost ? (
+            <HoverButton className="landing-play-button" type="button" onClick={onStart} disabled={isBusy || room.status !== 'waiting'}>
+              Start
+            </HoverButton>
+          ) : (
+            <HoverButton className="landing-play-button" type="button" onClick={onReady} disabled={isBusy || room.currentPlayer?.ready || room.status !== 'waiting'}>
+              {room.currentPlayer?.ready ? 'Ready' : 'Ready'}
+            </HoverButton>
+          )}
           <HoverButton className="landing-play-button" type="button" onClick={onLeave}>
             Leave
           </HoverButton>
@@ -717,6 +741,7 @@ function App() {
   const [multiplayerJoinCode, setMultiplayerJoinCode] = useState('')
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false)
   const [multiplayerError, setMultiplayerError] = useState('')
+  const [multiplayerNotReadyWallets, setMultiplayerNotReadyWallets] = useState([])
   const [isMultiplayerBusy, setIsMultiplayerBusy] = useState(false)
   const [multiplayerGuess, setMultiplayerGuess] = useState(null)
   const [multiplayerMapExpanded, setMultiplayerMapExpanded] = useState(false)
@@ -777,6 +802,11 @@ function App() {
         const nextRoom = await apiClient.getMultiplayerRoom(session.token, multiplayerRoom.code)
         setMultiplayerRoom(nextRoom)
         setMultiplayerError('')
+        setMultiplayerNotReadyWallets((current) =>
+          current.filter((walletAddress) =>
+            nextRoom.players.some((player) => player.walletAddress === walletAddress && !player.ready),
+          ),
+        )
       } catch (caughtError) {
         setMultiplayerError(caughtError.message)
       }
@@ -869,6 +899,7 @@ function App() {
     setMultiplayerRoom(null)
     setMultiplayerGuess(null)
     setMultiplayerError('')
+    setMultiplayerNotReadyWallets([])
     setMultiplayerMapExpanded(false)
     setShowLanding(true)
     setMapExpanded(false)
@@ -894,6 +925,7 @@ function App() {
       const room = await apiClient.createMultiplayerRoom(nextSession.token)
       setMultiplayerRoom(room)
       setMultiplayerGuess(null)
+      setMultiplayerNotReadyWallets([])
       setShowLanding(false)
       navigateTo('/')
     } catch (caughtError) {
@@ -917,6 +949,7 @@ function App() {
       )
       setMultiplayerRoom(room)
       setMultiplayerGuess(null)
+      setMultiplayerNotReadyWallets([])
       setIsJoinModalOpen(false)
       setShowLanding(false)
       navigateTo('/')
@@ -936,7 +969,28 @@ function App() {
     try {
       const room = await apiClient.readyMultiplayerRoom(session.token, multiplayerRoom.code)
       setMultiplayerRoom(room)
+      setMultiplayerNotReadyWallets([])
     } catch (caughtError) {
+      setMultiplayerError(caughtError.message)
+    } finally {
+      setIsMultiplayerBusy(false)
+    }
+  }
+
+  async function handleMultiplayerStart() {
+    if (!session?.token || !multiplayerRoom?.code) return
+
+    setMultiplayerError('')
+    setMultiplayerNotReadyWallets([])
+    setIsMultiplayerBusy(true)
+
+    try {
+      const room = await apiClient.startMultiplayerRoom(session.token, multiplayerRoom.code)
+      setMultiplayerRoom(room)
+    } catch (caughtError) {
+      if (caughtError.payload?.code === 'PLAYERS_NOT_READY') {
+        setMultiplayerNotReadyWallets(caughtError.payload.notReadyWalletAddresses ?? [])
+      }
       setMultiplayerError(caughtError.message)
     } finally {
       setIsMultiplayerBusy(false)
@@ -969,6 +1023,7 @@ function App() {
     setMultiplayerRoom(null)
     setMultiplayerGuess(null)
     setMultiplayerError('')
+    setMultiplayerNotReadyWallets([])
     setMultiplayerMapExpanded(false)
     setShowLanding(true)
     navigateTo('/')
@@ -1302,8 +1357,10 @@ function App() {
               error={multiplayerError}
               isBusy={isMultiplayerBusy}
               now={now}
+              notReadyWallets={multiplayerNotReadyWallets}
               session={session}
               onReady={handleMultiplayerReady}
+              onStart={handleMultiplayerStart}
               onLeave={handleLeaveMultiplayer}
             />
           ) : multiplayerRoom.status === 'finished' ? (

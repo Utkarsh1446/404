@@ -68,6 +68,12 @@ export const apiClient = {
       token,
     })
   },
+  startMultiplayerRoom(token, code) {
+    return apiFetch(`/api/multiplayer/rooms/${code}/start`, {
+      method: 'POST',
+      token,
+    })
+  },
   submitMultiplayerGuess(token, code, guess) {
     return apiFetch(`/api/multiplayer/rooms/${code}/guess`, {
       method: 'POST',
