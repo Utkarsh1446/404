@@ -378,7 +378,8 @@
 
 .landing-drop-card.is-live,
 .landing-drop-card.is-past,
-.landing-drop-card.is-reveal {
+.landing-drop-card.is-reveal,
+.landing-drop-card.is-locked {
   cursor: pointer;
 }
 
@@ -405,7 +406,8 @@
 }
 
 .landing-drop-card.is-past:hover::before,
-.landing-drop-card.is-reveal:hover::before {
+.landing-drop-card.is-reveal:hover::before,
+.landing-drop-card.is-locked:hover::before {
   box-shadow:
     0 22px 34px rgba(28, 10, 76, 0.24),
     0 6px 12px rgba(28, 10, 76, 0.16);
@@ -452,7 +454,8 @@
   background: #fbfaf5;
 }
 
-.landing-drop-card.is-reveal::before {
+.landing-drop-card.is-reveal::before,
+.landing-drop-card.is-locked::before {
   background: #fbfaf5;
 }
 
@@ -523,7 +526,8 @@
     radial-gradient(circle at 72% 24%, rgba(255, 248, 194, 0.68), transparent 24%);
 }
 
-.landing-drop-card.is-reveal .landing-drop-placeholder {
+.landing-drop-card.is-reveal .landing-drop-placeholder,
+.landing-drop-card.is-locked .landing-drop-placeholder {
   background:
     linear-gradient(180deg, #9cc8ff 0%, #d8b2ff 46%, #f3c7b6 100%),
     radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.38), transparent 28%);
@@ -577,7 +581,8 @@
   color: #5f35dd;
 }
 
-.landing-drop-card.is-reveal .landing-drop-state {
+.landing-drop-card.is-reveal .landing-drop-state,
+.landing-drop-card.is-locked .landing-drop-state {
   color: #ef4444;
 }
 

@@ -535,7 +535,11 @@ export function useGameSession() {
             : 'Guess submitted. Reveal countdown is live.',
         )
         setPhase('submitted')
-        return
+        return {
+          status: 'pending_reveal',
+          pendingReveal: payload.pendingReveal,
+          round: activeRound,
+        }
       }
 
       const revealedResult = {
@@ -590,6 +594,10 @@ export function useGameSession() {
           ? `Round complete. ${totalRewardSp} SP queued across ${rewardEligibleCount} correct locations.`
           : 'Round complete. No SP this time, but the reveal is live.',
       )
+      return {
+        status: 'revealed',
+        result: revealedResult,
+      }
     } catch (caughtError) {
       if (
         caughtError.status === 409 &&
@@ -598,11 +606,12 @@ export function useGameSession() {
         setSelectedGuess(null)
         setStatus('Times Up.')
         void loadRevealResult(activeRound.roundId, { timedOut: true })
-        return
+        return { status: 'timed_out' }
       }
 
       setPhase('playing')
       setError(caughtError.message)
+      return { status: 'error' }
     } finally {
       setIsBusy(false)
     }

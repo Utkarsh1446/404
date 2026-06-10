@@ -397,6 +397,54 @@ function DropDetailModal({ detailState, error, isLoading, onClose }) {
   )
 }
 
+function LockedDropModal({ lockedDrop, now, onClose }) {
+  if (!lockedDrop) return null
+
+  const location = lockedDrop.location
+  const revealMs = Math.max(0, lockedDrop.revealEndsAt - now)
+
+  return (
+    <div className="drop-detail-backdrop" role="dialog" aria-modal="true" aria-label="Locked drop">
+      <div className="drop-detail-modal">
+        <button className="drop-detail-close" type="button" aria-label="Close locked drop" onClick={onClose}>
+          &times;
+        </button>
+
+        <div className="drop-detail-postcard">
+          <img alt={location.city} src={location.image} />
+          <span>{location.city}</span>
+        </div>
+
+        <div className="drop-detail-copy">
+          <h2>Guess Locked</h2>
+          <div className="drop-detail-grid">
+            <div>
+              <span>Place</span>
+              <strong>{location.city}</strong>
+            </div>
+            <div>
+              <span>Reveal in</span>
+              <strong>{formatCountdown(revealMs)}</strong>
+            </div>
+            <div>
+              <span>Status</span>
+              <strong>Locked</strong>
+            </div>
+            <div>
+              <span>Win</span>
+              <strong>$20</strong>
+            </div>
+          </div>
+
+          <HoverButton className="submit-button" type="button" onClick={onClose}>
+            Back to drops
+          </HoverButton>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function MultiplayerJoinModal({
   code,
   error,
@@ -949,6 +997,8 @@ function App() {
   const [selectedDropDetail, setSelectedDropDetail] = useState(null)
   const [dropDetailError, setDropDetailError] = useState('')
   const [isDropDetailLoading, setIsDropDetailLoading] = useState(false)
+  const [lockedDropState, setLockedDropState] = useState(null)
+  const [isLockedDropModalOpen, setIsLockedDropModalOpen] = useState(false)
   const [multiplayerRoom, setMultiplayerRoom] = useState(null)
   const [multiplayerJoinCode, setMultiplayerJoinCode] = useState('')
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false)
@@ -1069,6 +1119,11 @@ function App() {
   async function handleDropEntry() {
     if (isBusy) return
 
+    if (currentLockedDropState) {
+      setIsLockedDropModalOpen(true)
+      return
+    }
+
     navigateTo('/')
     const result = await beginDropExperience()
     if (result?.status === 'started') {
@@ -1099,6 +1154,28 @@ function App() {
     setIsDropDetailLoading(false)
   }
 
+  function handleLockedDropOpen() {
+    if (!currentLockedDropState) return
+    setIsLockedDropModalOpen(true)
+  }
+
+  function lockDropFromRound(round) {
+    if (
+      round?.meta?.gameMode !== 'drop' ||
+      !Number.isFinite(round?.meta?.dropCycleNumber)
+    ) {
+      return
+    }
+
+    const cycleNumber = round.meta.dropCycleNumber
+    setLockedDropState({
+      cycleNumber,
+      location: getHardDropLocation(cycleNumber),
+      activeEndsAt: round.meta.activeEndsAt,
+      revealEndsAt: round.meta.revealEndsAt,
+    })
+  }
+
   async function handleRevealAdvance() {
     if (isBusy) return
 
@@ -1108,7 +1185,11 @@ function App() {
 
   async function handleGuessSubmit() {
     setMapExpanded(false)
-    await submitGuess()
+    const submittedRound = activeRound
+    const result = await submitGuess()
+    if (result?.status === 'pending_reveal') {
+      lockDropFromRound(result.round ?? submittedRound)
+    }
   }
 
   function handleNextRound() {
@@ -1366,6 +1447,8 @@ function App() {
     0,
     (activeRound?.meta?.timeLimitSeconds ?? 90) - secondsLeft,
   )
+  const currentLockedDropState =
+    lockedDropState && now < lockedDropState.revealEndsAt ? lockedDropState : null
   const visiblePolaroids = useMemo(() => {
     const centerLatitude = (globeRotation.lat * Math.PI) / 180
 
@@ -1407,6 +1490,8 @@ function App() {
       const endsAt = startsAt + DROP_INTERVAL_MS
       const revealEndsAt = endsAt + DROP_REVEAL_MS
       const location = getHardDropLocation(cycleNumber)
+      const isLockedDrop =
+        currentLockedDropState?.cycleNumber === cycleNumber
 
       if (cycleNumber < activeCycle) {
         return {
@@ -1417,6 +1502,19 @@ function App() {
           startsAt,
           endsAt,
           revealEndsAt,
+        }
+      }
+
+      if (isLockedDrop) {
+        return {
+          key: `${cycleNumber}-locked`,
+          state: 'locked',
+          cycleNumber,
+          location: currentLockedDropState.location,
+          startsAt,
+          endsAt,
+          revealEndsAt,
+          countdown: formatCountdown(currentLockedDropState.revealEndsAt - now),
         }
       }
 
@@ -1463,7 +1561,7 @@ function App() {
       },
       ...timedDrops,
     ]
-  }, [now])
+  }, [currentLockedDropState, now])
 
   useEffect(() => {
     const visibleByCity = new Map(visiblePolaroids.map((place) => [place.city, place]))
@@ -1641,7 +1739,10 @@ function App() {
                 {landingDrops.map((drop) => {
                   const canPlayDrop = drop.state === 'live'
                   const canViewDrop = drop.state === 'past' || drop.state === 'reveal'
-                  const clickHandler = canPlayDrop
+                  const canViewLockedDrop = drop.state === 'locked'
+                  const clickHandler = canViewLockedDrop
+                    ? handleLockedDropOpen
+                    : canPlayDrop
                     ? handleDropEntry
                     : canViewDrop
                       ? () => handleDropDetailOpen(drop)
@@ -1652,12 +1753,14 @@ function App() {
                       aria-label={
                         canPlayDrop
                           ? `Play active ${drop.location.city} drop`
+                          : canViewLockedDrop
+                            ? `View locked ${drop.location.city} drop`
                           : canViewDrop
                             ? `View ${drop.location.city} drop details`
                             : undefined
                       }
                       className={`landing-drop-card is-${drop.state}`}
-                      disabled={(!canPlayDrop && !canViewDrop) || isBusy}
+                      disabled={(!canPlayDrop && !canViewDrop && !canViewLockedDrop) || isBusy}
                       key={drop.key}
                       onClick={clickHandler}
                       type="button"
@@ -1682,6 +1785,8 @@ function App() {
                                   ? 'Past'
                                   : drop.state === 'reveal'
                                     ? 'Reveal In'
+                                    : drop.state === 'locked'
+                                      ? 'Reveal In'
                                     : drop.state === 'live'
                                     ? 'Ends in'
                                     : 'Starts in'}
@@ -2036,6 +2141,11 @@ function App() {
         error={dropDetailError}
         isLoading={isDropDetailLoading}
         onClose={handleDropDetailClose}
+      />
+      <LockedDropModal
+        lockedDrop={isLockedDropModalOpen ? currentLockedDropState : null}
+        now={now}
+        onClose={() => setIsLockedDropModalOpen(false)}
       />
       {isJoinModalOpen ? (
         <MultiplayerJoinModal
