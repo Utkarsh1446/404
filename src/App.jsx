@@ -99,8 +99,9 @@ const LANDMARK_POLAROIDS = [
   },
 ]
 
-const HARD_DROP_LOCATIONS = [
+const DROP_LOCATION_ASSETS = [
   {
+    id: 'na-namib-desert-dunes',
     city: 'Namib Desert',
     lat: -24.7508,
     lng: 15.2886,
@@ -108,6 +109,7 @@ const HARD_DROP_LOCATIONS = [
       'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=420&q=80',
   },
   {
+    id: 'bo-salar-de-uyuni',
     city: 'Salar de Uyuni',
     lat: -20.1338,
     lng: -67.4891,
@@ -115,6 +117,7 @@ const HARD_DROP_LOCATIONS = [
       'https://images.unsplash.com/photo-1535551951406-a19828b0a76b?auto=format&fit=crop&w=420&q=80',
   },
   {
+    id: 'cn-zhangjiajie-pillars',
     city: 'Zhangjiajie',
     lat: 29.3457,
     lng: 110.5446,
@@ -122,6 +125,7 @@ const HARD_DROP_LOCATIONS = [
       'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=420&q=80',
   },
   {
+    id: 'co-cano-cristales',
     city: 'Cano Cristales',
     lat: 2.2642,
     lng: -73.7947,
@@ -129,6 +133,7 @@ const HARD_DROP_LOCATIONS = [
       'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=420&q=80',
   },
   {
+    id: 'pe-colca-canyon',
     city: 'Colca Canyon',
     lat: -15.6094,
     lng: -71.9793,
@@ -136,6 +141,7 @@ const HARD_DROP_LOCATIONS = [
       'https://images.unsplash.com/photo-1526392060635-9d6019884377?auto=format&fit=crop&w=420&q=80',
   },
   {
+    id: 'is-landmannalaugar',
     city: 'Landmannalaugar',
     lat: 63.9912,
     lng: -19.0607,
@@ -143,6 +149,7 @@ const HARD_DROP_LOCATIONS = [
       'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=420&q=80',
   },
   {
+    id: 'mg-tsingy-bemaraha',
     city: 'Tsingy',
     lat: -18.6667,
     lng: 44.75,
@@ -150,6 +157,7 @@ const HARD_DROP_LOCATIONS = [
       'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=420&q=80',
   },
   {
+    id: 'id-raja-ampat-karst',
     city: 'Raja Ampat',
     lat: -0.2346,
     lng: 130.523,
@@ -157,6 +165,7 @@ const HARD_DROP_LOCATIONS = [
       'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=420&q=80',
   },
   {
+    id: 'ca-nahanni-river',
     city: 'Nahanni River',
     lat: 61.5976,
     lng: -125.735,
@@ -164,6 +173,7 @@ const HARD_DROP_LOCATIONS = [
       'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=420&q=80',
   },
   {
+    id: 'np-annapurna-valley',
     city: 'Annapurna',
     lat: 28.596,
     lng: 83.8203,
@@ -171,6 +181,26 @@ const HARD_DROP_LOCATIONS = [
       'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=420&q=80',
   },
 ]
+
+const ACTIVE_DROP_LOCATION_IDS = [
+  'na-namib-desert-dunes',
+  'bo-salar-de-uyuni',
+  'cn-zhangjiajie-pillars',
+  'co-cano-cristales',
+  'pe-colca-canyon',
+  'is-landmannalaugar',
+  'id-raja-ampat-karst',
+  'ca-nahanni-river',
+  'np-annapurna-valley',
+]
+
+const ACTIVE_DROP_LOCATIONS = ACTIVE_DROP_LOCATION_IDS.map((id) =>
+  DROP_LOCATION_ASSETS.find((location) => location.id === id),
+).filter(Boolean)
+
+const DROP_LOCATION_ASSET_BY_ID = new Map(
+  DROP_LOCATION_ASSETS.map((location) => [location.id, location]),
+)
 
 function normalizeLongitude(value) {
   return ((((value + 180) % 360) + 360) % 360) - 180
@@ -217,7 +247,7 @@ function hashDropCycle(cycleNumber) {
 }
 
 function getHardDropLocation(cycleNumber) {
-  return HARD_DROP_LOCATIONS[hashDropCycle(cycleNumber) % HARD_DROP_LOCATIONS.length]
+  return ACTIVE_DROP_LOCATIONS[hashDropCycle(cycleNumber) % ACTIVE_DROP_LOCATIONS.length]
 }
 function WalletPage({ profile, session, onConnectWallet }) {
   const tokenBalance = profile?.tokenBalance ?? 0
@@ -310,8 +340,12 @@ function DropDetailModal({ detailState, error, isLoading, onClose }) {
 
   const drop = detailState.drop
   const details = detailState.details
-  const placeName = details?.location?.region ?? drop.location?.city ?? 'Drop location'
-  const rewardSp = details?.winner?.rewardSp ?? details?.rewardSp ?? drop.location?.rewardSp ?? 20
+  const detailLocationAsset = details?.location?.id
+    ? DROP_LOCATION_ASSET_BY_ID.get(details.location.id)
+    : null
+  const postcardLocation = detailLocationAsset ?? drop.location
+  const placeName = details?.location?.region ?? postcardLocation?.city ?? 'Drop location'
+  const rewardSp = details?.winner?.rewardSp ?? details?.rewardSp ?? postcardLocation?.rewardSp ?? 20
   const winnerLabel = details?.winner?.walletAddress
     ? formatWallet(details.winner.walletAddress)
     : details?.status === 'completed'
@@ -327,7 +361,7 @@ function DropDetailModal({ detailState, error, isLoading, onClose }) {
         </button>
 
         <div className="drop-detail-postcard">
-          <img alt={placeName} src={drop.location?.image} />
+          <img alt={placeName} src={postcardLocation?.image} />
           <span>{placeName}</span>
         </div>
 
@@ -1486,6 +1520,7 @@ function App() {
   const completedLocations = locationResults.length
   const isFinalReveal = phase === 'reveal' && currentLocationIndex === roundLocationCount
   const isDropReveal = activeRound?.meta?.gameMode === 'drop'
+  const isDropGuessLocked = activeRound?.meta?.gameMode === 'drop' && phase === 'submitted'
   const completedElapsedSeconds = locationResults.reduce(
     (sum, entry) => sum + (entry.elapsedSeconds ?? 0),
     0,
@@ -1979,7 +2014,11 @@ function App() {
                   disabled={!selectedGuess || phase !== 'playing' || isBusy}
                   onClick={handleGuessSubmit}
                 >
-                  {selectedGuess ? 'Guess' : 'Place your pin on the map'}
+                  {isDropGuessLocked
+                    ? 'Guess Locked'
+                    : selectedGuess
+                      ? 'Guess'
+                      : 'Place your pin on the map'}
                 </HoverButton>
               </div>
             </div>
