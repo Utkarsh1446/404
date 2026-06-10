@@ -171,9 +171,11 @@ export function useGameSession() {
       })
       setPhase('reveal')
       setStatus(
-        payload.result.winner
-          ? `Reveal live. Winner: ${payload.result.winner.walletAddress.slice(0, 4)}...${payload.result.winner.walletAddress.slice(-4)}.`
-          : 'Reveal live. No correct winner for this drop.',
+        activeRound?.meta?.gameMode === 'drop'
+          ? payload.result.winner
+            ? `Reveal live. Winner: ${payload.result.winner.walletAddress.slice(0, 4)}...${payload.result.winner.walletAddress.slice(-4)}.`
+            : 'Reveal live. No correct winner for this drop.'
+          : `Reveal live. Distance: ${payload.result.distanceKm.toFixed(1)} km.`,
       )
     } catch (caughtError) {
       if (caughtError.status === 425 && caughtError.payload?.secondsUntilReveal) {
@@ -185,7 +187,7 @@ export function useGameSession() {
     } finally {
       setIsBusy(false)
     }
-  }, [activeRoundLocationCount, authToken, currentLocationIndex, locationResults])
+  }, [activeRound, activeRoundLocationCount, authToken, currentLocationIndex, locationResults])
 
   useEffect(() => {
     if (phase !== 'submitted' || secondsLeft !== 0 || !pendingRevealRoundId) {

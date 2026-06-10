@@ -66,6 +66,16 @@ async function authenticate(app, keypair = Keypair.generate()) {
   }
 }
 
+function useActiveDropClock() {
+  const originalNow = Date.now
+  const activeDropNow = Math.floor(originalNow() / DROP_CYCLE_MS) * DROP_CYCLE_MS + 1000
+  Date.now = () => activeDropNow
+
+  return () => {
+    Date.now = originalNow
+  }
+}
+
 test('invalid signatures are rejected', async () => {
   const app = createTestApp()
   const keypair = Keypair.generate()
@@ -157,136 +167,146 @@ test('starting and guessing a regular round reveals immediately', async () => {
 })
 
 test('drop settlement credits only the first correct wallet', async () => {
+  const restoreNow = useActiveDropClock()
   const app = createTestApp()
   const first = await authenticate(app)
   const second = await authenticate(app)
 
-  const firstRound = await request(app)
-    .post('/api/drops/start')
-    .set('Authorization', `Bearer ${first.token}`)
-    .expect(200)
-  const secondRound = await request(app)
-    .post('/api/drops/start')
-    .set('Authorization', `Bearer ${second.token}`)
-    .expect(200)
+  try {
+    const firstRound = await request(app)
+      .post('/api/drops/start')
+      .set('Authorization', `Bearer ${first.token}`)
+      .expect(200)
+    const secondRound = await request(app)
+      .post('/api/drops/start')
+      .set('Authorization', `Bearer ${second.token}`)
+      .expect(200)
 
-  await request(app)
-    .post(`/api/rounds/${firstRound.body.roundId}/guess`)
-    .set('Authorization', `Bearer ${first.token}`)
-    .send({
-      guessLat: firstRound.body.panorama.position.lat,
-      guessLng: firstRound.body.panorama.position.lng,
-    })
-    .expect(200)
+    await request(app)
+      .post(`/api/rounds/${firstRound.body.roundId}/guess`)
+      .set('Authorization', `Bearer ${first.token}`)
+      .send({
+        guessLat: firstRound.body.panorama.position.lat,
+        guessLng: firstRound.body.panorama.position.lng,
+      })
+      .expect(200)
 
-  await request(app)
-    .post(`/api/rounds/${secondRound.body.roundId}/guess`)
-    .set('Authorization', `Bearer ${second.token}`)
-    .send({
-      guessLat: secondRound.body.panorama.position.lat,
-      guessLng: secondRound.body.panorama.position.lng,
-    })
-    .expect(200)
+    await request(app)
+      .post(`/api/rounds/${secondRound.body.roundId}/guess`)
+      .set('Authorization', `Bearer ${second.token}`)
+      .send({
+        guessLat: secondRound.body.panorama.position.lat,
+        guessLng: secondRound.body.panorama.position.lng,
+      })
+      .expect(200)
 
-  const storageFile = app.locals.config.storageFile
-  const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
-  state.rounds
-    .filter((round) => round.dropCycleNumber === firstRound.body.meta.dropCycleNumber)
-    .forEach((round) => {
-      round.revealEndsAt = Date.now() - 1
-    })
-  fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
+    const storageFile = app.locals.config.storageFile
+    const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
+    state.rounds
+      .filter((round) => round.dropCycleNumber === firstRound.body.meta.dropCycleNumber)
+      .forEach((round) => {
+        round.revealEndsAt = Date.now() - 1
+      })
+    fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
 
-  const firstResult = await request(app)
-    .get(`/api/rounds/${firstRound.body.roundId}/result`)
-    .set('Authorization', `Bearer ${first.token}`)
-    .expect(200)
+    const firstResult = await request(app)
+      .get(`/api/rounds/${firstRound.body.roundId}/result`)
+      .set('Authorization', `Bearer ${first.token}`)
+      .expect(200)
 
-  assert.equal(firstResult.body.result.winner.walletAddress, first.walletAddress)
-  assert.equal(firstResult.body.profile.spBalance, firstResult.body.result.rewardSp)
+    assert.equal(firstResult.body.result.winner.walletAddress, first.walletAddress)
+    assert.equal(firstResult.body.profile.spBalance, firstResult.body.result.rewardSp)
 
-  const secondProfile = await request(app)
-    .get('/api/me/profile')
-    .set('Authorization', `Bearer ${second.token}`)
-    .expect(200)
+    const secondProfile = await request(app)
+      .get('/api/me/profile')
+      .set('Authorization', `Bearer ${second.token}`)
+      .expect(200)
 
-  assert.equal(secondProfile.body.spBalance, 0)
-  assert.equal(secondProfile.body.dropsParticipated, 1)
+    assert.equal(secondProfile.body.spBalance, 0)
+    assert.equal(secondProfile.body.dropsParticipated, 1)
+  } finally {
+    restoreNow()
+  }
 })
 
 test('ended drop details reveal the place, winner, and amount publicly', async () => {
+  const restoreNow = useActiveDropClock()
   const app = createTestApp()
   const first = await authenticate(app)
   const second = await authenticate(app)
 
-  const firstRound = await request(app)
-    .post('/api/drops/start')
-    .set('Authorization', `Bearer ${first.token}`)
-    .expect(200)
-  const secondRound = await request(app)
-    .post('/api/drops/start')
-    .set('Authorization', `Bearer ${second.token}`)
-    .expect(200)
+  try {
+    const firstRound = await request(app)
+      .post('/api/drops/start')
+      .set('Authorization', `Bearer ${first.token}`)
+      .expect(200)
+    const secondRound = await request(app)
+      .post('/api/drops/start')
+      .set('Authorization', `Bearer ${second.token}`)
+      .expect(200)
 
-  await request(app)
-    .post(`/api/rounds/${firstRound.body.roundId}/guess`)
-    .set('Authorization', `Bearer ${first.token}`)
-    .send({
-      guessLat: firstRound.body.panorama.position.lat,
-      guessLng: firstRound.body.panorama.position.lng,
-    })
-    .expect(200)
+    await request(app)
+      .post(`/api/rounds/${firstRound.body.roundId}/guess`)
+      .set('Authorization', `Bearer ${first.token}`)
+      .send({
+        guessLat: firstRound.body.panorama.position.lat,
+        guessLng: firstRound.body.panorama.position.lng,
+      })
+      .expect(200)
 
-  await request(app)
-    .post(`/api/rounds/${secondRound.body.roundId}/guess`)
-    .set('Authorization', `Bearer ${second.token}`)
-    .send({
-      guessLat: secondRound.body.panorama.position.lat,
-      guessLng: secondRound.body.panorama.position.lng,
-    })
-    .expect(200)
+    await request(app)
+      .post(`/api/rounds/${secondRound.body.roundId}/guess`)
+      .set('Authorization', `Bearer ${second.token}`)
+      .send({
+        guessLat: secondRound.body.panorama.position.lat,
+        guessLng: secondRound.body.panorama.position.lng,
+      })
+      .expect(200)
 
-  const originalCycle = firstRound.body.meta.dropCycleNumber
-  const endedCycle = Math.floor(Date.now() / DROP_CYCLE_MS) - 1
-  const storageFile = app.locals.config.storageFile
-  const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
+    const originalCycle = firstRound.body.meta.dropCycleNumber
+    const endedCycle = Math.floor(Date.now() / DROP_CYCLE_MS) - 1
+    const storageFile = app.locals.config.storageFile
+    const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
 
-  state.rounds
-    .filter((round) => round.dropCycleNumber === originalCycle)
-    .forEach((round) => {
-      round.dropCycleNumber = endedCycle
-      round.activeEndsAt = Date.now() - 130_000
-      round.revealEndsAt = Date.now() - 1
-    })
-  state.guesses
-    .filter((guess) => guess.dropCycleNumber === originalCycle)
-    .forEach((guess) => {
-      guess.dropCycleNumber = endedCycle
-    })
-  state.dropParticipations
-    .filter((participation) => participation.dropCycleNumber === originalCycle)
-    .forEach((participation) => {
-      participation.dropCycleNumber = endedCycle
-    })
-  fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
+    state.rounds
+      .filter((round) => round.dropCycleNumber === originalCycle)
+      .forEach((round) => {
+        round.dropCycleNumber = endedCycle
+        round.activeEndsAt = Date.now() - 130_000
+        round.revealEndsAt = Date.now() - 1
+      })
+    state.guesses
+      .filter((guess) => guess.dropCycleNumber === originalCycle)
+      .forEach((guess) => {
+        guess.dropCycleNumber = endedCycle
+      })
+    state.dropParticipations
+      .filter((participation) => participation.dropCycleNumber === originalCycle)
+      .forEach((participation) => {
+        participation.dropCycleNumber = endedCycle
+      })
+    fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
 
-  const details = await request(app)
-    .get(`/api/drops/${endedCycle}`)
-    .expect(200)
+    const details = await request(app)
+      .get(`/api/drops/${endedCycle}`)
+      .expect(200)
 
-  assert.equal(details.body.status, 'completed')
-  assert.equal(details.body.winner.walletAddress, first.walletAddress)
-  assert.equal(details.body.participantsCount, 2)
-  assert.ok(details.body.location.region)
-  assert.ok(details.body.winner.rewardSp > 0)
+    assert.equal(details.body.status, 'completed')
+    assert.equal(details.body.winner.walletAddress, first.walletAddress)
+    assert.equal(details.body.participantsCount, 2)
+    assert.ok(details.body.location.region)
+    assert.ok(details.body.winner.rewardSp > 0)
 
-  const firstProfile = await request(app)
-    .get('/api/me/profile')
-    .set('Authorization', `Bearer ${first.token}`)
-    .expect(200)
+    const firstProfile = await request(app)
+      .get('/api/me/profile')
+      .set('Authorization', `Bearer ${first.token}`)
+      .expect(200)
 
-  assert.equal(firstProfile.body.spBalance, details.body.winner.rewardSp)
-  assert.equal(firstProfile.body.dropsWon, 1)
+    assert.equal(firstProfile.body.spBalance, details.body.winner.rewardSp)
+    assert.equal(firstProfile.body.dropsWon, 1)
+  } finally {
+    restoreNow()
+  }
 })
 
 test('regular rounds continue to a second 90 second location', async () => {
@@ -407,55 +427,60 @@ test('expired regular active rounds are not reused on fresh start', async () => 
 })
 
 test('completed active drops cannot be replayed after re-authentication', async () => {
+  const restoreNow = useActiveDropClock()
   const app = createTestApp()
   const keypair = Keypair.generate()
   const firstAuth = await authenticate(app, keypair)
 
-  const dropRound = await request(app)
-    .post('/api/drops/start')
-    .set('Authorization', `Bearer ${firstAuth.token}`)
-    .expect(200)
+  try {
+    const dropRound = await request(app)
+      .post('/api/drops/start')
+      .set('Authorization', `Bearer ${firstAuth.token}`)
+      .expect(200)
 
-  assert.equal(dropRound.body.meta.gameMode, 'drop')
-  assert.equal(dropRound.body.roundLocationCount, 1)
+    assert.equal(dropRound.body.meta.gameMode, 'drop')
+    assert.equal(dropRound.body.roundLocationCount, 1)
 
-  await request(app)
-    .post(`/api/rounds/${dropRound.body.roundId}/guess`)
-    .set('Authorization', `Bearer ${firstAuth.token}`)
-    .send({
-      guessLat: dropRound.body.panorama.position.lat,
-      guessLng: dropRound.body.panorama.position.lng,
-    })
-    .expect(200)
+    await request(app)
+      .post(`/api/rounds/${dropRound.body.roundId}/guess`)
+      .set('Authorization', `Bearer ${firstAuth.token}`)
+      .send({
+        guessLat: dropRound.body.panorama.position.lat,
+        guessLng: dropRound.body.panorama.position.lng,
+      })
+      .expect(200)
 
-  const secondAuth = await authenticate(app, keypair)
+    const secondAuth = await authenticate(app, keypair)
 
-  const blockedWhileSubmitted = await request(app)
-    .post('/api/drops/start')
-    .set('Authorization', `Bearer ${secondAuth.token}`)
-    .expect(409)
+    const blockedWhileSubmitted = await request(app)
+      .post('/api/drops/start')
+      .set('Authorization', `Bearer ${secondAuth.token}`)
+      .expect(409)
 
-  assert.equal(blockedWhileSubmitted.body.payload.code, 'DROP_ALREADY_PLAYED')
+    assert.equal(blockedWhileSubmitted.body.payload.code, 'DROP_ALREADY_PLAYED')
 
-  const storageFile = app.locals.config.storageFile
-  const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
-  const storedRound = state.rounds.find((round) => round.id === dropRound.body.roundId)
-  storedRound.revealEndsAt = Date.now() - 1
-  fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
+    const storageFile = app.locals.config.storageFile
+    const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
+    const storedRound = state.rounds.find((round) => round.id === dropRound.body.roundId)
+    storedRound.revealEndsAt = Date.now() - 1
+    fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
 
-  await request(app)
-    .get(`/api/rounds/${dropRound.body.roundId}/result`)
-    .set('Authorization', `Bearer ${secondAuth.token}`)
-    .expect(200)
+    await request(app)
+      .get(`/api/rounds/${dropRound.body.roundId}/result`)
+      .set('Authorization', `Bearer ${secondAuth.token}`)
+      .expect(200)
 
-  const thirdAuth = await authenticate(app, keypair)
+    const thirdAuth = await authenticate(app, keypair)
 
-  const blockedAfterCompleted = await request(app)
-    .post('/api/drops/start')
-    .set('Authorization', `Bearer ${thirdAuth.token}`)
-    .expect(409)
+    const blockedAfterCompleted = await request(app)
+      .post('/api/drops/start')
+      .set('Authorization', `Bearer ${thirdAuth.token}`)
+      .expect(409)
 
-  assert.equal(blockedAfterCompleted.body.payload.code, 'DROP_ALREADY_PLAYED')
+    assert.equal(blockedAfterCompleted.body.payload.code, 'DROP_ALREADY_PLAYED')
+  } finally {
+    restoreNow()
+  }
 })
 
 test('fourth round requires payment and mocked checkout unlocks one paid attempt', async () => {

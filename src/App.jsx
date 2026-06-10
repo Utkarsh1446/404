@@ -11,7 +11,7 @@ import { StreetViewStage } from './components/StreetViewStage'
 import { WalletAvatar } from './components/WalletAvatar'
 import { apiClient } from './api/client'
 import { useGameSession } from './hooks/useGameSession'
-import { formatWallet } from './lib/formatters'
+import { formatDistance, formatWallet } from './lib/formatters'
 
 const POLAROID_MIST_TRANSITION_MS = 760
 const DROP_INTERVAL_MS = 2 * 60 * 60 * 1000
@@ -745,6 +745,7 @@ function App() {
 
   const completedLocations = locationResults.length
   const isFinalReveal = phase === 'reveal' && currentLocationIndex === roundLocationCount
+  const isDropReveal = activeRound?.meta?.gameMode === 'drop'
   const scoreSlots = Array.from({ length: roundLocationCount }, (_entry, index) => index + 1)
   const scoreboardStyle = {
     gridTemplateColumns: `repeat(${scoreSlots.length + 1}, minmax(126px, 1fr))`,
@@ -1075,11 +1076,13 @@ function App() {
             <div className="reveal-bottom-bar">
               <div className="reveal-metric">
                 <strong>
-                  {revealResult.winner
-                    ? formatWallet(revealResult.winner.walletAddress)
-                    : 'No winner'}
+                  {isDropReveal
+                    ? revealResult.winner
+                      ? formatWallet(revealResult.winner.walletAddress)
+                      : 'No winner'
+                    : formatDistance(revealResult.distanceKm)}
                 </strong>
-                <span>winner</span>
+                <span>{isDropReveal ? 'winner' : 'distance'}</span>
               </div>
               <button
                 className="submit-button reveal-next-button"
