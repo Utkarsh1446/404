@@ -136,6 +136,45 @@ test('quota is wallet-specific and starts with three free rounds', async () => {
   assert.equal(secondQuota.body.freeRemaining, 3)
 })
 
+test('profile username can be set once signed in and must be unique', async () => {
+  const app = createTestApp()
+  const first = await authenticate(app)
+  const second = await authenticate(app)
+
+  const missingUsername = await request(app)
+    .get('/api/me/profile')
+    .set('Authorization', `Bearer ${first.token}`)
+    .expect(200)
+
+  assert.equal(missingUsername.body.hasUsername, false)
+  assert.equal(missingUsername.body.username, '')
+
+  const updated = await request(app)
+    .patch('/api/me/profile')
+    .set('Authorization', `Bearer ${first.token}`)
+    .send({ username: 'Geo_Player' })
+    .expect(200)
+
+  assert.equal(updated.body.hasUsername, true)
+  assert.equal(updated.body.username, 'Geo_Player')
+
+  const duplicate = await request(app)
+    .patch('/api/me/profile')
+    .set('Authorization', `Bearer ${second.token}`)
+    .send({ username: 'geo_player' })
+    .expect(409)
+
+  assert.equal(duplicate.body.payload.code, 'USERNAME_TAKEN')
+
+  const invalid = await request(app)
+    .patch('/api/me/profile')
+    .set('Authorization', `Bearer ${second.token}`)
+    .send({ username: 'no' })
+    .expect(400)
+
+  assert.equal(invalid.body.payload.code, 'INVALID_USERNAME')
+})
+
 test('starting and guessing a regular round reveals immediately', async () => {
   const app = createTestApp()
   const auth = await authenticate(app)
@@ -502,6 +541,19 @@ test('multiplayer room starts after everyone is ready and accepts guesses', asyn
   const app = createTestApp()
   const first = await authenticate(app)
   const second = await authenticate(app)
+
+  await request(app)
+    .patch('/api/me/profile')
+    .set('Authorization', `Bearer ${first.token}`)
+    .send({ username: 'Host_Player' })
+    .expect(200)
+
+  await request(app)
+    .patch('/api/me/profile')
+    .set('Authorization', `Bearer ${second.token}`)
+    .send({ username: 'Guest_Player' })
+    .expect(200)
+
   const originalNow = Date.now
   let now = originalNow()
   Date.now = () => now
@@ -522,6 +574,10 @@ test('multiplayer room starts after everyone is ready and accepts guesses', asyn
       .expect(200)
 
     assert.equal(joined.body.playerCount, 2)
+    assert.deepEqual(
+      joined.body.players.map((player) => player.username),
+      ['Host_Player', 'Guest_Player'],
+    )
 
     const blockedStart = await request(app)
       .post(`/api/multiplayer/rooms/${created.body.code}/start`)

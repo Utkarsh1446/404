@@ -23,6 +23,7 @@ const MULTIPLAYER_MAX_PLAYERS = 20
 const MULTIPLAYER_COUNTDOWN_MS = 5 * 1000
 const MULTIPLAYER_REVEAL_MS = 7 * 1000
 const DEFAULT_TOKEN_BALANCE = 300
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,16}$/
 
 function getActiveLocations(locations, label) {
   const activeLocations = locations.filter((location) => location.active)
@@ -113,8 +114,28 @@ function ensurePlayerAccount(player) {
   player.tokenBalance ??= DEFAULT_TOKEN_BALANCE
   player.spBalance ??= 0
   player.dropWins ??= 0
+  if (typeof player.username === 'string') {
+    player.username = normalizeUsername(player.username)
+  }
   player.updatedAt ??= player.lastSeenAt ?? new Date().toISOString()
   return player
+}
+
+function normalizeUsername(username) {
+  return String(username ?? '').trim().replace(/\s+/g, '_').slice(0, 16)
+}
+
+function assertValidUsername(username) {
+  const normalized = normalizeUsername(username)
+
+  if (!USERNAME_PATTERN.test(normalized)) {
+    const error = new Error('Username must be 3-16 letters, numbers, or underscores.')
+    error.statusCode = 400
+    error.payload = { code: 'INVALID_USERNAME' }
+    throw error
+  }
+
+  return normalized
 }
 
 function summarizePlayerProfile(state, walletAddress) {
@@ -123,6 +144,8 @@ function summarizePlayerProfile(state, walletAddress) {
   if (!player) {
     return {
       walletAddress,
+      username: '',
+      hasUsername: false,
       tokenBalance: 0,
       spBalance: 0,
       dropsParticipated: 0,
@@ -136,6 +159,8 @@ function summarizePlayerProfile(state, walletAddress) {
 
   return {
     walletAddress,
+    username: player.username ?? '',
+    hasUsername: Boolean(player.username),
     tokenBalance: player.tokenBalance,
     spBalance: player.spBalance,
     dropsParticipated,
@@ -330,11 +355,16 @@ function summarizeDropLocation(location) {
   }
 }
 
-function summarizeMultiplayerPlayer(player) {
+function getPlayerUsername(state, walletAddress) {
+  return state.players.find((entry) => entry.walletAddress === walletAddress)?.username ?? ''
+}
+
+function summarizeMultiplayerPlayer(player, state) {
   if (!player) return null
 
   return {
     walletAddress: player.walletAddress,
+    username: state ? getPlayerUsername(state, player.walletAddress) : '',
     ready: Boolean(player.ready),
     score: player.score ?? 0,
     roundsCompleted: player.roundsCompleted ?? 0,
@@ -356,9 +386,9 @@ function getRoomRoundResults(room) {
     .sort((first, second) => second.score - first.score || first.distanceKm - second.distanceKm)
 }
 
-function getRoomLeaderboard(room) {
+function getRoomLeaderboard(room, state) {
   return room.players
-    .map(summarizeMultiplayerPlayer)
+    .map((player) => summarizeMultiplayerPlayer(player, state))
     .sort((first, second) => second.score - first.score || first.totalDistanceKm - second.totalDistanceKm)
     .map((player, index) => ({
       ...player,
@@ -408,7 +438,7 @@ function progressMultiplayerRoom(room, timestamp = Date.now()) {
   return room
 }
 
-function summarizeMultiplayerRoom(room, walletAddress, timestamp = Date.now()) {
+function summarizeMultiplayerRoom(state, room, walletAddress, timestamp = Date.now()) {
   progressMultiplayerRoom(room, timestamp)
 
   const currentGuess = getRoomCurrentGuess(room, walletAddress)
@@ -433,9 +463,10 @@ function summarizeMultiplayerRoom(room, walletAddress, timestamp = Date.now()) {
     revealEndsAt: room.revealEndsAt ?? null,
     currentPlayer: summarizeMultiplayerPlayer(
       room.players.find((player) => player.walletAddress === walletAddress),
+      state,
     ),
-    players: room.players.map(summarizeMultiplayerPlayer),
-    leaderboard: getRoomLeaderboard(room),
+    players: room.players.map((player) => summarizeMultiplayerPlayer(player, state)),
+    leaderboard: getRoomLeaderboard(room, state),
     currentRound,
     currentGuess: currentGuess ?? null,
     roundResults: room.status === 'reveal' || room.status === 'finished'
@@ -492,6 +523,34 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
     return store.update((state) => {
       ensureStateCollections(state)
       getOrCreatePlayer(state, walletAddress)
+      return summarizePlayerProfile(state, walletAddress)
+    })
+  }
+
+  function updateProfile(walletAddress, updates = {}) {
+    return store.update((state) => {
+      ensureStateCollections(state)
+      const player = getOrCreatePlayer(state, walletAddress)
+
+      if (Object.hasOwn(updates, 'username')) {
+        const username = assertValidUsername(updates.username)
+        const usernameTaken = state.players.some(
+          (entry) =>
+            entry.walletAddress !== walletAddress &&
+            normalizeUsername(entry.username).toLowerCase() === username.toLowerCase(),
+        )
+
+        if (usernameTaken) {
+          const error = new Error('Username is already taken.')
+          error.statusCode = 409
+          error.payload = { code: 'USERNAME_TAKEN' }
+          throw error
+        }
+
+        player.username = username
+        player.updatedAt = new Date().toISOString()
+      }
+
       return summarizePlayerProfile(state, walletAddress)
     })
   }
@@ -1089,7 +1148,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
 
       state.multiplayerRooms.push(room)
 
-      return summarizeMultiplayerRoom(room, walletAddress, now)
+      return summarizeMultiplayerRoom(state, room, walletAddress, now)
     })
   }
 
@@ -1134,7 +1193,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         room.updatedAt = new Date().toISOString()
       }
 
-      return summarizeMultiplayerRoom(room, walletAddress)
+      return summarizeMultiplayerRoom(state, room, walletAddress)
     })
   }
 
@@ -1158,7 +1217,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         throw error
       }
 
-      return summarizeMultiplayerRoom(room, walletAddress)
+      return summarizeMultiplayerRoom(state, room, walletAddress)
     })
   }
 
@@ -1178,7 +1237,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
       progressMultiplayerRoom(room)
 
       if (room.status !== 'waiting') {
-        return summarizeMultiplayerRoom(room, walletAddress)
+        return summarizeMultiplayerRoom(state, room, walletAddress)
       }
 
       const player = room.players.find((entry) => entry.walletAddress === walletAddress)
@@ -1191,7 +1250,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
       player.ready = true
       room.updatedAt = new Date().toISOString()
 
-      return summarizeMultiplayerRoom(room, walletAddress)
+      return summarizeMultiplayerRoom(state, room, walletAddress)
     })
   }
 
@@ -1217,7 +1276,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
       }
 
       if (room.status !== 'waiting') {
-        return summarizeMultiplayerRoom(room, walletAddress)
+        return summarizeMultiplayerRoom(state, room, walletAddress)
       }
 
       if (room.players.length < MULTIPLAYER_MIN_PLAYERS) {
@@ -1248,7 +1307,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
       room.locationIds = pickMultiplayerLocations(state)
       room.updatedAt = new Date(now).toISOString()
 
-      return summarizeMultiplayerRoom(room, walletAddress, now)
+      return summarizeMultiplayerRoom(state, room, walletAddress, now)
     })
   }
 
@@ -1281,7 +1340,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
       }
 
       if (getRoomCurrentGuess(room, walletAddress)) {
-        return summarizeMultiplayerRoom(room, walletAddress)
+        return summarizeMultiplayerRoom(state, room, walletAddress)
       }
 
       const location = getLocationById(room.locationIds[room.roundIndex - 1])
@@ -1312,7 +1371,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         revealMultiplayerRound(room, now)
       }
 
-      return summarizeMultiplayerRoom(room, walletAddress, now)
+      return summarizeMultiplayerRoom(state, room, walletAddress, now)
     })
   }
 
@@ -1375,6 +1434,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
     getMultiplayerRoom,
     getProfile,
     getQuota,
+    updateProfile,
     joinMultiplayerRoom,
     setMultiplayerReady,
     startMultiplayerRoom,
