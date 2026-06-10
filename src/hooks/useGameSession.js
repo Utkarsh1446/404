@@ -281,6 +281,25 @@ export function useGameSession() {
     }
   }
 
+  async function updateUsername(username) {
+    if (!session?.token) return null
+
+    setIsBusy(true)
+    setError('')
+
+    try {
+      const nextProfile = await apiClient.updateProfile(session.token, { username })
+      setProfile(nextProfile)
+      setStatus(`Signed in as ${nextProfile.username}.`)
+      return nextProfile
+    } catch (caughtError) {
+      setError(caughtError.message)
+      throw caughtError
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
   async function startRound(tokenOverride) {
     const authToken = tokenOverride ?? session?.token
 
@@ -531,6 +550,7 @@ export function useGameSession() {
     roundLocationCount: activeRoundLocationCount,
     setSelectedGuess,
     connectWallet,
+    updateUsername,
     startRound,
     startDrop,
     beginExperience,

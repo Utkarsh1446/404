@@ -2050,6 +2050,18 @@
   outline: none;
 }
 
+.username-modal input {
+  font-size: 1.2rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.username-hint {
+  margin: -10px 0 0;
+  color: rgba(50, 22, 117, 0.62);
+  font-size: 0.82rem;
+}
+
 .multiplayer-lobby {
   position: relative;
   display: grid;

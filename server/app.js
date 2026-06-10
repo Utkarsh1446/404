@@ -158,6 +158,14 @@ export function createApp(options = {}) {
     }
   })
 
+  app.patch('/api/me/profile', requireAuth, (req, res, next) => {
+    try {
+      res.json(gameService.updateProfile(req.auth.walletAddress, req.body ?? {}))
+    } catch (error) {
+      next(error)
+    }
+  })
+
   app.post('/api/rounds/start', requireAuth, (req, res, next) => {
     try {
       res.json(gameService.startRound(req.auth.walletAddress))

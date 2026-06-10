@@ -136,6 +136,45 @@ test('quota is wallet-specific and starts with three free rounds', async () => {
   assert.equal(secondQuota.body.freeRemaining, 3)
 })
 
+test('profile username can be set once signed in and must be unique', async () => {
+  const app = createTestApp()
+  const first = await authenticate(app)
+  const second = await authenticate(app)
+
+  const missingUsername = await request(app)
+    .get('/api/me/profile')
+    .set('Authorization', `Bearer ${first.token}`)
+    .expect(200)
+
+  assert.equal(missingUsername.body.hasUsername, false)
+  assert.equal(missingUsername.body.username, '')
+
+  const updated = await request(app)
+    .patch('/api/me/profile')
+    .set('Authorization', `Bearer ${first.token}`)
+    .send({ username: 'Geo_Player' })
+    .expect(200)
+
+  assert.equal(updated.body.hasUsername, true)
+  assert.equal(updated.body.username, 'Geo_Player')
+
+  const duplicate = await request(app)
+    .patch('/api/me/profile')
+    .set('Authorization', `Bearer ${second.token}`)
+    .send({ username: 'geo_player' })
+    .expect(409)
+
+  assert.equal(duplicate.body.payload.code, 'USERNAME_TAKEN')
+
+  const invalid = await request(app)
+    .patch('/api/me/profile')
+    .set('Authorization', `Bearer ${second.token}`)
+    .send({ username: 'no' })
+    .expect(400)
+
+  assert.equal(invalid.body.payload.code, 'INVALID_USERNAME')
+})
+
 test('starting and guessing a regular round reveals immediately', async () => {
   const app = createTestApp()
   const auth = await authenticate(app)

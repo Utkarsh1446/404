@@ -23,6 +23,7 @@ const MULTIPLAYER_MAX_PLAYERS = 20
 const MULTIPLAYER_COUNTDOWN_MS = 5 * 1000
 const MULTIPLAYER_REVEAL_MS = 7 * 1000
 const DEFAULT_TOKEN_BALANCE = 300
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,16}$/
 
 function getActiveLocations(locations, label) {
   const activeLocations = locations.filter((location) => location.active)
@@ -113,8 +114,28 @@ function ensurePlayerAccount(player) {
   player.tokenBalance ??= DEFAULT_TOKEN_BALANCE
   player.spBalance ??= 0
   player.dropWins ??= 0
+  if (typeof player.username === 'string') {
+    player.username = normalizeUsername(player.username)
+  }
   player.updatedAt ??= player.lastSeenAt ?? new Date().toISOString()
   return player
+}
+
+function normalizeUsername(username) {
+  return String(username ?? '').trim().replace(/\s+/g, '_').slice(0, 16)
+}
+
+function assertValidUsername(username) {
+  const normalized = normalizeUsername(username)
+
+  if (!USERNAME_PATTERN.test(normalized)) {
+    const error = new Error('Username must be 3-16 letters, numbers, or underscores.')
+    error.statusCode = 400
+    error.payload = { code: 'INVALID_USERNAME' }
+    throw error
+  }
+
+  return normalized
 }
 
 function summarizePlayerProfile(state, walletAddress) {
@@ -123,6 +144,8 @@ function summarizePlayerProfile(state, walletAddress) {
   if (!player) {
     return {
       walletAddress,
+      username: '',
+      hasUsername: false,
       tokenBalance: 0,
       spBalance: 0,
       dropsParticipated: 0,
@@ -136,6 +159,8 @@ function summarizePlayerProfile(state, walletAddress) {
 
   return {
     walletAddress,
+    username: player.username ?? '',
+    hasUsername: Boolean(player.username),
     tokenBalance: player.tokenBalance,
     spBalance: player.spBalance,
     dropsParticipated,
@@ -492,6 +517,34 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
     return store.update((state) => {
       ensureStateCollections(state)
       getOrCreatePlayer(state, walletAddress)
+      return summarizePlayerProfile(state, walletAddress)
+    })
+  }
+
+  function updateProfile(walletAddress, updates = {}) {
+    return store.update((state) => {
+      ensureStateCollections(state)
+      const player = getOrCreatePlayer(state, walletAddress)
+
+      if (Object.hasOwn(updates, 'username')) {
+        const username = assertValidUsername(updates.username)
+        const usernameTaken = state.players.some(
+          (entry) =>
+            entry.walletAddress !== walletAddress &&
+            normalizeUsername(entry.username).toLowerCase() === username.toLowerCase(),
+        )
+
+        if (usernameTaken) {
+          const error = new Error('Username is already taken.')
+          error.statusCode = 409
+          error.payload = { code: 'USERNAME_TAKEN' }
+          throw error
+        }
+
+        player.username = username
+        player.updatedAt = new Date().toISOString()
+      }
+
       return summarizePlayerProfile(state, walletAddress)
     })
   }
@@ -1375,6 +1428,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
     getMultiplayerRoom,
     getProfile,
     getQuota,
+    updateProfile,
     joinMultiplayerRoom,
     setMultiplayerReady,
     startMultiplayerRoom,

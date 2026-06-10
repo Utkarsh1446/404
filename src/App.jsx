@@ -390,6 +390,37 @@ function MultiplayerJoinModal({
   )
 }
 
+function UsernameModal({
+  error,
+  isBusy,
+  username,
+  onChangeUsername,
+  onSubmit,
+}) {
+  return (
+    <div className="multiplayer-modal-backdrop" role="dialog" aria-modal="true" aria-label="Choose username">
+      <form className="multiplayer-join-modal username-modal" onSubmit={onSubmit}>
+        <h2>Pick Username</h2>
+        <label>
+          <span>Username</span>
+          <input
+            autoFocus
+            maxLength={16}
+            value={username}
+            onChange={(event) => onChangeUsername(event.target.value)}
+            placeholder="notfound_player"
+          />
+        </label>
+        <p className="username-hint">3-16 letters, numbers, or underscores.</p>
+        {error ? <p className="multiplayer-error">{error}</p> : null}
+        <HoverButton className="submit-button" type="submit" disabled={isBusy || username.trim().length < 3}>
+          {isBusy ? 'Saving...' : 'Save Username'}
+        </HoverButton>
+      </form>
+    </div>
+  )
+}
+
 function getMultiplayerVoiceAudioRoot() {
   if (typeof document === 'undefined') return null
   return document.getElementById('multiplayer-voice-audio-root')
@@ -800,6 +831,9 @@ function App() {
   const [isMultiplayerBusy, setIsMultiplayerBusy] = useState(false)
   const [multiplayerGuess, setMultiplayerGuess] = useState(null)
   const [multiplayerMapExpanded, setMultiplayerMapExpanded] = useState(false)
+  const [usernameDraft, setUsernameDraft] = useState('')
+  const [usernameError, setUsernameError] = useState('')
+  const [isUsernameSaving, setIsUsernameSaving] = useState(false)
   const [route, setRoute] = useState(() =>
     typeof window !== 'undefined' && window.location.pathname === '/wallet' ? '/wallet' : '/',
   )
@@ -824,6 +858,7 @@ function App() {
     roundLocationCount,
     setSelectedGuess,
     connectWallet,
+    updateUsername,
     beginExperience,
     beginDropExperience,
     unlockPaidRound,
@@ -965,6 +1000,21 @@ function App() {
 
   async function handleLandingWalletConnect() {
     await connectWallet()
+  }
+
+  async function handleUsernameSubmit(event) {
+    event.preventDefault()
+    setUsernameError('')
+    setIsUsernameSaving(true)
+
+    try {
+      await updateUsername(usernameDraft)
+      setUsernameDraft('')
+    } catch (caughtError) {
+      setUsernameError(caughtError.message)
+    } finally {
+      setIsUsernameSaving(false)
+    }
   }
 
   async function getMultiplayerSession() {
@@ -1374,6 +1424,7 @@ function App() {
     : shouldShowTokenPlayCost
       ? 'Play for 100 tokens'
       : 'Play for free'
+  const shouldShowUsernameModal = Boolean(session && profile && !profile.hasUsername)
   return (
     <main className="app-shell">
       {showLanding ? (
@@ -1847,6 +1898,15 @@ function App() {
             setMultiplayerError('')
           }}
           onJoin={handleJoinRoomSubmit}
+        />
+      ) : null}
+      {shouldShowUsernameModal ? (
+        <UsernameModal
+          error={usernameError}
+          isBusy={isUsernameSaving}
+          username={usernameDraft}
+          onChangeUsername={setUsernameDraft}
+          onSubmit={handleUsernameSubmit}
         />
       ) : null}
       <ResultModal result={result} onNextRound={handleNextRound} />

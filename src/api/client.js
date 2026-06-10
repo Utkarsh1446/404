@@ -41,6 +41,13 @@ export const apiClient = {
   getProfile(token) {
     return apiFetch('/api/me/profile', { token })
   },
+  updateProfile(token, updates) {
+    return apiFetch('/api/me/profile', {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify(updates),
+    })
+  },
   getDropDetails(dropCycleNumber) {
     return apiFetch(`/api/drops/${dropCycleNumber}`)
   },
