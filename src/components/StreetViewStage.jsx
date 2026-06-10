@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { clientConfig } from '../config'
 import { loadGoogleMaps } from '../lib/googleMaps'
 
-function buildStreetViewImage(round) {
-  if (!round?.panorama?.position || !clientConfig.googleMapsApiKey) return undefined
+function buildStreetViewImage(panoramaConfig) {
+  if (!panoramaConfig?.position || !clientConfig.googleMapsApiKey) return undefined
 
-  const { lat, lng } = round.panorama.position
-  const heading = round.panorama.pov?.heading ?? 0
-  const pitch = round.panorama.pov?.pitch ?? 0
+  const { lat, lng } = panoramaConfig.position
+  const heading = panoramaConfig.pov?.heading ?? 0
+  const pitch = panoramaConfig.pov?.pitch ?? 0
 
   const params = new URLSearchParams({
     key: clientConfig.googleMapsApiKey,
@@ -17,8 +17,8 @@ function buildStreetViewImage(round) {
     fov: '90',
   })
 
-  if (round.panorama.panoId) {
-    params.set('pano', round.panorama.panoId)
+  if (panoramaConfig.panoId) {
+    params.set('pano', panoramaConfig.panoId)
   } else {
     params.set('location', `${lat},${lng}`)
     params.set('source', 'outdoor')
@@ -33,8 +33,32 @@ export function StreetViewStage({ round }) {
   const [loadState, setLoadState] = useState(
     clientConfig.googleMapsApiKey ? 'loading' : 'missing-key',
   )
-  const hasValidPanorama = Boolean(round?.panorama?.position)
-  const imageUrl = buildStreetViewImage(round)
+  const roundId = round?.roundId
+  const panoId = round?.panorama?.panoId
+  const lat = round?.panorama?.position?.lat
+  const lng = round?.panorama?.position?.lng
+  const heading = round?.panorama?.pov?.heading
+  const pitch = round?.panorama?.pov?.pitch
+  const zoom = round?.panorama?.zoom
+  const panoramaConfig = useMemo(() => {
+    if (lat == null || lng == null) return null
+
+    return {
+      roundId,
+      position: {
+        lat,
+        lng,
+      },
+      panoId,
+      pov: {
+        heading,
+        pitch,
+      },
+      zoom,
+    }
+  }, [heading, lat, lng, panoId, pitch, roundId, zoom])
+  const hasValidPanorama = Boolean(panoramaConfig?.position)
+  const imageUrl = buildStreetViewImage(panoramaConfig)
 
   useEffect(() => {
     if (!hasValidPanorama || !containerRef.current || !clientConfig.googleMapsApiKey) {
@@ -58,8 +82,8 @@ export function StreetViewStage({ round }) {
 
           panoramaRef.current = new google.maps.StreetViewPanorama(containerRef.current, {
             ...panoramaOptions,
-            pov: round.panorama.pov,
-            zoom: round.panorama.zoom,
+            pov: panoramaConfig.pov,
+            zoom: panoramaConfig.zoom,
             addressControl: false,
             fullscreenControl: false,
             motionTracking: false,
@@ -83,8 +107,8 @@ export function StreetViewStage({ round }) {
               setLoadState('ready')
               google.maps.event.trigger(panorama, 'resize')
               if (!hasFinalizedReady) {
-                panorama.setPov(round.panorama.pov)
-                panorama.setZoom(round.panorama.zoom)
+                panorama.setPov(panoramaConfig.pov)
+                panorama.setZoom(panoramaConfig.zoom)
                 hasFinalizedReady = true
               }
               window.clearTimeout(fallbackTimeoutId)
@@ -119,27 +143,27 @@ export function StreetViewStage({ round }) {
         }
 
         const panoramaRequests = [
-          ...(round.panorama.panoId
+          ...(panoramaConfig.panoId
             ? [
                 {
-                  pano: round.panorama.panoId,
+                  pano: panoramaConfig.panoId,
                 },
               ]
             : []),
           {
-            location: round.panorama.position,
+            location: panoramaConfig.position,
             radius: 250,
             source: google.maps.StreetViewSource.OUTDOOR,
             preference: google.maps.StreetViewPreference.BEST,
           },
           {
-            location: round.panorama.position,
+            location: panoramaConfig.position,
             radius: 1500,
             source: google.maps.StreetViewSource.OUTDOOR,
             preference: google.maps.StreetViewPreference.BEST,
           },
           {
-            location: round.panorama.position,
+            location: panoramaConfig.position,
             radius: 3500,
             preference: google.maps.StreetViewPreference.BEST,
           },
@@ -159,7 +183,7 @@ export function StreetViewStage({ round }) {
             if (status === google.maps.StreetViewStatus.OK && data?.location?.pano) {
               mountPanorama({
                 pano: data.location.pano,
-                position: data.location.latLng ?? round.panorama.position,
+                position: data.location.latLng ?? panoramaConfig.position,
               })
               return
             }
@@ -181,7 +205,7 @@ export function StreetViewStage({ round }) {
       window.clearTimeout(fallbackTimeoutId)
       panoramaListeners.forEach((listener) => listener?.remove?.())
     }
-  }, [hasValidPanorama, round])
+  }, [hasValidPanorama, panoramaConfig])
 
   if (!round) {
     return (
