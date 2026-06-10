@@ -1562,6 +1562,7 @@
 .guess-overlay {
   left: 18px;
   bottom: 18px;
+  z-index: 7;
   width: min(18vw, 318px);
   min-width: 292px;
   height: clamp(328px, 36vh, 380px);
@@ -1578,6 +1579,7 @@
 }
 
 .guess-overlay.expanded {
+  z-index: 8;
   width: min(52vw, 900px);
   height: min(62vh, 590px);
   min-width: 520px;
@@ -2227,7 +2229,7 @@
 
 .multiplayer-player-tray {
   position: absolute;
-  z-index: 5;
+  z-index: 2;
   left: 50%;
   bottom: 18px;
   width: min(520px, calc(100vw - 420px));
@@ -2237,6 +2239,14 @@
   gap: 10px;
   justify-items: center;
   pointer-events: none;
+}
+
+.multiplayer-player-tray.is-expanded {
+  z-index: 4;
+}
+
+.multiplayer-player-tray.is-expanded .multiplayer-player-tray-board {
+  margin-left: 340px;
 }
 
 .multiplayer-player-tray-toggle,
@@ -2595,6 +2605,10 @@ button:disabled {
   .multiplayer-player-tray-board {
     width: min(520px, calc(100vw - 24px));
     min-width: 0;
+  }
+
+  .multiplayer-player-tray.is-expanded .multiplayer-player-tray-board {
+    margin-left: 0;
   }
 
   .multiplayer-player-score-row {

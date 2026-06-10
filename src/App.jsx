@@ -910,6 +910,7 @@ function App() {
   const [multiplayerGuess, setMultiplayerGuess] = useState(null)
   const [multiplayerMapExpanded, setMultiplayerMapExpanded] = useState(false)
   const [multiplayerPlayersExpanded, setMultiplayerPlayersExpanded] = useState(false)
+  const multiplayerGuessRef = useRef(null)
   const [usernameDraft, setUsernameDraft] = useState('')
   const [usernameError, setUsernameError] = useState('')
   const [isUsernameSaving, setIsUsernameSaving] = useState(false)
@@ -946,6 +947,11 @@ function App() {
     resetForNextRound,
   } = useGameSession()
   const multiplayerVoice = useMultiplayerVoice(multiplayerRoom?.code, session)
+
+  function setNextMultiplayerGuess(guess) {
+    multiplayerGuessRef.current = guess
+    setMultiplayerGuess(guess)
+  }
 
   useEffect(() => {
     const handlePopState = () => {
@@ -1068,7 +1074,7 @@ function App() {
     resetForNextRound()
     multiplayerVoice.leaveVoice()
     setMultiplayerRoom(null)
-    setMultiplayerGuess(null)
+    setNextMultiplayerGuess(null)
     setMultiplayerError('')
     setMultiplayerNotReadyWallets([])
     setMultiplayerMapExpanded(false)
@@ -1111,7 +1117,7 @@ function App() {
       if (!nextSession?.token) return
       const room = await apiClient.createMultiplayerRoom(nextSession.token)
       setMultiplayerRoom(room)
-      setMultiplayerGuess(null)
+      setNextMultiplayerGuess(null)
       setMultiplayerNotReadyWallets([])
       setMultiplayerPlayersExpanded(false)
       setShowLanding(false)
@@ -1136,7 +1142,7 @@ function App() {
         multiplayerJoinCode.trim().toUpperCase(),
       )
       setMultiplayerRoom(room)
-      setMultiplayerGuess(null)
+      setNextMultiplayerGuess(null)
       setMultiplayerNotReadyWallets([])
       setMultiplayerPlayersExpanded(false)
       setIsJoinModalOpen(false)
@@ -1187,7 +1193,8 @@ function App() {
   }
 
   async function handleMultiplayerGuessSubmit() {
-    if (!session?.token || !multiplayerRoom?.code || !multiplayerGuess) return
+    const guess = multiplayerGuessRef.current
+    if (!session?.token || !multiplayerRoom?.code || !guess) return
 
     setMultiplayerError('')
     setIsMultiplayerBusy(true)
@@ -1196,10 +1203,10 @@ function App() {
       const room = await apiClient.submitMultiplayerGuess(
         session.token,
         multiplayerRoom.code,
-        multiplayerGuess,
+        guess,
       )
       setMultiplayerRoom(room)
-      setMultiplayerGuess(null)
+      setNextMultiplayerGuess(null)
       setMultiplayerMapExpanded(false)
     } catch (caughtError) {
       setMultiplayerError(caughtError.message)
@@ -1211,7 +1218,7 @@ function App() {
   function handleLeaveMultiplayer() {
     multiplayerVoice.leaveVoice()
     setMultiplayerRoom(null)
-    setMultiplayerGuess(null)
+    setNextMultiplayerGuess(null)
     setMultiplayerError('')
     setMultiplayerNotReadyWallets([])
     setMultiplayerMapExpanded(false)
@@ -1569,7 +1576,7 @@ function App() {
               isBusy={isMultiplayerBusy}
               now={now}
               playersExpanded={multiplayerPlayersExpanded}
-              onSelectGuess={setMultiplayerGuess}
+              onSelectGuess={setNextMultiplayerGuess}
               onSubmitGuess={handleMultiplayerGuessSubmit}
               onToggleMap={() => setMultiplayerMapExpanded((current) => !current)}
               onTogglePlayers={() => setMultiplayerPlayersExpanded((current) => !current)}
