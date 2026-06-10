@@ -3,6 +3,7 @@ import { apiClient } from '../api/client'
 import { getDemoWallet } from '../lib/demoWallet'
 
 const SESSION_STORAGE_KEY = 'sp-guess-session'
+const USERNAME_STORAGE_KEY = 'sp-guess-usernames'
 const ROUND_LOCATION_COUNT = 2
 
 function bytesToBase64(bytes) {
@@ -26,6 +27,32 @@ function loadStoredSession() {
   } catch {
     return null
   }
+}
+
+function loadStoredUsernames() {
+  if (typeof window === 'undefined') return {}
+
+  const raw = window.localStorage.getItem(USERNAME_STORAGE_KEY)
+  if (!raw) return {}
+
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return {}
+  }
+}
+
+function getStoredUsername(walletAddress) {
+  if (!walletAddress) return ''
+  return loadStoredUsernames()[walletAddress] ?? ''
+}
+
+function saveStoredUsername(walletAddress, username) {
+  if (typeof window === 'undefined' || !walletAddress || !username) return
+
+  const usernames = loadStoredUsernames()
+  usernames[walletAddress] = username
+  window.localStorage.setItem(USERNAME_STORAGE_KEY, JSON.stringify(usernames))
 }
 
 function hasRoundPanorama(round) {
@@ -65,6 +92,28 @@ export function useGameSession() {
   const authToken = session?.token
   const activeRoundLocationCount = activeRound?.roundLocationCount ?? ROUND_LOCATION_COUNT
 
+  const resolveProfileUsername = useCallback(async (token, walletAddress, profilePayload) => {
+    if (!token || !walletAddress || profilePayload?.hasUsername) {
+      if (profilePayload?.username) {
+        saveStoredUsername(walletAddress, profilePayload.username)
+      }
+      return profilePayload
+    }
+
+    const storedUsername = getStoredUsername(walletAddress)
+    if (!storedUsername) return profilePayload
+
+    try {
+      const syncedProfile = await apiClient.updateProfile(token, { username: storedUsername })
+      if (syncedProfile?.username) {
+        saveStoredUsername(walletAddress, syncedProfile.username)
+      }
+      return syncedProfile
+    } catch {
+      return profilePayload
+    }
+  }, [])
+
   function activateRound(round, statusMessage = 'Pan the world, read the clues, and place one decisive pin.') {
     if (!hasRoundPanorama(round)) {
       throw new Error('Round payload missing panorama data.')
@@ -102,8 +151,11 @@ export function useGameSession() {
     apiClient
       .getQuota(session.token)
       .then(async (nextQuota) => {
+        const nextProfile = await apiClient.getProfile(session.token)
         setQuota(nextQuota)
-        setProfile(await apiClient.getProfile(session.token))
+        setProfile(
+          await resolveProfileUsername(session.token, session.walletAddress, nextProfile),
+        )
         setPhase((current) => (current === 'disconnected' ? 'ready' : current))
       })
       .catch(() => {
@@ -113,7 +165,7 @@ export function useGameSession() {
       })
 
     return undefined
-  }, [session?.token])
+  }, [resolveProfileUsername, session?.token, session?.walletAddress])
 
   useEffect(() => {
     if (phase !== 'playing' && phase !== 'submitted') {
@@ -254,6 +306,11 @@ export function useGameSession() {
         message: challenge.message,
         signature,
       })
+      const verifiedProfile = await resolveProfileUsername(
+        verified.token,
+        walletAddress,
+        verified.profile,
+      )
 
       setSession({
         token: verified.token,
@@ -261,7 +318,7 @@ export function useGameSession() {
         signerLabel,
       })
       setQuota(verified.quota)
-      setProfile(verified.profile)
+      setProfile(verifiedProfile)
       setPhase('ready')
       setStatus(
         signerLabel === 'Phantom'
@@ -289,6 +346,9 @@ export function useGameSession() {
 
     try {
       const nextProfile = await apiClient.updateProfile(session.token, { username })
+      if (nextProfile?.username) {
+        saveStoredUsername(session.walletAddress, nextProfile.username)
+      }
       setProfile(nextProfile)
       setStatus(`Signed in as ${nextProfile.username}.`)
       return nextProfile

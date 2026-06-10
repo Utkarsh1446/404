@@ -78,6 +78,7 @@ async function authenticate(app, keypair = Keypair.generate()) {
   return {
     walletAddress,
     token: verifyResponse.body.token,
+    profile: verifyResponse.body.profile,
   }
 }
 
@@ -138,7 +139,8 @@ test('quota is wallet-specific and starts with three free rounds', async () => {
 
 test('profile username can be set once signed in and must be unique', async () => {
   const app = createTestApp()
-  const first = await authenticate(app)
+  const firstKeypair = Keypair.generate()
+  const first = await authenticate(app, firstKeypair)
   const second = await authenticate(app)
 
   const missingUsername = await request(app)
@@ -173,6 +175,10 @@ test('profile username can be set once signed in and must be unique', async () =
     .expect(400)
 
   assert.equal(invalid.body.payload.code, 'INVALID_USERNAME')
+
+  const reauthenticated = await authenticate(app, firstKeypair)
+  assert.equal(reauthenticated.profile.hasUsername, true)
+  assert.equal(reauthenticated.profile.username, 'Geo_Player')
 })
 
 test('starting and guessing a regular round reveals immediately', async () => {
