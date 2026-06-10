@@ -2208,13 +2208,6 @@
   font-size: 0.95rem;
 }
 
-.voice-button {
-  min-height: 38px;
-  padding-inline: 14px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-}
-
 .multiplayer-results-panel {
   width: min(900px, 100%);
 }

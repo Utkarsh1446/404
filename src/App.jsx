@@ -467,15 +467,15 @@ function MultiplayerVoicePanel({ roomCode, session }) {
 
       {isConnected ? (
         <>
-          <HoverButton className="voice-button" type="button" onClick={handleToggleMute}>
+          <HoverButton className="landing-play-button" type="button" onClick={handleToggleMute}>
             {isMuted ? 'Unmute' : 'Mute'}
           </HoverButton>
-          <HoverButton className="voice-button" type="button" onClick={handleLeaveVoice}>
+          <HoverButton className="landing-play-button" type="button" onClick={handleLeaveVoice}>
             Leave Voice
           </HoverButton>
         </>
       ) : (
-        <HoverButton className="voice-button" type="button" onClick={handleJoinVoice} disabled={isConnecting}>
+        <HoverButton className="landing-play-button" type="button" onClick={handleJoinVoice} disabled={isConnecting}>
           {isConnecting ? 'Joining...' : 'Join Voice'}
         </HoverButton>
       )}
