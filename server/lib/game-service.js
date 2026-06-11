@@ -1485,7 +1485,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
   }
 
   async function createMultiplayerVoiceToken(walletAddress, rawCode) {
-    const roomName = store.update((state) => {
+    const roomName = await store.update((state) => {
       ensureStateCollections(state)
 
       const code = String(rawCode ?? '').trim().toUpperCase()
