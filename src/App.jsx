@@ -33,6 +33,39 @@ const LANDING_LEADERBOARD = [
   { rank: 10, correctGuesses: 5 },
 ]
 
+const INFO_DOCUMENTS = [
+  {
+    title: 'One Pager',
+    type: 'Product snapshot',
+    href: '/docs/notfound_one_pager.pdf',
+    summary: 'A concise product, gameplay, token, and launch narrative for quick sharing.',
+    highlights: ['Free daily play', 'World-location guessing', '$NOTF rewards'],
+  },
+  {
+    title: 'Tokenomics',
+    type: 'Economics',
+    href: '/docs/notfound_tokenomics.pdf',
+    summary: 'Allocation, tax structure, utility, burns, and emissions schedule.',
+    highlights: ['0% buy tax', '5% sell tax', 'Entry burns'],
+  },
+]
+
+const INFO_METRICS = [
+  { value: '12', label: 'Drops per day' },
+  { value: '$1,200+', label: 'Daily reward pool' },
+  { value: '0%', label: 'Buy tax' },
+  { value: '5%', label: 'Sell tax' },
+]
+
+const TOKEN_ALLOCATION = [
+  { label: 'Rewards & Gameplay', value: 40, color: '#8b5cf6' },
+  { label: 'Liquidity', value: 20, color: '#3b82f6' },
+  { label: 'Team', value: 10, color: '#06b6d4' },
+  { label: 'Ops & Treasury', value: 10, color: '#10b981' },
+  { label: 'Pump.fun Bounties', value: 10, color: '#f59e0b' },
+  { label: 'KOLs & Influencers', value: 10, color: '#ec4899' },
+]
+
 const LANDMARK_POLAROIDS = [
   {
     city: 'Beijing',
@@ -316,6 +349,110 @@ function WalletPage({ profile, session, onConnectWallet }) {
             </section>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+function InfoPage({ onPlay, onOpenWallet }) {
+  return (
+    <div className="info-page">
+      <div className="info-page-shell">
+        <section className="info-hero" aria-labelledby="info-title">
+          <div className="info-hero-copy">
+            <p className="info-kicker">NotFound Info Hub</p>
+            <h1 id="info-title">Everything needed to understand and distribute NotFound.</h1>
+            <div className="info-hero-actions">
+              <HoverButton className="landing-play-button" type="button" onClick={onPlay}>
+                Play
+              </HoverButton>
+              <HoverButton className="ghost-button info-wallet-button" type="button" onClick={onOpenWallet}>
+                Wallet
+              </HoverButton>
+            </div>
+          </div>
+
+          <div className="info-metric-grid" aria-label="Launch metrics">
+            {INFO_METRICS.map((metric) => (
+              <div className="info-metric" key={metric.label}>
+                <strong>{metric.value}</strong>
+                <span>{metric.label}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="info-section" aria-labelledby="info-documents">
+          <div className="info-section-heading">
+            <p className="info-kicker">Documents</p>
+            <h2 id="info-documents">Launch Library</h2>
+          </div>
+          <div className="info-document-grid">
+            {INFO_DOCUMENTS.map((document) => (
+              <article className="info-document-card" key={document.title}>
+                <span>{document.type}</span>
+                <h3>{document.title}</h3>
+                <p>{document.summary}</p>
+                <ul>
+                  {document.highlights.map((highlight) => (
+                    <li key={highlight}>{highlight}</li>
+                  ))}
+                </ul>
+                <a href={document.href} target="_blank" rel="noreferrer">
+                  Open PDF
+                </a>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="info-section info-split-section" aria-labelledby="info-positioning">
+          <div className="info-section-heading">
+            <p className="info-kicker">Positioning</p>
+            <h2 id="info-positioning">Guess the World. Earn Real Money.</h2>
+          </div>
+          <div className="info-split-grid">
+            <article className="info-panel">
+              <h3>Core audience</h3>
+              <p>
+                Crypto gamers, geography enthusiasts, and competitive social players who want
+                quick sessions with visible rewards and public leaderboard proof.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section className="info-section" aria-labelledby="info-tokenomics">
+          <div className="info-section-heading">
+            <p className="info-kicker">Tokenomics</p>
+            <h2 id="info-tokenomics">Community-aligned token flow</h2>
+          </div>
+          <div className="info-token-grid">
+            <article className="info-tax-card is-buy">
+              <span>Buy tax</span>
+              <strong>0%</strong>
+              <p>Zero friction on entry so new players and holders can participate cleanly.</p>
+            </article>
+            <article className="info-tax-card is-sell">
+              <span>Sell tax</span>
+              <strong>5%</strong>
+              <p>Split between the daily reward pool and operations plus buyback burns.</p>
+            </article>
+            <div className="info-allocation-card">
+              {TOKEN_ALLOCATION.map((item) => (
+                <div className="info-allocation-row" key={item.label}>
+                  <div>
+                    <span>{item.label}</span>
+                    <strong>{item.value}%</strong>
+                  </div>
+                  <div className="info-allocation-track">
+                    <span style={{ width: `${item.value * 2}%`, background: item.color }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   )
@@ -1015,9 +1152,10 @@ function App() {
   const [usernameDraft, setUsernameDraft] = useState('')
   const [usernameError, setUsernameError] = useState('')
   const [isUsernameSaving, setIsUsernameSaving] = useState(false)
-  const [route, setRoute] = useState(() =>
-    typeof window !== 'undefined' && window.location.pathname === '/wallet' ? '/wallet' : '/',
-  )
+  const [route, setRoute] = useState(() => {
+    if (typeof window === 'undefined') return '/'
+    return ['/wallet', '/info'].includes(window.location.pathname) ? window.location.pathname : '/'
+  })
   const [globeRotation, setGlobeRotation] = useState({ lng: 0, lat: 0 })
   const [renderedPolaroids, setRenderedPolaroids] = useState([])
   const globeDragRef = useRef(null)
@@ -1056,7 +1194,7 @@ function App() {
 
   useEffect(() => {
     const handlePopState = () => {
-      setRoute(window.location.pathname === '/wallet' ? '/wallet' : '/')
+      setRoute(['/wallet', '/info'].includes(window.location.pathname) ? window.location.pathname : '/')
     }
 
     window.addEventListener('popstate', handlePopState)
@@ -1094,7 +1232,7 @@ function App() {
   }, [multiplayerRoom?.code, session?.token])
 
   function navigateTo(path) {
-    const nextPath = path === '/wallet' ? '/wallet' : '/'
+    const nextPath = ['/wallet', '/info'].includes(path) ? path : '/'
     window.history.pushState({}, '', nextPath)
     setRoute(nextPath)
   }
@@ -1364,6 +1502,11 @@ function App() {
     navigateTo('/wallet')
   }
 
+  function handleInfoRoute() {
+    setShowLanding(true)
+    navigateTo('/info')
+  }
+
   function handleGlobePointerDown(event) {
     event.currentTarget.setPointerCapture(event.pointerId)
     globeDragRef.current = {
@@ -1427,6 +1570,16 @@ function App() {
       links: [
         { label: 'City drops', ariaLabel: 'City drops', href: '#play' },
         { label: 'Reward pool', ariaLabel: 'Reward pool', href: '#play' },
+      ],
+    },
+    {
+      label: 'Info',
+      bgColor: '#155e75',
+      textColor: '#ffffff',
+      onClick: handleInfoRoute,
+      links: [
+        { label: 'Launch library', ariaLabel: 'Open launch library', href: '/info', onClick: handleInfoRoute },
+        { label: 'Tokenomics', ariaLabel: 'Open tokenomics summary', href: '/info', onClick: handleInfoRoute },
       ],
     },
     {
@@ -1735,6 +1888,11 @@ function App() {
           )
         ) : showLanding && route === '/wallet' ? (
           <WalletPage profile={profile} session={session} onConnectWallet={handleLandingWalletConnect} />
+        ) : showLanding && route === '/info' ? (
+          <InfoPage
+            onPlay={handleLandingPrimaryAction}
+            onOpenWallet={handleWalletRoute}
+          />
         ) : showLanding ? (
           <div className="landing-screen">
             <div className="landing-drops-band">
