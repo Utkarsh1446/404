@@ -1895,78 +1895,6 @@ function App() {
           />
         ) : showLanding ? (
           <div className="landing-screen">
-            <div className="landing-drops-band">
-              <div className="landing-drops-grid">
-                {landingDrops.map((drop) => {
-                  const canPlayDrop = drop.state === 'live'
-                  const canViewDrop = drop.state === 'past' || drop.state === 'reveal'
-                  const canViewLockedDrop = drop.state === 'locked'
-                  const clickHandler = canViewLockedDrop
-                    ? handleLockedDropOpen
-                    : canPlayDrop
-                    ? handleDropEntry
-                    : canViewDrop
-                      ? () => handleDropDetailOpen(drop)
-                      : undefined
-
-                  return (
-                    <button
-                      aria-label={
-                        canPlayDrop
-                          ? `Play active ${drop.location.city} drop`
-                          : canViewLockedDrop
-                            ? `View locked ${drop.location.city} drop`
-                          : canViewDrop
-                            ? `View ${drop.location.city} drop details`
-                            : undefined
-                      }
-                      className={`landing-drop-card is-${drop.state}`}
-                      disabled={(!canPlayDrop && !canViewDrop && !canViewLockedDrop) || isBusy}
-                      key={drop.key}
-                      onClick={clickHandler}
-                      type="button"
-                    >
-                      {drop.state === 'empty' ? (
-                        <div className="landing-drop-empty-mark">DROPS</div>
-                      ) : (
-                        <>
-                          <div className="landing-drop-media">
-                            {drop.state === 'past' ? (
-                              <img alt={drop.location.city} src={drop.location.image} />
-                            ) : (
-                              <div className="landing-drop-placeholder" aria-hidden="true">
-                                ?
-                              </div>
-                            )}
-                          </div>
-                          <div className="landing-drop-body">
-                            <div className="landing-drop-copy">
-                              <span className="landing-drop-state">
-                                {drop.state === 'past'
-                                  ? 'Past'
-                                  : drop.state === 'reveal'
-                                    ? 'Reveal In'
-                                    : drop.state === 'locked'
-                                      ? 'Reveal In'
-                                    : drop.state === 'live'
-                                    ? 'Ends in'
-                                    : 'Starts in'}
-                              </span>
-                              <h2>{drop.state === 'past' ? drop.location.city : drop.countdown}</h2>
-                            </div>
-                            <div className="landing-drop-reward-block">
-                              <span className="landing-drop-state">Win</span>
-                              <h2 className="landing-drop-amount">$20</h2>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
             <div className="landing-world">
               <div className="landing-bento-grid">
                 <section className="landing-bento landing-bento-copy">
@@ -2150,6 +2078,78 @@ function App() {
                     <span>{place.city}</span>
                   </article>
                 ))}
+              </div>
+            </div>
+
+            <div className="landing-drops-band">
+              <div className="landing-drops-grid">
+                {landingDrops.map((drop) => {
+                  const canPlayDrop = drop.state === 'live'
+                  const canViewDrop = drop.state === 'past' || drop.state === 'reveal'
+                  const canViewLockedDrop = drop.state === 'locked'
+                  const clickHandler = canViewLockedDrop
+                    ? handleLockedDropOpen
+                    : canPlayDrop
+                    ? handleDropEntry
+                    : canViewDrop
+                      ? () => handleDropDetailOpen(drop)
+                      : undefined
+
+                  return (
+                    <button
+                      aria-label={
+                        canPlayDrop
+                          ? `Play active ${drop.location.city} drop`
+                          : canViewLockedDrop
+                            ? `View locked ${drop.location.city} drop`
+                          : canViewDrop
+                            ? `View ${drop.location.city} drop details`
+                            : undefined
+                      }
+                      className={`landing-drop-card is-${drop.state}`}
+                      disabled={(!canPlayDrop && !canViewDrop && !canViewLockedDrop) || isBusy}
+                      key={drop.key}
+                      onClick={clickHandler}
+                      type="button"
+                    >
+                      {drop.state === 'empty' ? (
+                        <div className="landing-drop-empty-mark">DROPS</div>
+                      ) : (
+                        <>
+                          <div className="landing-drop-media">
+                            {drop.state === 'past' ? (
+                              <img alt={drop.location.city} src={drop.location.image} />
+                            ) : (
+                              <div className="landing-drop-placeholder" aria-hidden="true">
+                                ?
+                              </div>
+                            )}
+                          </div>
+                          <div className="landing-drop-body">
+                            <div className="landing-drop-copy">
+                              <span className="landing-drop-state">
+                                {drop.state === 'past'
+                                  ? 'Past'
+                                  : drop.state === 'reveal'
+                                    ? 'Reveal In'
+                                    : drop.state === 'locked'
+                                      ? 'Reveal In'
+                                    : drop.state === 'live'
+                                    ? 'Ends in'
+                                    : 'Starts in'}
+                              </span>
+                              <h2>{drop.state === 'past' ? drop.location.city : drop.countdown}</h2>
+                            </div>
+                            <div className="landing-drop-reward-block">
+                              <span className="landing-drop-state">Win</span>
+                              <h2 className="landing-drop-amount">$20</h2>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>

@@ -329,7 +329,7 @@
   z-index: 4;
   display: grid;
   gap: 12px;
-  padding: clamp(92px, 12vh, 122px) clamp(24px, 5vw, 78px) 0;
+  padding: 0 clamp(24px, 5vw, 78px) clamp(14px, 2.4vh, 28px);
   flex: 0 0 auto;
 }
 
@@ -1128,9 +1128,9 @@
   flex: 1 1 auto;
   min-height: 0;
   padding:
-    clamp(12px, 2.2vh, 24px)
+    clamp(102px, 13vh, 136px)
     clamp(28px, 5vw, 78px)
-    clamp(14px, 2.6vh, 28px)
+    clamp(12px, 2vh, 22px)
     clamp(24px, 4.4vw, 66px);
   padding-right: clamp(340px, 31vw, 500px);
   overflow: hidden;
@@ -1141,7 +1141,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: minmax(0, 1fr);
   gap: clamp(10px, 1.25vw, 18px);
-  height: min(100%, clamp(330px, 54vh, 620px));
+  height: min(100%, clamp(300px, 42vh, 540px));
   min-height: 0;
   max-width: min(66vw, 1280px);
 }
