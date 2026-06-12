@@ -1138,12 +1138,12 @@
 
 .landing-bento-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
   gap: clamp(10px, 1.25vw, 18px);
-  height: min(100%, clamp(330px, 50vh, 470px));
+  height: min(100%, clamp(330px, 54vh, 620px));
   min-height: 0;
-  max-width: min(64vw, 1120px);
+  max-width: min(66vw, 1280px);
 }
 
 .landing-bento-copy {
@@ -1153,14 +1153,14 @@
 }
 
 .landing-bento-feature {
-  grid-column: 1;
-  grid-row: 2;
+  grid-column: 2;
+  grid-row: 1;
   overflow: hidden;
 }
 
 .landing-bento-rewards {
-  grid-column: 2;
-  grid-row: 1 / 3;
+  grid-column: 3;
+  grid-row: 1;
 }
 
 .landing-bento-copy .landing-copy h1,
@@ -1178,7 +1178,6 @@
 .landing-bento-copy .landing-copy,
 .landing-bento-feature .landing-copy-feature {
   justify-content: flex-start;
-  height: auto;
   gap: 6px;
 }
 
@@ -1247,7 +1246,7 @@
 .landing-copy-feature {
   padding-top: 0;
   width: 100%;
-  height: auto;
+  height: 100%;
   justify-content: flex-start;
 }
 
@@ -1377,7 +1376,7 @@
 
 @media (max-width: 1280px) {
   .landing-bento-grid {
-    max-width: min(55vw, 760px);
+    max-width: min(62vw, 900px);
   }
 
   .landing-bento-feature .landing-bento-title {
@@ -1493,7 +1492,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(6px, 0.8vw, 12px);
-  margin-top: clamp(8px, 1.6vh, 20px);
+  margin-top: auto;
 }
 
 .landing-play-button {
@@ -3029,7 +3028,23 @@ button:disabled {
 
   .landing-bento-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
     max-width: 100%;
+  }
+
+  .landing-bento-copy {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .landing-bento-feature {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .landing-bento-rewards {
+    grid-column: 1 / 3;
+    grid-row: 2;
   }
 
   .landing-bento {
@@ -3130,6 +3145,7 @@ button:disabled {
   }
 
   .landing-bento-copy,
+  .landing-bento-feature,
   .landing-bento-empty,
   .landing-bento-rewards {
     min-height: 0;
