@@ -2032,9 +2032,8 @@ function App() {
                   <div className="landing-rewards">
                     <div className="landing-rewards-summary">
                       <h2 className="landing-bento-title landing-rewards-title">
-                        Today's Rewards
+                        Leaderboard
                       </h2>
-                      <div className="landing-rewards-counter">$1200</div>
                     </div>
                     <div
                       className="landing-leaderboard"
