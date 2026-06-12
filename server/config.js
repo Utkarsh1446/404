@@ -10,6 +10,11 @@ try {
 const projectRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 const defaultStorageFile = fileURLToPath(new URL('./data/runtime-store.json', import.meta.url))
 const storageFileEnv = process.env.STORAGE_FILE
+const databaseUrl =
+  process.env.DATABASE_URL ??
+  process.env.SUPABASE_CONNECTION_STRING ??
+  process.env.SUPBASE_CONNECTION_STRING ??
+  ''
 
 function resolveStorageFile(storageFile) {
   if (!storageFile) {
@@ -26,11 +31,8 @@ export const serverConfig = {
   challengeTtlMs: Number(process.env.CHALLENGE_TTL_MS ?? 10 * 60 * 1000),
   storageFile: resolveStorageFile(storageFileEnv),
   storageFileConfigured: Boolean(storageFileEnv),
-  databaseUrl:
-    process.env.DATABASE_URL ??
-    process.env.SUPABASE_CONNECTION_STRING ??
-    process.env.SUPBASE_CONNECTION_STRING ??
-    '',
+  databaseUrl,
+  databaseConfigured: Boolean(databaseUrl),
   livekitUrl: process.env.LIVEKIT_URL ?? '',
   livekitApiKey: process.env.LIVEKIT_API_KEY ?? '',
   livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? '',

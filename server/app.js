@@ -86,7 +86,7 @@ export function createApp(options = {}) {
     res.json({
       ok: true,
       storage: {
-        type: config.databaseUrl ? 'postgres' : 'file',
+        provider: store.provider ?? 'file',
         file: config.storageFile,
         configured: Boolean(config.storageFileConfigured),
         databaseConfigured: Boolean(config.databaseUrl),

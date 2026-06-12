@@ -14,7 +14,7 @@ npm install
 
 3. Add a Google Maps browser key to `VITE_GOOGLE_MAPS_API_KEY` to enable Street View and the guess map.
 
-4. For any deployed backend, set `STORAGE_FILE` to a persistent path. Local development can use the default `server/data/runtime-store.json`.
+4. For any deployed backend, configure durable storage. Preferred: set `SUPABASE_CONNECTION_STRING` or `DATABASE_URL` to a Postgres connection string. Local development can use the default `server/data/runtime-store.json`.
 
 ## Scripts
 
@@ -37,9 +37,25 @@ npm install
 
 ## Render backend persistence
 
-The backend stores wallet balances, usernames, daily free-game usage, drop participations, winners, rooms, and reward events in the JSON file configured by `STORAGE_FILE`.
+The backend stores wallet balances, usernames, daily free-game usage, drop participations, winners, rooms, and reward events through the configured server store.
 
-On Render, the normal app filesystem is replaced on deploy. If `STORAGE_FILE` points inside the repo, quota and balances will reset after redeploy. Add a Render Disk and use that disk path instead:
+On Render free tier, the normal app filesystem is replaced on deploy and persistent disks are not available. Use Supabase/Neon Postgres on free tier:
+
+1. Set backend env var `SUPABASE_CONNECTION_STRING=<your encoded postgres url>`.
+2. If the database password contains `@`, encode it as `%40` in the URL.
+3. Redeploy the backend.
+4. Open `/api/health` and confirm:
+
+```json
+{
+  "storage": {
+    "provider": "postgres",
+    "databaseConfigured": true
+  }
+}
+```
+
+Paid Render services can also use a persistent disk:
 
 1. In the backend service, add a persistent disk mounted at `/var/data`.
 2. Set backend env var `STORAGE_FILE=/var/data/runtime-store.json`.

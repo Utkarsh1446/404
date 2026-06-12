@@ -1,21 +1,15 @@
 import pg from 'pg'
+import { createInitialState } from './file-store.js'
 
-function createInitialState() {
+const STATE_ID = 'runtime'
+const { Pool } = pg
+
+function mergeInitialState(state) {
   return {
-    players: [],
-    authChallenges: [],
-    sessions: [],
-    rounds: [],
-    guesses: [],
-    multiplayerRooms: [],
-    dropParticipations: [],
-    dropSettlements: [],
-    dailyAttemptLedger: [],
-    rewardEvents: [],
+    ...createInitialState(),
+    ...(state ?? {}),
   }
 }
-
-const { Pool } = pg
 
 export function createPostgresStore(connectionString) {
   const pool = new Pool({
@@ -38,10 +32,10 @@ export function createPostgresStore(connectionString) {
       await client.query(
         `
           insert into app_state (id, state)
-          values ('runtime', $1::jsonb)
+          values ($1, $2::jsonb)
           on conflict (id) do nothing
         `,
-        [JSON.stringify(createInitialState())],
+        [STATE_ID, JSON.stringify(createInitialState())],
       )
     })()
 
@@ -52,13 +46,10 @@ export function createPostgresStore(connectionString) {
     await ensureStorage()
     const result = await pool.query(
       'select state from app_state where id = $1',
-      ['runtime'],
+      [STATE_ID],
     )
 
-    return {
-      ...createInitialState(),
-      ...(result.rows[0]?.state ?? {}),
-    }
+    return mergeInitialState(result.rows[0]?.state)
   }
 
   async function update(mutator) {
@@ -69,27 +60,25 @@ export function createPostgresStore(connectionString) {
       await client.query('begin')
       const result = await client.query(
         'select state from app_state where id = $1 for update',
-        ['runtime'],
+        [STATE_ID],
       )
-      const state = {
-        ...createInitialState(),
-        ...(result.rows[0]?.state ?? {}),
-      }
-      const mutationResult = mutator(state)
+      const state = mergeInitialState(result.rows[0]?.state)
+      const mutationResult = await mutator(state)
 
       await client.query(
         `
           update app_state
-          set state = $2::jsonb, updated_at = now()
+          set state = $2::jsonb,
+              updated_at = now()
           where id = $1
         `,
-        ['runtime', JSON.stringify(state)],
+        [STATE_ID, JSON.stringify(state)],
       )
       await client.query('commit')
 
       return mutationResult
     } catch (error) {
-      await client.query('rollback')
+      await client.query('rollback').catch(() => {})
       throw error
     } finally {
       client.release()
@@ -101,6 +90,7 @@ export function createPostgresStore(connectionString) {
   }
 
   return {
+    provider: 'postgres',
     close,
     read,
     update,
