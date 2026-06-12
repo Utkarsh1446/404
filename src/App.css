@@ -1149,16 +1149,30 @@
 .landing-bento-copy {
   grid-column: 1;
   grid-row: 1;
+  overflow: hidden;
 }
 
 .landing-bento-feature {
   grid-column: 1;
   grid-row: 2;
+  overflow: hidden;
 }
 
 .landing-bento-rewards {
   grid-column: 2;
   grid-row: 1 / 3;
+}
+
+.landing-bento-copy .landing-copy h1,
+.landing-bento-feature .landing-bento-title {
+  font-size: clamp(1.3rem, min(2.4vw, 3.8vh), 2.6rem);
+  line-height: 0.88;
+}
+
+.landing-bento-copy .landing-play-button,
+.landing-bento-feature-actions .landing-play-button {
+  min-height: clamp(30px, 2.8vw, 40px);
+  padding-block: 6px;
 }
 
 .landing-bento {
@@ -1266,8 +1280,9 @@
 
 .landing-leaderboard-body {
   display: grid;
-  grid-auto-rows: clamp(18px, 2.25vh, 24px);
-  align-content: stretch;
+  grid-auto-rows: clamp(20px, 2.6vh, 28px);
+  row-gap: clamp(4px, 0.55vh, 8px);
+  align-content: start;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
