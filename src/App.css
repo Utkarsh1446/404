@@ -1165,14 +1165,25 @@
 
 .landing-bento-copy .landing-copy h1,
 .landing-bento-feature .landing-bento-title {
-  font-size: clamp(1.3rem, min(2.4vw, 3.8vh), 2.6rem);
-  line-height: 0.88;
+  font-size: clamp(0.95rem, min(1.5vw, 2.4vh), 1.7rem);
+  line-height: 0.9;
+}
+
+.landing-bento-copy,
+.landing-bento-feature {
+  padding: clamp(12px, 1.6vw, 22px);
+}
+
+.landing-bento-copy .landing-copy,
+.landing-bento-feature .landing-copy-feature {
+  gap: 8px;
 }
 
 .landing-bento-copy .landing-play-button,
 .landing-bento-feature-actions .landing-play-button {
-  min-height: clamp(30px, 2.8vw, 40px);
-  padding-block: 6px;
+  min-height: clamp(28px, 2.4vw, 36px);
+  padding-block: 5px;
+  font-size: clamp(0.6rem, 0.75vw, 0.82rem);
 }
 
 .landing-bento {
