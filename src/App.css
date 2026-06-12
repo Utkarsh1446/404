@@ -1165,7 +1165,7 @@
 
 .landing-bento-copy .landing-copy h1,
 .landing-bento-feature .landing-bento-title {
-  font-size: clamp(0.78rem, min(1.2vw, 1.9vh), 1.35rem);
+  font-size: clamp(0.72rem, min(1.05vw, 1.6vh), 1.15rem);
   line-height: 0.92;
 }
 
@@ -1180,11 +1180,6 @@
   justify-content: flex-start;
   height: auto;
   gap: 6px;
-}
-
-.landing-bento-copy .landing-actions,
-.landing-bento-feature .landing-actions {
-  margin-top: 6px;
 }
 
 .landing-bento-copy .landing-play-button,
@@ -1237,8 +1232,8 @@
 
 .landing-bento-copy .landing-copy {
   width: 100%;
-  height: 100%;
-  justify-content: space-between;
+  height: auto;
+  justify-content: flex-start;
 }
 
 .landing-bento-copy .landing-actions {
@@ -1252,8 +1247,8 @@
 .landing-copy-feature {
   padding-top: 0;
   width: 100%;
-  height: 100%;
-  justify-content: space-between;
+  height: auto;
+  justify-content: flex-start;
 }
 
 .landing-rewards {
