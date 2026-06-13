@@ -16,6 +16,11 @@ const databaseUrl =
   process.env.SUPBASE_CONNECTION_STRING ??
   ''
 
+function parseBoolean(value, fallback = false) {
+  if (value === undefined) return fallback
+  return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase())
+}
+
 function resolveStorageFile(storageFile) {
   if (!storageFile) {
     return defaultStorageFile
@@ -36,4 +41,11 @@ export const serverConfig = {
   livekitUrl: process.env.LIVEKIT_URL ?? '',
   livekitApiKey: process.env.LIVEKIT_API_KEY ?? '',
   livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? '',
+  solanaRpcUrl: process.env.SOLANA_RPC_URL ?? '',
+  usdcMintAddress: process.env.USDC_MINT_ADDRESS ?? '',
+  usdcDecimals: Number(process.env.USDC_DECIMALS ?? 6),
+  dropOperatorWalletAddress: process.env.DROP_OPERATOR_WALLET_ADDRESS ?? '',
+  dropOperatorPrivateKey: process.env.DROP_OPERATOR_PRIVATE_KEY ?? '',
+  dropAutomationEnabled: parseBoolean(process.env.DROP_AUTOMATION_ENABLED, true),
+  dropAutomationIntervalMs: Number(process.env.DROP_AUTOMATION_INTERVAL_MS ?? 60_000),
 }

@@ -2307,31 +2307,12 @@ function App() {
                     <div className="landing-drops-grid">
                       {(() => {
                         const drop = landingFeaturedDrop
-                        const canPlayDrop = drop.state === 'live'
-                        const canViewDrop = drop.state === 'reveal'
-                        const canViewLockedDrop = drop.state === 'locked'
-                        const clickHandler = canViewLockedDrop
-                          ? handleLockedDropOpen
-                          : canPlayDrop
-                            ? handleDropEntry
-                            : canViewDrop
-                              ? () => handleDropDetailOpen(drop)
-                              : undefined
 
                         return (
                           <button
-                            aria-label={
-                              canPlayDrop
-                                ? `Play active ${drop.location.city} drop`
-                                : canViewLockedDrop
-                                  ? `View locked ${drop.location.city} drop`
-                                  : canViewDrop
-                                    ? `View ${drop.location.city} drop details`
-                                    : `Upcoming ${drop.location.city} drop`
-                            }
+                            aria-label="Open drops page"
                             className={`landing-drop-card is-${drop.state}`}
-                            disabled={(!canPlayDrop && !canViewDrop && !canViewLockedDrop) || isBusy}
-                            onClick={clickHandler}
+                            onClick={handleDropsRoute}
                             type="button"
                           >
                             <div className="landing-drop-media">

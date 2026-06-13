@@ -5,6 +5,7 @@ import { createChallenge, verifyWalletSignature } from './lib/auth.js'
 import { createFileStore } from './lib/file-store.js'
 import { createGameService } from './lib/game-service.js'
 import { createPostgresStore } from './lib/postgres-store.js'
+import { createUsdcPayoutClient } from './lib/usdc-payout.js'
 import { serverConfig } from './config.js'
 
 function authMiddleware(store) {
@@ -56,9 +57,17 @@ export function createApp(options = {}) {
   const store = config.databaseUrl
     ? createPostgresStore(config.databaseUrl)
     : createFileStore(config.storageFile)
+  const payoutClient = options.payoutClient ?? createUsdcPayoutClient({
+    rpcUrl: config.solanaRpcUrl,
+    mintAddress: config.usdcMintAddress,
+    decimals: config.usdcDecimals,
+    operatorWalletAddress: config.dropOperatorWalletAddress,
+    operatorPrivateKey: config.dropOperatorPrivateKey,
+  })
   const gameService = createGameService({
     store,
     rewardThresholdKm: config.rewardThresholdKm,
+    payoutClient,
     livekit: {
       url: config.livekitUrl,
       apiKey: config.livekitApiKey,
@@ -68,6 +77,8 @@ export function createApp(options = {}) {
 
   const app = express()
   app.locals.config = config
+  app.locals.gameService = gameService
+  app.locals.payoutClient = payoutClient
   app.use(
     cors({
       origin: true,
@@ -96,6 +107,7 @@ export function createApp(options = {}) {
             ? 'Render deploys need STORAGE_FILE on a persistent disk, for example /var/data/runtime-store.json.'
             : null,
       },
+      payouts: payoutClient.getStatus(),
     })
   })
 

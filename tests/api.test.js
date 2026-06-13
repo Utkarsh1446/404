@@ -14,7 +14,17 @@ import {
 } from '../server/lib/drop-schedule.js'
 import { haversineDistanceKm } from '../server/lib/geo.js'
 
-function createTestApp() {
+function createDisabledPayoutClient() {
+  return {
+    getStatus: () => ({ configured: false }),
+    sendReward: async () => ({
+      status: 'pending_configuration',
+      reason: 'Payouts are disabled in tests.',
+    }),
+  }
+}
+
+function createTestApp(options = {}) {
   const storageFile = path.join(
     os.tmpdir(),
     `sp-guess-${Math.random().toString(36).slice(2)}.json`,
@@ -40,10 +50,11 @@ function createTestApp() {
     livekitUrl: '',
     livekitApiKey: '',
     livekitApiSecret: '',
+    payoutClient: options.payoutClient ?? createDisabledPayoutClient(),
   })
 }
 
-function createTestAppWithState(initialState) {
+function createTestAppWithState(initialState, options = {}) {
   const storageFile = path.join(
     os.tmpdir(),
     `sp-guess-${Math.random().toString(36).slice(2)}.json`,
@@ -57,6 +68,7 @@ function createTestAppWithState(initialState) {
     livekitUrl: '',
     livekitApiKey: '',
     livekitApiSecret: '',
+    payoutClient: options.payoutClient ?? createDisabledPayoutClient(),
   })
 }
 
@@ -385,6 +397,191 @@ test('drop settlement credits only the first correct wallet', async () => {
 
     assert.equal(secondProfile.body.spBalance, 0)
     assert.equal(secondProfile.body.dropsParticipated, 1)
+  } finally {
+    restoreNow()
+  }
+})
+
+test('drop settlement sends one USDC payout once', async () => {
+  const restoreNow = useActiveDropClock()
+  const payoutCalls = []
+  const app = createTestApp({
+    payoutClient: {
+      getStatus: () => ({
+        configured: true,
+        operatorWalletAddress: 'operator-wallet',
+        mintAddress: 'test-usdc-mint',
+        decimals: 6,
+      }),
+      sendReward: async (payload) => {
+        payoutCalls.push(payload)
+        return {
+          status: 'sent',
+          signature: `mock-signature-${payoutCalls.length}`,
+          operatorWalletAddress: 'operator-wallet',
+          recipientWalletAddress: payload.recipientWalletAddress,
+          mintAddress: 'test-usdc-mint',
+          amountUsd: payload.amountUsd,
+          amountRaw: '1000000',
+        }
+      },
+    },
+  })
+  const winner = await authenticate(app)
+
+  try {
+    const dropRound = await request(app)
+      .post('/api/drops/start')
+      .set('Authorization', `Bearer ${winner.token}`)
+      .expect(200)
+
+    await request(app)
+      .post(`/api/rounds/${dropRound.body.roundId}/guess`)
+      .set('Authorization', `Bearer ${winner.token}`)
+      .send({
+        guessLat: dropRound.body.panorama.position.lat,
+        guessLng: dropRound.body.panorama.position.lng,
+      })
+      .expect(200)
+
+    const storageFile = app.locals.config.storageFile
+    const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
+    const storedRound = state.rounds.find((round) => round.id === dropRound.body.roundId)
+    storedRound.revealEndsAt = Date.now() - 1
+    fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
+
+    const result = await request(app)
+      .get(`/api/rounds/${dropRound.body.roundId}/result`)
+      .set('Authorization', `Bearer ${winner.token}`)
+      .expect(200)
+
+    assert.equal(payoutCalls.length, 1)
+    assert.equal(payoutCalls[0].recipientWalletAddress, winner.walletAddress)
+    assert.equal(payoutCalls[0].amountUsd, 1)
+    assert.equal(result.body.result.winner.payout.status, 'sent')
+    assert.equal(result.body.result.winner.payout.signature, 'mock-signature-1')
+
+    await request(app)
+      .get(`/api/rounds/${dropRound.body.roundId}/result`)
+      .set('Authorization', `Bearer ${winner.token}`)
+      .expect(200)
+
+    assert.equal(payoutCalls.length, 1)
+  } finally {
+    restoreNow()
+  }
+})
+
+test('drop automation settles due drops and pays the winner without result clicks', async () => {
+  const restoreNow = useActiveDropClock()
+  const payoutCalls = []
+  const app = createTestApp({
+    payoutClient: {
+      getStatus: () => ({ configured: true }),
+      sendReward: async (payload) => {
+        payoutCalls.push(payload)
+        return {
+          status: 'sent',
+          signature: 'automation-signature',
+          operatorWalletAddress: 'operator-wallet',
+          recipientWalletAddress: payload.recipientWalletAddress,
+          mintAddress: 'test-usdc-mint',
+          amountUsd: payload.amountUsd,
+          amountRaw: '1000000',
+        }
+      },
+    },
+  })
+  const winner = await authenticate(app)
+
+  try {
+    const dropRound = await request(app)
+      .post('/api/drops/start')
+      .set('Authorization', `Bearer ${winner.token}`)
+      .expect(200)
+
+    await request(app)
+      .post(`/api/rounds/${dropRound.body.roundId}/guess`)
+      .set('Authorization', `Bearer ${winner.token}`)
+      .send({
+        guessLat: dropRound.body.panorama.position.lat,
+        guessLng: dropRound.body.panorama.position.lng,
+      })
+      .expect(200)
+
+    const automation = await app.locals.gameService.runDropAutomation(
+      Date.now() + DROP_ACTIVE_MS + DROP_REVEAL_MS + 1000,
+    )
+
+    assert.deepEqual(automation.settledDropCycleNumbers, [
+      dropRound.body.meta.dropCycleNumber,
+    ])
+    assert.equal(payoutCalls.length, 1)
+    assert.equal(payoutCalls[0].recipientWalletAddress, winner.walletAddress)
+
+    const profile = await request(app)
+      .get('/api/me/profile')
+      .set('Authorization', `Bearer ${winner.token}`)
+      .expect(200)
+
+    assert.equal(profile.body.dropsWon, 1)
+    assert.equal(profile.body.spBalance, 1)
+  } finally {
+    restoreNow()
+  }
+})
+
+test('equal-time drop guesses are settled by closest distance', async () => {
+  const restoreNow = useActiveDropClock()
+  const app = createTestApp()
+  const first = await authenticate(app)
+  const second = await authenticate(app)
+
+  try {
+    const firstRound = await request(app)
+      .post('/api/drops/start')
+      .set('Authorization', `Bearer ${first.token}`)
+      .expect(200)
+    const secondRound = await request(app)
+      .post('/api/drops/start')
+      .set('Authorization', `Bearer ${second.token}`)
+      .expect(200)
+
+    await request(app)
+      .post(`/api/rounds/${firstRound.body.roundId}/guess`)
+      .set('Authorization', `Bearer ${first.token}`)
+      .send({
+        guessLat: firstRound.body.panorama.position.lat + 0.1,
+        guessLng: firstRound.body.panorama.position.lng,
+      })
+      .expect(200)
+
+    await request(app)
+      .post(`/api/rounds/${secondRound.body.roundId}/guess`)
+      .set('Authorization', `Bearer ${second.token}`)
+      .send({
+        guessLat: secondRound.body.panorama.position.lat,
+        guessLng: secondRound.body.panorama.position.lng,
+      })
+      .expect(200)
+
+    const storageFile = app.locals.config.storageFile
+    const state = JSON.parse(fs.readFileSync(storageFile, 'utf8'))
+    state.rounds
+      .filter((round) => round.dropCycleNumber === firstRound.body.meta.dropCycleNumber)
+      .forEach((round) => {
+        round.revealEndsAt = Date.now() - 1
+      })
+    fs.writeFileSync(storageFile, JSON.stringify(state, null, 2))
+
+    const result = await request(app)
+      .get(`/api/rounds/${firstRound.body.roundId}/result`)
+      .set('Authorization', `Bearer ${first.token}`)
+      .expect(200)
+
+    assert.equal(result.body.result.winner.walletAddress, second.walletAddress)
+    assert.equal(result.body.result.winner.responseTimeMs, 1000)
+    assert.equal(result.body.result.winner.distanceKm, 0)
   } finally {
     restoreNow()
   }

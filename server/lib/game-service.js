@@ -58,6 +58,29 @@ function pickRegularLocation(state, excludedLocationIds = []) {
   return locations[index]
 }
 
+function getDropCycleStartAt(dropCycleNumber) {
+  return dropCycleNumber * DROP_CYCLE_MS
+}
+
+function getDropCycleRevealEndsAt(dropCycleNumber) {
+  return getDropCycleStartAt(dropCycleNumber) + DROP_ACTIVE_MS + DROP_REVEAL_MS
+}
+
+function isDropCycleCompleted(dropCycleNumber, timestamp = Date.now()) {
+  return Number.isInteger(dropCycleNumber) && timestamp >= getDropCycleRevealEndsAt(dropCycleNumber)
+}
+
+function getDropResponseTimeMs(guess) {
+  if (Number.isFinite(guess.responseTimeMs)) return guess.responseTimeMs
+
+  const guessedAt = Date.parse(guess.createdAt)
+  if (!Number.isFinite(guessedAt) || !Number.isInteger(guess.dropCycleNumber)) {
+    return Number.POSITIVE_INFINITY
+  }
+
+  return Math.max(0, guessedAt - getDropCycleStartAt(guess.dropCycleNumber))
+}
+
 function getWinnerForDrop(state, dropCycleNumber) {
   if (dropCycleNumber === null || dropCycleNumber === undefined) return null
 
@@ -67,13 +90,19 @@ function getWinnerForDrop(state, dropCycleNumber) {
         guess.dropCycleNumber === dropCycleNumber &&
         guess.rewardEligible,
     )
-    .sort((first, second) => new Date(first.createdAt) - new Date(second.createdAt))[0]
+    .sort(
+      (first, second) =>
+        getDropResponseTimeMs(first) - getDropResponseTimeMs(second) ||
+        first.distanceKm - second.distanceKm ||
+        new Date(first.createdAt) - new Date(second.createdAt),
+    )[0]
 
   if (!winningGuess) return null
 
   return {
     walletAddress: winningGuess.walletAddress,
     guessedAt: winningGuess.createdAt,
+    responseTimeMs: getDropResponseTimeMs(winningGuess),
     distanceKm: winningGuess.distanceKm,
     score: winningGuess.score,
   }
@@ -283,13 +312,54 @@ function finalizeTimedOutRound(state, round, rewardThresholdKm, timestamp = Date
   return round.result
 }
 
+function summarizePayout(payout) {
+  if (!payout) return null
+
+  return {
+    status: payout.status,
+    amountUsd: payout.amountUsd,
+    amountRaw: payout.amountRaw ?? null,
+    tokenSymbol: payout.tokenSymbol ?? 'USDC',
+    mintAddress: payout.mintAddress ?? null,
+    operatorWalletAddress: payout.operatorWalletAddress ?? null,
+    recipientWalletAddress: payout.recipientWalletAddress ?? null,
+    signature: payout.signature ?? null,
+    reason: payout.reason ?? null,
+    error: payout.error ?? null,
+    attemptCount: payout.attemptCount ?? 0,
+    sentAt: payout.sentAt ?? null,
+    updatedAt: payout.updatedAt ?? null,
+  }
+}
+
+function ensureSettlementPayout(settlement) {
+  if (!settlement?.winnerWalletAddress || !settlement.rewardSp || settlement.rewardSp <= 0) {
+    return null
+  }
+
+  settlement.payout ??= {
+    status: 'pending',
+    amountUsd: settlement.rewardSp,
+    tokenSymbol: 'USDC',
+    recipientWalletAddress: settlement.winnerWalletAddress,
+    createdAt: settlement.settledAt,
+    updatedAt: settlement.settledAt,
+    attemptCount: 0,
+  }
+
+  return settlement.payout
+}
+
 function settleDropWinner(state, dropCycleNumber, timestamp = Date.now()) {
   ensureStateCollections(state)
   const existingSettlement = state.dropSettlements.find(
     (entry) => entry.dropCycleNumber === dropCycleNumber,
   )
 
-  if (existingSettlement) return existingSettlement
+  if (existingSettlement) {
+    ensureSettlementPayout(existingSettlement)
+    return existingSettlement
+  }
 
   const winner = getWinnerForDrop(state, dropCycleNumber)
   const winningRound = winner
@@ -309,6 +379,7 @@ function settleDropWinner(state, dropCycleNumber, timestamp = Date.now()) {
     rewardSp,
     settledAt: new Date(timestamp).toISOString(),
   }
+  ensureSettlementPayout(settlement)
 
   state.dropSettlements.push(settlement)
 
@@ -448,14 +519,17 @@ function summarizeDropCycle(state, cycleNumber, timestamp = Date.now()) {
       : state.dropSettlements.find(
           (entry) => entry.dropCycleNumber === cycleNumber,
         )
+  const winningGuess = getWinnerForDrop(state, cycleNumber)
   const winner =
     settlement?.winnerWalletAddress
       ? {
           walletAddress: settlement.winnerWalletAddress,
           rewardSp: settlement.rewardSp,
-          guessedAt: getWinnerForDrop(state, cycleNumber)?.guessedAt ?? null,
-          distanceKm: getWinnerForDrop(state, cycleNumber)?.distanceKm ?? null,
-          score: getWinnerForDrop(state, cycleNumber)?.score ?? null,
+          guessedAt: winningGuess?.guessedAt ?? null,
+          responseTimeMs: winningGuess?.responseTimeMs ?? null,
+          distanceKm: winningGuess?.distanceKm ?? null,
+          score: winningGuess?.score ?? null,
+          payout: summarizePayout(settlement.payout),
         }
       : null
   const participantsCount = state.dropParticipations.filter(
@@ -619,7 +693,207 @@ function pruneInvalidOpenRounds(state, walletAddress, rewardThresholdKm) {
   })
 }
 
-export function createGameService({ store, rewardThresholdKm, livekit }) {
+export function createGameService({ store, rewardThresholdKm, livekit, payoutClient }) {
+  const dropPayoutClient = payoutClient ?? {
+    getStatus: () => ({ configured: false }),
+    sendReward: async () => ({
+      status: 'pending_configuration',
+      reason: 'Drop payout client is not configured.',
+    }),
+  }
+  let dropAutomationTimer = null
+
+  async function processDropPayout(dropCycleNumber) {
+    const timestamp = Date.now()
+    const processingStartedAt = new Date(timestamp).toISOString()
+    const payoutJob = await store.update((state) => {
+      ensureStateCollections(state)
+      const settlement = state.dropSettlements.find(
+        (entry) => entry.dropCycleNumber === dropCycleNumber,
+      )
+
+      if (!settlement) return null
+
+      const payout = ensureSettlementPayout(settlement)
+      if (!payout || payout.status === 'sent') return null
+
+      const staleProcessing =
+        payout.status === 'processing' &&
+        (!payout.updatedAt || Date.parse(payout.updatedAt) < timestamp - 10 * 60 * 1000)
+
+      if (payout.status === 'processing' && !staleProcessing) return null
+
+      payout.status = 'processing'
+      payout.attemptCount = (payout.attemptCount ?? 0) + 1
+      payout.updatedAt = processingStartedAt
+      payout.reason = null
+      payout.error = null
+
+      return {
+        dropCycleNumber,
+        settlementId: settlement.id,
+        winnerWalletAddress: settlement.winnerWalletAddress,
+        amountUsd: settlement.rewardSp,
+      }
+    })
+
+    if (!payoutJob) return null
+
+    try {
+      const payoutResult = await dropPayoutClient.sendReward({
+        recipientWalletAddress: payoutJob.winnerWalletAddress,
+        amountUsd: payoutJob.amountUsd,
+        dropCycleNumber: payoutJob.dropCycleNumber,
+        settlementId: payoutJob.settlementId,
+      })
+      const updatedAt = new Date().toISOString()
+
+      await store.update((state) => {
+        ensureStateCollections(state)
+        const settlement = state.dropSettlements.find(
+          (entry) => entry.dropCycleNumber === dropCycleNumber,
+        )
+        const payout = ensureSettlementPayout(settlement)
+        if (!payout || payout.status === 'sent') return null
+
+        if (payoutResult.status === 'sent') {
+          Object.assign(payout, {
+            status: 'sent',
+            signature: payoutResult.signature,
+            amountUsd: payoutResult.amountUsd ?? payoutJob.amountUsd,
+            amountRaw: payoutResult.amountRaw ?? null,
+            tokenSymbol: 'USDC',
+            mintAddress: payoutResult.mintAddress ?? null,
+            operatorWalletAddress: payoutResult.operatorWalletAddress ?? null,
+            recipientWalletAddress:
+              payoutResult.recipientWalletAddress ?? payoutJob.winnerWalletAddress,
+            operatorTokenAccount: payoutResult.operatorTokenAccount ?? null,
+            recipientTokenAccount: payoutResult.recipientTokenAccount ?? null,
+            sentAt: updatedAt,
+            updatedAt,
+            reason: null,
+            error: null,
+          })
+          return null
+        }
+
+        Object.assign(payout, {
+          status: payoutResult.status ?? 'pending_configuration',
+          reason: payoutResult.reason ?? 'USDC payout is pending.',
+          updatedAt,
+        })
+        return null
+      })
+
+      return payoutResult
+    } catch (error) {
+      const updatedAt = new Date().toISOString()
+
+      await store.update((state) => {
+        ensureStateCollections(state)
+        const settlement = state.dropSettlements.find(
+          (entry) => entry.dropCycleNumber === dropCycleNumber,
+        )
+        const payout = ensureSettlementPayout(settlement)
+        if (!payout || payout.status === 'sent') return null
+
+        Object.assign(payout, {
+          status: 'failed',
+          error: error.message ?? 'USDC payout failed.',
+          updatedAt,
+        })
+        return null
+      })
+
+      return {
+        status: 'failed',
+        error: error.message ?? 'USDC payout failed.',
+      }
+    }
+  }
+
+  async function processDropPayouts(dropCycleNumbers) {
+    const uniqueCycleNumbers = [...new Set(dropCycleNumbers)]
+    const results = []
+
+    for (const cycleNumber of uniqueCycleNumbers) {
+      const result = await processDropPayout(cycleNumber)
+      if (result) results.push(result)
+    }
+
+    return results
+  }
+
+  function collectDueDropCycleNumbers(state, timestamp = Date.now()) {
+    const cycleNumbers = new Set()
+
+    for (const entry of state.dropParticipations) {
+      cycleNumbers.add(entry.dropCycleNumber)
+    }
+
+    for (const entry of state.rounds) {
+      if (entry.gameMode === 'drop') {
+        cycleNumbers.add(entry.dropCycleNumber)
+      }
+    }
+
+    for (const entry of state.guesses) {
+      if (entry.dropCycleNumber !== null && entry.dropCycleNumber !== undefined) {
+        cycleNumbers.add(entry.dropCycleNumber)
+      }
+    }
+
+    for (const entry of state.dropSettlements) {
+      cycleNumbers.add(entry.dropCycleNumber)
+    }
+
+    return [...cycleNumbers]
+      .filter((cycleNumber) => isDropCycleCompleted(cycleNumber, timestamp))
+      .sort((first, second) => first - second)
+  }
+
+  async function runDropAutomation(timestamp = Date.now()) {
+    const dueCycleNumbers = await store.update((state) => {
+      ensureStateCollections(state)
+      const cycleNumbers = collectDueDropCycleNumbers(state, timestamp)
+
+      cycleNumbers.forEach((cycleNumber) => {
+        settleDropWinner(state, cycleNumber, timestamp)
+      })
+
+      return cycleNumbers
+    })
+    const payouts = await processDropPayouts(dueCycleNumbers)
+
+    return {
+      settledDropCycleNumbers: dueCycleNumbers,
+      payouts,
+    }
+  }
+
+  function startDropAutomation({ intervalMs = 60_000 } = {}) {
+    if (dropAutomationTimer) return dropAutomationTimer
+
+    const delayMs = Number.isFinite(intervalMs) ? Math.max(10_000, intervalMs) : 60_000
+    const run = () => {
+      runDropAutomation().catch((error) => {
+        console.error('Drop automation failed:', error)
+      })
+    }
+
+    run()
+    dropAutomationTimer = setInterval(run, delayMs)
+    dropAutomationTimer.unref?.()
+
+    return dropAutomationTimer
+  }
+
+  function stopDropAutomation() {
+    if (!dropAutomationTimer) return
+    clearInterval(dropAutomationTimer)
+    dropAutomationTimer = null
+  }
+
   function getOrCreatePlayer(state, walletAddress) {
     let player = state.players.find((entry) => entry.walletAddress === walletAddress)
 
@@ -1056,6 +1330,11 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
       const score = distanceToScore(distanceKm)
       const rewardEligible = distanceKm <= rewardThresholdKm
       const rewardSp = rewardEligible ? location.rewardSp : 0
+      const responseTimeMs =
+        round.gameMode === 'drop'
+          ? Math.max(0, now - getDropCycleStartAt(round.dropCycleNumber))
+          : null
+      const guessedAt = new Date(now).toISOString()
 
       if (round.consumeQuotaOnSubmit) {
         if (round.attemptType === 'free') {
@@ -1068,15 +1347,16 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         round.quotaConsumed = true
       }
 
-      ledger.updatedAt = new Date().toISOString()
+      ledger.updatedAt = guessedAt
       round.status = round.gameMode === 'drop' ? 'submitted' : 'completed'
-      round.updatedAt = new Date().toISOString()
-      round.guessedAt = new Date().toISOString()
+      round.updatedAt = guessedAt
+      round.guessedAt = guessedAt
       round.result = {
         distanceKm: Number(distanceKm.toFixed(2)),
         score,
         rewardEligible,
         rewardSp,
+        ...(responseTimeMs !== null ? { responseTimeMs } : {}),
         thresholdKm: rewardThresholdKm,
         guess,
         answer,
@@ -1096,6 +1376,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         distanceKm: round.result.distanceKm,
         score,
         rewardEligible,
+        ...(responseTimeMs !== null ? { responseTimeMs } : {}),
         createdAt: round.guessedAt,
       })
 
@@ -1103,6 +1384,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         upsertDropParticipation(state, round, {
           status: 'submitted',
           guessedAt: round.guessedAt,
+          responseTimeMs,
           distanceKm: round.result.distanceKm,
           score,
           rewardEligible,
@@ -1145,8 +1427,8 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
     })
   }
 
-  function getRoundResult(walletAddress, roundId) {
-    return store.update((state) => {
+  async function getRoundResult(walletAddress, roundId) {
+    const readResult = () => store.update((state) => {
       const round = state.rounds.find(
         (entry) => entry.id === roundId && entry.walletAddress === walletAddress,
       )
@@ -1184,14 +1466,18 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         round.gameMode === 'drop'
           ? settleDropWinner(state, round.dropCycleNumber, now)
           : null
+      const winningGuess =
+        round.gameMode === 'drop' ? getWinnerForDrop(state, round.dropCycleNumber) : null
       const winner =
         round.gameMode === 'drop' && dropSettlement?.winnerWalletAddress
           ? {
               walletAddress: dropSettlement.winnerWalletAddress,
               rewardSp: dropSettlement.rewardSp,
-              guessedAt: getWinnerForDrop(state, round.dropCycleNumber)?.guessedAt,
-              distanceKm: getWinnerForDrop(state, round.dropCycleNumber)?.distanceKm,
-              score: getWinnerForDrop(state, round.dropCycleNumber)?.score,
+              guessedAt: winningGuess?.guessedAt,
+              responseTimeMs: winningGuess?.responseTimeMs ?? null,
+              distanceKm: winningGuess?.distanceKm,
+              score: winningGuess?.score,
+              payout: summarizePayout(dropSettlement.payout),
             }
           : null
 
@@ -1199,6 +1485,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
       round.updatedAt = new Date(now).toISOString()
 
       return {
+        payoutDropCycleNumber: round.gameMode === 'drop' ? round.dropCycleNumber : null,
         roundId: round.id,
         attemptType: round.attemptType,
         quota: summarizeQuota(ledger),
@@ -1211,24 +1498,69 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         },
       }
     })
+
+    const payload = await readResult()
+
+    if (payload.payoutDropCycleNumber !== null) {
+      await processDropPayout(payload.payoutDropCycleNumber)
+      const refreshedPayload = await readResult()
+      delete refreshedPayload.payoutDropCycleNumber
+      return refreshedPayload
+    }
+
+    delete payload.payoutDropCycleNumber
+    return payload
   }
 
-  function getDropDetails(dropCycleNumber) {
-    return store.update((state) => {
+  async function getDropDetails(dropCycleNumber) {
+    const cycleNumber = Number(dropCycleNumber)
+    if (!Number.isInteger(cycleNumber) || cycleNumber < 0) {
+      const error = new Error('Drop cycle number is invalid.')
+      error.statusCode = 400
+      throw error
+    }
+
+    const summary = await store.update((state) => {
       ensureStateCollections(state)
-
-      const cycleNumber = Number(dropCycleNumber)
-      if (!Number.isInteger(cycleNumber) || cycleNumber < 0) {
-        const error = new Error('Drop cycle number is invalid.')
-        error.statusCode = 400
-        throw error
-      }
-
       return summarizeDropCycle(state, cycleNumber)
     })
+
+    if (summary.status === 'completed') {
+      await processDropPayout(cycleNumber)
+
+      return store.update((state) => {
+        ensureStateCollections(state)
+        return summarizeDropCycle(state, cycleNumber)
+      })
+    }
+
+    return summary
   }
 
-  function getDropsOverview() {
+  async function getDropsOverview() {
+    const overview = await store.update((state) => {
+      ensureStateCollections(state)
+
+      const now = Date.now()
+      const currentCycleNumber = Math.floor(now / DROP_CYCLE_MS)
+      const pastDrops = Array.from({ length: PAST_DROP_LIMIT }, (_entry, index) => {
+        const cycleNumber = currentCycleNumber - index - 1
+        return cycleNumber >= 0 ? summarizeDropCycle(state, cycleNumber, now) : null
+      }).filter(Boolean)
+
+      return {
+        activeDrop: summarizeDropCycle(state, currentCycleNumber, now),
+        pastDrops,
+        pastLimit: PAST_DROP_LIMIT,
+      }
+    })
+
+    await processDropPayouts(
+      overview.pastDrops
+        .filter((drop) => drop.status === 'completed')
+        .map((drop) => drop.dropCycleNumber),
+    )
+
     return store.update((state) => {
       ensureStateCollections(state)
 
@@ -1569,10 +1901,13 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
     getQuota,
     updateProfile,
     joinMultiplayerRoom,
+    runDropAutomation,
     setMultiplayerReady,
     startMultiplayerRoom,
+    startDropAutomation,
     startDropRound,
     startRound,
+    stopDropAutomation,
     checkoutAttempt,
     submitMultiplayerGuess,
     submitGuess,
