@@ -5,6 +5,7 @@ import { getDemoWallet } from '../lib/demoWallet'
 const SESSION_STORAGE_KEY = 'sp-guess-session'
 const USERNAME_STORAGE_KEY = 'sp-guess-usernames'
 const ROUND_LOCATION_COUNT = 2
+const REGULAR_REVEAL_AUTO_ADVANCE_MS = 1600
 
 function bytesToBase64(bytes) {
   let binary = ''
@@ -71,6 +72,28 @@ function getRoundElapsedSeconds(round) {
 
   const remainingSeconds = Math.max(0, Math.ceil((activeEndsAt - Date.now()) / 1000))
   return Math.max(0, timeLimitSeconds - remainingSeconds)
+}
+
+function summarizeLocationResults(results, thresholdKm) {
+  const totalRewardSp = results.reduce((sum, entry) => sum + entry.rewardSp, 0)
+  const totalScore = results.reduce((sum, entry) => sum + entry.score, 0)
+  const rewardEligibleCount = results.filter((entry) => entry.rewardEligible).length
+  const distanceResults = results.filter((entry) => Number.isFinite(entry.distanceKm))
+  const averageDistanceKm =
+    distanceResults.length > 0
+      ? distanceResults.reduce((sum, entry) => sum + entry.distanceKm, 0) / distanceResults.length
+      : null
+
+  return {
+    stops: results,
+    totalRewardSp,
+    totalScore,
+    rewardEligibleCount,
+    thresholdKm,
+    averageDistanceKm: Number.isFinite(averageDistanceKm)
+      ? Number(averageDistanceKm.toFixed(2))
+      : null,
+  }
 }
 
 export function useGameSession() {
@@ -229,14 +252,9 @@ export function useGameSession() {
         elapsedSeconds: getRoundElapsedSeconds(activeRound),
       }
       const nextResults = [...locationResults, revealedResult]
-      const totalRewardSp = nextResults.reduce((sum, entry) => sum + entry.rewardSp, 0)
-      const totalScore = nextResults.reduce((sum, entry) => sum + entry.score, 0)
-      const rewardEligibleCount = nextResults.filter((entry) => entry.rewardEligible).length
-      const distanceResults = nextResults.filter((entry) => Number.isFinite(entry.distanceKm))
-      const averageDistanceKm =
-        distanceResults.length > 0
-          ? distanceResults.reduce((sum, entry) => sum + entry.distanceKm, 0) / distanceResults.length
-          : null
+      const isRegularRound = activeRound?.meta?.gameMode !== 'drop'
+      const hasMoreRegularStops =
+        isRegularRound && currentLocationIndex < activeRoundLocationCount
 
       setQuota(payload.quota)
       if (payload.profile) setProfile(payload.profile)
@@ -247,16 +265,12 @@ export function useGameSession() {
         stopIndex: currentLocationIndex,
         stopCount: activeRoundLocationCount,
       })
-      setPendingFinalSummary({
-        stops: nextResults,
-        totalRewardSp,
-        totalScore,
-        rewardEligibleCount,
-        thresholdKm: revealedResult.thresholdKm,
-        averageDistanceKm: Number.isFinite(averageDistanceKm)
-          ? Number(averageDistanceKm.toFixed(2))
-          : null,
-      })
+      setPendingNextRound(hasMoreRegularStops ? { needsFetch: true } : null)
+      setPendingFinalSummary(
+        hasMoreRegularStops
+          ? null
+          : summarizeLocationResults(nextResults, revealedResult.thresholdKm),
+      )
       setPhase('reveal')
       setStatus(
         revealedResult.timedOut
@@ -534,6 +548,7 @@ export function useGameSession() {
         elapsedSeconds: getRoundElapsedSeconds(activeRound),
       }
       const nextResults = [...locationResults, revealedResult]
+      const finalSummary = summarizeLocationResults(nextResults, revealedResult.thresholdKm)
       setQuota(payload.quota)
       if (payload.profile) setProfile(payload.profile)
       setLocationResults(nextResults)
@@ -541,44 +556,27 @@ export function useGameSession() {
 
       if (currentLocationIndex < activeRoundLocationCount) {
         setPendingNextRound({ needsFetch: true })
+        setPendingFinalSummary(null)
         setRevealResult({
           ...revealedResult,
           stopIndex: currentLocationIndex,
           stopCount: activeRoundLocationCount,
         })
         setPhase('reveal')
-        setStatus(`R${currentLocationIndex} revealed. Continue when ready for R${currentLocationIndex + 1}.`)
+        setStatus(`R${currentLocationIndex} revealed. R${currentLocationIndex + 1} starts automatically.`)
         return
       }
-
-      const totalRewardSp = nextResults.reduce((sum, entry) => sum + entry.rewardSp, 0)
-      const totalScore = nextResults.reduce((sum, entry) => sum + entry.score, 0)
-      const rewardEligibleCount = nextResults.filter((entry) => entry.rewardEligible).length
-      const distanceResults = nextResults.filter((entry) => Number.isFinite(entry.distanceKm))
-      const averageDistanceKm =
-        distanceResults.length > 0
-          ? distanceResults.reduce((sum, entry) => sum + entry.distanceKm, 0) / distanceResults.length
-          : null
 
       setRevealResult({
         ...revealedResult,
         stopIndex: currentLocationIndex,
         stopCount: activeRoundLocationCount,
       })
-      setPendingFinalSummary({
-        stops: nextResults,
-        totalRewardSp,
-        totalScore,
-        rewardEligibleCount,
-        thresholdKm: revealedResult.thresholdKm,
-        averageDistanceKm: Number.isFinite(averageDistanceKm)
-          ? Number(averageDistanceKm.toFixed(2))
-          : null,
-      })
+      setPendingFinalSummary(finalSummary)
       setPhase('reveal')
       setStatus(
-        totalRewardSp > 0
-          ? `Round complete. ${totalRewardSp} NOTF queued across ${rewardEligibleCount} correct locations.`
+        finalSummary.totalRewardSp > 0
+          ? `Round complete. ${finalSummary.totalRewardSp} NOTF queued across ${finalSummary.rewardEligibleCount} correct locations.`
           : 'Round complete. No NOTF this time, but the reveal is live.',
       )
       return {
@@ -619,7 +617,7 @@ export function useGameSession() {
     setPhase('ready')
   }
 
-  async function continueAfterReveal() {
+  const continueAfterReveal = useCallback(async () => {
     if (pendingNextRound) {
       if (!session?.token) return
 
@@ -652,7 +650,37 @@ export function useGameSession() {
       setRevealResult(null)
       setPhase('result')
     }
-  }
+  }, [
+    activeRound,
+    currentLocationIndex,
+    pendingFinalSummary,
+    pendingNextRound,
+    session,
+  ])
+
+  useEffect(() => {
+    if (
+      phase !== 'reveal' ||
+      !revealResult ||
+      activeRound?.meta?.gameMode === 'drop' ||
+      (!pendingNextRound && !pendingFinalSummary)
+    ) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void continueAfterReveal()
+    }, REGULAR_REVEAL_AUTO_ADVANCE_MS)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [
+    activeRound?.meta?.gameMode,
+    continueAfterReveal,
+    pendingFinalSummary,
+    pendingNextRound,
+    phase,
+    revealResult,
+  ])
 
   return {
     session,

@@ -157,7 +157,7 @@ export const curatedLocations = [
     country: 'Namibia',
     region: 'Namib Desert dunes',
     difficulty: 'hard',
-    rewardSp: 42,
+    rewardSp: 1,
     active: true,
     panorama: {
       lat: -24.7508,
@@ -172,7 +172,7 @@ export const curatedLocations = [
     country: 'Bolivia',
     region: 'Salar de Uyuni',
     difficulty: 'hard',
-    rewardSp: 44,
+    rewardSp: 1,
     active: true,
     panorama: {
       lat: -20.1338,
@@ -187,7 +187,7 @@ export const curatedLocations = [
     country: 'China',
     region: 'Zhangjiajie sandstone pillars',
     difficulty: 'hard',
-    rewardSp: 43,
+    rewardSp: 1,
     active: true,
     panorama: {
       lat: 29.3457,
@@ -202,7 +202,7 @@ export const curatedLocations = [
     country: 'Colombia',
     region: 'Cano Cristales river',
     difficulty: 'hard',
-    rewardSp: 45,
+    rewardSp: 1,
     active: true,
     panorama: {
       lat: 2.2642,
@@ -217,7 +217,7 @@ export const curatedLocations = [
     country: 'Peru',
     region: 'Colca Canyon',
     difficulty: 'hard',
-    rewardSp: 42,
+    rewardSp: 1,
     active: true,
     panorama: {
       lat: -15.6094,
@@ -232,7 +232,7 @@ export const curatedLocations = [
     country: 'Iceland',
     region: 'Landmannalaugar rhyolite mountains',
     difficulty: 'hard',
-    rewardSp: 44,
+    rewardSp: 1,
     active: true,
     panorama: {
       lat: 63.9912,
@@ -247,7 +247,7 @@ export const curatedLocations = [
     country: 'Madagascar',
     region: 'Tsingy de Bemaraha',
     difficulty: 'hard',
-    rewardSp: 46,
+    rewardSp: 1,
     active: false,
     panorama: {
       lat: -18.6667,
@@ -262,7 +262,7 @@ export const curatedLocations = [
     country: 'Indonesia',
     region: 'Raja Ampat karst islands',
     difficulty: 'hard',
-    rewardSp: 45,
+    rewardSp: 1,
     active: true,
     panorama: {
       lat: -0.2346,
@@ -277,7 +277,7 @@ export const curatedLocations = [
     country: 'Canada',
     region: 'Nahanni River canyon',
     difficulty: 'hard',
-    rewardSp: 44,
+    rewardSp: 1,
     active: true,
     panorama: {
       lat: 61.5976,
@@ -292,7 +292,7 @@ export const curatedLocations = [
     country: 'Nepal',
     region: 'Annapurna mountain valley',
     difficulty: 'hard',
-    rewardSp: 43,
+    rewardSp: 1,
     active: true,
     panorama: {
       lat: 28.596,

@@ -23,6 +23,7 @@ const MULTIPLAYER_MIN_PLAYERS = 2
 const MULTIPLAYER_MAX_PLAYERS = 20
 const MULTIPLAYER_COUNTDOWN_MS = 5 * 1000
 const MULTIPLAYER_REVEAL_MS = 7 * 1000
+const PAST_DROP_LIMIT = 20
 const STARTER_NOTF_GRANT = 100
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,16}$/
 
@@ -427,6 +428,50 @@ function summarizeDropLocation(location) {
       lat: location.panorama.lat,
       lng: location.panorama.lng,
     },
+  }
+}
+
+function summarizeDropCycle(state, cycleNumber, timestamp = Date.now()) {
+  const cycleStartAt = cycleNumber * DROP_CYCLE_MS
+  const activeEndsAt = cycleStartAt + DROP_ACTIVE_MS
+  const revealEndsAt = activeEndsAt + DROP_REVEAL_MS
+  const location = pickDropLocation(getActiveDropLocations(), cycleNumber)
+  const status =
+    timestamp < activeEndsAt
+      ? 'active'
+      : timestamp < revealEndsAt
+        ? 'reveal'
+        : 'completed'
+  const settlement =
+    status === 'completed'
+      ? settleDropWinner(state, cycleNumber, timestamp)
+      : state.dropSettlements.find(
+          (entry) => entry.dropCycleNumber === cycleNumber,
+        )
+  const winner =
+    settlement?.winnerWalletAddress
+      ? {
+          walletAddress: settlement.winnerWalletAddress,
+          rewardSp: settlement.rewardSp,
+          guessedAt: getWinnerForDrop(state, cycleNumber)?.guessedAt ?? null,
+          distanceKm: getWinnerForDrop(state, cycleNumber)?.distanceKm ?? null,
+          score: getWinnerForDrop(state, cycleNumber)?.score ?? null,
+        }
+      : null
+  const participantsCount = state.dropParticipations.filter(
+    (entry) => entry.dropCycleNumber === cycleNumber,
+  ).length
+
+  return {
+    dropCycleNumber: cycleNumber,
+    status,
+    startsAt: cycleStartAt,
+    activeEndsAt,
+    revealEndsAt,
+    location: summarizeDropLocation(location),
+    rewardSp: settlement?.rewardSp ?? location.rewardSp,
+    participantsCount,
+    winner,
   }
 }
 
@@ -1179,47 +1224,25 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
         throw error
       }
 
+      return summarizeDropCycle(state, cycleNumber)
+    })
+  }
+
+  function getDropsOverview() {
+    return store.update((state) => {
+      ensureStateCollections(state)
+
       const now = Date.now()
-      const cycleStartAt = cycleNumber * DROP_CYCLE_MS
-      const activeEndsAt = cycleStartAt + DROP_ACTIVE_MS
-      const revealEndsAt = activeEndsAt + DROP_REVEAL_MS
-      const location = pickDropLocation(getActiveDropLocations(), cycleNumber)
-      const status =
-        now < activeEndsAt
-          ? 'active'
-          : now < revealEndsAt
-            ? 'reveal'
-            : 'completed'
-      const settlement =
-        status === 'completed'
-          ? settleDropWinner(state, cycleNumber, now)
-          : state.dropSettlements.find(
-              (entry) => entry.dropCycleNumber === cycleNumber,
-            )
-      const winner =
-        settlement?.winnerWalletAddress
-          ? {
-              walletAddress: settlement.winnerWalletAddress,
-              rewardSp: settlement.rewardSp,
-              guessedAt: getWinnerForDrop(state, cycleNumber)?.guessedAt ?? null,
-              distanceKm: getWinnerForDrop(state, cycleNumber)?.distanceKm ?? null,
-              score: getWinnerForDrop(state, cycleNumber)?.score ?? null,
-            }
-          : null
-      const participantsCount = state.dropParticipations.filter(
-        (entry) => entry.dropCycleNumber === cycleNumber,
-      ).length
+      const currentCycleNumber = Math.floor(now / DROP_CYCLE_MS)
+      const pastDrops = Array.from({ length: PAST_DROP_LIMIT }, (_entry, index) => {
+        const cycleNumber = currentCycleNumber - index - 1
+        return cycleNumber >= 0 ? summarizeDropCycle(state, cycleNumber, now) : null
+      }).filter(Boolean)
 
       return {
-        dropCycleNumber: cycleNumber,
-        status,
-        startsAt: cycleStartAt,
-        activeEndsAt,
-        revealEndsAt,
-        location: summarizeDropLocation(location),
-        rewardSp: settlement?.rewardSp ?? location.rewardSp,
-        participantsCount,
-        winner,
+        activeDrop: summarizeDropCycle(state, currentCycleNumber, now),
+        pastDrops,
+        pastLimit: PAST_DROP_LIMIT,
       }
     })
   }
@@ -1540,6 +1563,7 @@ export function createGameService({ store, rewardThresholdKm, livekit }) {
     createMultiplayerRoom,
     createMultiplayerVoiceToken,
     getDropDetails,
+    getDropsOverview,
     getMultiplayerRoom,
     getProfile,
     getQuota,

@@ -99,6 +99,10 @@ export function createApp(options = {}) {
     })
   })
 
+  app.get('/api/drops', asyncRoute(async (_req, res) => {
+    res.json(await gameService.getDropsOverview())
+  }))
+
   app.get('/api/drops/:cycleNumber', asyncRoute(async (req, res) => {
     res.json(await gameService.getDropDetails(req.params.cycleNumber))
   }))

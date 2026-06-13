@@ -7,7 +7,11 @@ import request from 'supertest'
 import nacl from 'tweetnacl'
 import { Keypair } from '@solana/web3.js'
 import { createApp } from '../server/app.js'
-import { DROP_CYCLE_MS } from '../server/lib/drop-schedule.js'
+import {
+  DROP_ACTIVE_MS,
+  DROP_CYCLE_MS,
+  DROP_REVEAL_MS,
+} from '../server/lib/drop-schedule.js'
 import { haversineDistanceKm } from '../server/lib/geo.js'
 
 function createTestApp() {
@@ -328,6 +332,15 @@ test('drop settlement credits only the first correct wallet', async () => {
       .set('Authorization', `Bearer ${second.token}`)
       .expect(200)
 
+    assert.equal(
+      firstRound.body.meta.activeEndsAt - firstRound.body.meta.dropCycleNumber * DROP_CYCLE_MS,
+      DROP_ACTIVE_MS,
+    )
+    assert.equal(
+      firstRound.body.meta.revealEndsAt - firstRound.body.meta.activeEndsAt,
+      DROP_REVEAL_MS,
+    )
+
     await request(app)
       .post(`/api/rounds/${firstRound.body.roundId}/guess`)
       .set('Authorization', `Bearer ${first.token}`)
@@ -361,6 +374,7 @@ test('drop settlement credits only the first correct wallet', async () => {
       .expect(200)
 
     assert.equal(firstResult.body.result.winner.walletAddress, first.walletAddress)
+    assert.equal(firstResult.body.result.rewardSp, 1)
     assert.equal(firstResult.body.profile.spBalance, firstResult.body.result.rewardSp)
     assert.equal(firstResult.body.profile.tokenBalance, 100 + firstResult.body.result.rewardSp)
 
@@ -442,7 +456,7 @@ test('ended drop details reveal the place, winner, and amount publicly', async (
     assert.equal(details.body.winner.walletAddress, first.walletAddress)
     assert.equal(details.body.participantsCount, 2)
     assert.ok(details.body.location.region)
-    assert.ok(details.body.winner.rewardSp > 0)
+    assert.equal(details.body.winner.rewardSp, 1)
 
     const firstProfile = await request(app)
       .get('/api/me/profile')
@@ -452,6 +466,33 @@ test('ended drop details reveal the place, winner, and amount publicly', async (
     assert.equal(firstProfile.body.spBalance, details.body.winner.rewardSp)
     assert.equal(firstProfile.body.tokenBalance, 100 + details.body.winner.rewardSp)
     assert.equal(firstProfile.body.dropsWon, 1)
+  } finally {
+    restoreNow()
+  }
+})
+
+test('drops overview returns the active drop and the latest twenty past drops', async () => {
+  const restoreNow = useActiveDropClock()
+  const app = createTestApp()
+
+  try {
+    const overview = await request(app)
+      .get('/api/drops')
+      .expect(200)
+
+    assert.equal(overview.body.activeDrop.status, 'active')
+    assert.equal(overview.body.activeDrop.rewardSp, 1)
+    assert.equal(overview.body.pastLimit, 20)
+    assert.equal(overview.body.pastDrops.length, 20)
+    assert.ok(overview.body.activeDrop.location.region)
+    assert.ok(overview.body.pastDrops.every((drop) => drop.status === 'completed'))
+    assert.deepEqual(
+      overview.body.pastDrops.map((drop) => drop.dropCycleNumber),
+      Array.from(
+        { length: 20 },
+        (_entry, index) => overview.body.activeDrop.dropCycleNumber - index - 1,
+      ),
+    )
   } finally {
     restoreNow()
   }
@@ -504,8 +545,8 @@ test('legacy active drop-timed rounds are not reused for regular gameplay', asyn
         walletAddress,
         locationId: 'na-namib-desert-dunes',
         dropCycleNumber: 123,
-        activeEndsAt: Date.now() + 2 * 60 * 60 * 1000,
-        revealEndsAt: Date.now() + 2 * 60 * 60 * 1000 + 120 * 1000,
+        activeEndsAt: Date.now() + DROP_ACTIVE_MS,
+        revealEndsAt: Date.now() + DROP_ACTIVE_MS + DROP_REVEAL_MS,
         sessionRootId: 'legacy-active-round',
         sequenceIndex: 1,
         attemptType: 'free',

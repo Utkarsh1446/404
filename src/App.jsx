@@ -23,10 +23,11 @@ import { formatDistance, formatWallet } from './lib/formatters'
 const POLAROID_MIST_TRANSITION_MS = 760
 const GLOBE_AUTO_SPIN_INTERVAL_MS = 250
 const GLOBE_AUTO_SPIN_DEGREES_PER_TICK = 0.4
-const DROP_INTERVAL_MS = 2 * 60 * 60 * 1000
+const DROP_INTERVAL_MS = 4 * 60 * 60 * 1000
 const DROP_REVEAL_MS = 120 * 1000
 const DROP_CYCLE_MS = DROP_INTERVAL_MS + DROP_REVEAL_MS
-const TODAYS_REWARDS_TOTAL = 1200
+const APP_ROUTES = ['/', '/wallet', '/info', '/drops']
+const TODAYS_REWARDS_TOTAL = 6
 const ESTIMATED_REWARD_PER_PLAYER = TODAYS_REWARDS_TOTAL / 10
 const LANDING_LEADERBOARD = [
   { rank: 1, username: 'Nova', correctGuesses: 10 },
@@ -59,8 +60,8 @@ const INFO_DOCUMENTS = [
 ]
 
 const INFO_METRICS = [
-  { value: '12', label: 'Drops per day' },
-  { value: '$1,200+', label: 'Daily reward pool' },
+  { value: '6', label: 'Drops per day' },
+  { value: '$6', label: 'Daily reward pool' },
   { value: '0%', label: 'Buy tax' },
   { value: '5%', label: 'Sell tax' },
 ]
@@ -290,6 +291,54 @@ function hashDropCycle(cycleNumber) {
 function getHardDropLocation(cycleNumber) {
   return ACTIVE_DROP_LOCATIONS[hashDropCycle(cycleNumber) % ACTIVE_DROP_LOCATIONS.length]
 }
+
+function getAppRoute(pathname) {
+  return APP_ROUTES.includes(pathname) ? pathname : '/'
+}
+
+function getDropLocationVisual(drop) {
+  const asset = drop?.location?.id ? DROP_LOCATION_ASSET_BY_ID.get(drop.location.id) : null
+  const scheduledAsset = Number.isFinite(drop?.dropCycleNumber)
+    ? getHardDropLocation(drop.dropCycleNumber)
+    : null
+
+  return {
+    city: asset?.city ?? scheduledAsset?.city ?? drop?.location?.region ?? 'Drop location',
+    country: drop?.location?.country ?? '',
+    image: asset?.image ?? scheduledAsset?.image ?? dropsArtwork,
+    region: drop?.location?.region ?? asset?.city ?? scheduledAsset?.city ?? 'Mystery location',
+    rewardSp: drop?.rewardSp ?? drop?.location?.rewardSp ?? asset?.rewardSp ?? 1,
+  }
+}
+
+function getDropStatusLabel(drop, currentLockedDropState) {
+  if (drop && currentLockedDropState?.cycleNumber === drop.dropCycleNumber) return 'Locked'
+  if (drop?.status === 'active') return 'Live'
+  if (drop?.status === 'reveal') return 'Reveal'
+  return 'Past'
+}
+
+function getDropCountdown(drop, now, currentLockedDropState) {
+  if (drop && currentLockedDropState?.cycleNumber === drop.dropCycleNumber) {
+    return formatCountdown(currentLockedDropState.revealEndsAt - now)
+  }
+
+  if (drop?.status === 'active') return formatCountdown(drop.activeEndsAt - now)
+  if (drop?.status === 'reveal') return formatCountdown(drop.revealEndsAt - now)
+  return null
+}
+
+function formatDropTime(timestamp) {
+  if (!Number.isFinite(timestamp)) return '-'
+
+  return new Date(timestamp).toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 function WalletPage({ profile, session, onConnectWallet }) {
   const tokenBalance = profile?.tokenBalance ?? 0
   const notfEarned = profile?.spBalance ?? 0
@@ -357,6 +406,154 @@ function WalletPage({ profile, session, onConnectWallet }) {
             </section>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+function DropsPage({
+  currentLockedDropState,
+  dropsOverview,
+  error,
+  isLoading,
+  now,
+  onOpenDrop,
+  onOpenLockedDrop,
+  onPlayDrop,
+}) {
+  const activeDrop = dropsOverview?.activeDrop ?? null
+  const pastDrops = (dropsOverview?.pastDrops ?? []).slice(0, dropsOverview?.pastLimit ?? 20)
+  const activeVisual = getDropLocationVisual(activeDrop)
+  const activeStatus = getDropStatusLabel(activeDrop, currentLockedDropState)
+  const activeCountdown = getDropCountdown(activeDrop, now, currentLockedDropState)
+  const activeDetailDrop = activeDrop
+    ? {
+        ...activeDrop,
+        cycleNumber: activeDrop.dropCycleNumber,
+        location: activeVisual,
+        state: activeDrop.status === 'completed' ? 'past' : activeDrop.status,
+      }
+    : null
+  const isLockedActiveDrop =
+    activeDrop && currentLockedDropState?.cycleNumber === activeDrop.dropCycleNumber
+  const activeActionLabel = isLoading
+    ? 'Loading...'
+    : isLockedActiveDrop
+      ? 'View Locked Drop'
+      : activeDrop?.status === 'active'
+        ? 'Play Drop'
+        : 'View Reveal'
+  const handleActiveAction = () => {
+    if (!activeDrop) return
+    if (isLockedActiveDrop) {
+      onOpenLockedDrop()
+      return
+    }
+
+    if (activeDrop.status === 'active') {
+      onPlayDrop()
+      return
+    }
+
+    onOpenDrop(activeDetailDrop)
+  }
+
+  return (
+    <div className="drops-page">
+      <div className="drops-page-shell">
+        <section className="drops-hero" aria-labelledby="drops-title">
+          <div className="drops-hero-copy">
+            <p className="drops-kicker">Drops</p>
+            <h1 id="drops-title">Active prize drop</h1>
+            <div className="drops-hero-stats">
+              <div>
+                <span>Status</span>
+                <strong>{activeDrop ? activeStatus : '-'}</strong>
+              </div>
+              <div>
+                <span>{activeDrop?.status === 'active' ? 'Ends in' : 'Reveal in'}</span>
+                <strong>{activeCountdown ?? '-'}</strong>
+              </div>
+              <div>
+                <span>Players</span>
+                <strong>{activeDrop?.participantsCount ?? 0}</strong>
+              </div>
+            </div>
+            {error ? <p className="drops-error">{error}</p> : null}
+            <HoverButton
+              className="landing-play-button drops-primary-action"
+              type="button"
+              disabled={!activeDrop || isLoading}
+              onClick={handleActiveAction}
+            >
+              {activeActionLabel}
+            </HoverButton>
+          </div>
+
+          <div className={`drops-active-card is-${activeStatus.toLowerCase()}`}>
+            <div className="drops-active-media">
+              {activeDrop?.status === 'active' && !isLockedActiveDrop ? (
+                <div className="landing-drop-placeholder" aria-hidden="true">
+                  <img
+                    alt=""
+                    className="landing-drop-placeholder-art"
+                    src={dropsArtwork}
+                  />
+                  <span className="landing-drop-placeholder-mark">?</span>
+                </div>
+              ) : (
+                <img alt={activeVisual.region} src={activeVisual.image} />
+              )}
+            </div>
+            <div className="drops-active-body">
+              <span>{activeStatus}</span>
+              <strong>{activeDrop?.status === 'active' && !isLockedActiveDrop ? 'Mystery location' : activeVisual.region}</strong>
+              <small>{activeVisual.rewardSp} USD reward</small>
+            </div>
+          </div>
+        </section>
+
+        <section className="drops-history-section" aria-labelledby="drops-history-title">
+          <div className="drops-section-heading">
+            <p className="drops-kicker">Past drops</p>
+            <h2 id="drops-history-title">Latest {dropsOverview?.pastLimit ?? 20} rounds</h2>
+          </div>
+
+          <div className="drops-history-grid">
+            {pastDrops.map((drop) => {
+              const visual = getDropLocationVisual(drop)
+              const winnerLabel = drop.winner?.walletAddress
+                ? formatWallet(drop.winner.walletAddress)
+                : 'No winner'
+              const detailDrop = {
+                ...drop,
+                cycleNumber: drop.dropCycleNumber,
+                location: visual,
+                state: 'past',
+              }
+
+              return (
+                <button
+                  className="drops-history-card"
+                  key={drop.dropCycleNumber}
+                  type="button"
+                  onClick={() => onOpenDrop(detailDrop)}
+                >
+                  <img alt={visual.region} src={visual.image} />
+                  <div>
+                    <span>Round #{drop.dropCycleNumber}</span>
+                    <strong>{visual.region}</strong>
+                    <small>{formatDropTime(drop.activeEndsAt)} - {drop.participantsCount} players</small>
+                  </div>
+                  <div className="drops-history-result">
+                    <span>Winner</span>
+                    <strong>{winnerLabel}</strong>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </section>
       </div>
     </div>
   )
@@ -539,7 +736,7 @@ function DropDetailModal({ detailState, error, isLoading, onClose }) {
     : null
   const postcardLocation = detailLocationAsset ?? drop.location
   const placeName = details?.location?.region ?? postcardLocation?.city ?? 'Drop location'
-  const rewardSp = details?.winner?.rewardSp ?? details?.rewardSp ?? postcardLocation?.rewardSp ?? 20
+  const rewardSp = details?.winner?.rewardSp ?? details?.rewardSp ?? postcardLocation?.rewardSp ?? 1
   const winnerLabel = details?.winner?.walletAddress
     ? formatWallet(details.winner.walletAddress)
     : details?.status === 'completed'
@@ -574,7 +771,7 @@ function DropDetailModal({ detailState, error, isLoading, onClose }) {
             </div>
             <div>
               <span>Winning amount</span>
-              <strong>{isLoading ? '-' : `${rewardSp} NOTF`}</strong>
+              <strong>{isLoading ? '-' : `${rewardSp} USD`}</strong>
             </div>
             <div>
               <span>Players</span>
@@ -626,7 +823,7 @@ function LockedDropModal({ lockedDrop, now, onClose }) {
             </div>
             <div>
               <span>Win</span>
-              <strong>20 NOTF</strong>
+              <strong>1 USD</strong>
             </div>
           </div>
 
@@ -1191,6 +1388,9 @@ function App() {
   const [selectedDropDetail, setSelectedDropDetail] = useState(null)
   const [dropDetailError, setDropDetailError] = useState('')
   const [isDropDetailLoading, setIsDropDetailLoading] = useState(false)
+  const [dropsOverview, setDropsOverview] = useState(null)
+  const [dropsOverviewError, setDropsOverviewError] = useState('')
+  const [isDropsOverviewLoading, setIsDropsOverviewLoading] = useState(false)
   const [lockedDropState, setLockedDropState] = useState(null)
   const [isLockedDropModalOpen, setIsLockedDropModalOpen] = useState(false)
   const [multiplayerRoom, setMultiplayerRoom] = useState(null)
@@ -1208,7 +1408,7 @@ function App() {
   const [isUsernameSaving, setIsUsernameSaving] = useState(false)
   const [route, setRoute] = useState(() => {
     if (typeof window === 'undefined') return '/'
-    return ['/wallet', '/info'].includes(window.location.pathname) ? window.location.pathname : '/'
+    return getAppRoute(window.location.pathname)
   })
   const [globeRotation, setGlobeRotation] = useState({ lng: 0, lat: 0 })
   const [renderedPolaroids, setRenderedPolaroids] = useState([])
@@ -1248,7 +1448,7 @@ function App() {
 
   useEffect(() => {
     const handlePopState = () => {
-      setRoute(['/wallet', '/info'].includes(window.location.pathname) ? window.location.pathname : '/')
+      setRoute(getAppRoute(window.location.pathname))
     }
 
     window.addEventListener('popstate', handlePopState)
@@ -1262,6 +1462,38 @@ function App() {
 
     return () => window.clearInterval(intervalId)
   }, [])
+
+  const loadDropsOverview = useCallback(async () => {
+    setIsDropsOverviewLoading(true)
+    setDropsOverviewError('')
+
+    try {
+      const overview = await apiClient.getDrops()
+      setDropsOverview(overview)
+    } catch (caughtError) {
+      setDropsOverviewError(caughtError.message ?? 'Could not load drops.')
+    } finally {
+      setIsDropsOverviewLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!showLanding || route !== '/drops' || multiplayerRoom) {
+      return undefined
+    }
+
+    const initialLoadId = window.setTimeout(() => {
+      void loadDropsOverview()
+    }, 0)
+    const intervalId = window.setInterval(() => {
+      void loadDropsOverview()
+    }, 30_000)
+
+    return () => {
+      window.clearTimeout(initialLoadId)
+      window.clearInterval(intervalId)
+    }
+  }, [loadDropsOverview, multiplayerRoom, route, showLanding])
 
   useEffect(() => {
     if (!session?.token || !multiplayerRoom?.code) return undefined
@@ -1286,7 +1518,7 @@ function App() {
   }, [multiplayerRoom?.code, session?.token])
 
   function navigateTo(path) {
-    const nextPath = ['/wallet', '/info'].includes(path) ? path : '/'
+    const nextPath = getAppRoute(path)
     window.history.pushState({}, '', nextPath)
     setRoute(nextPath)
   }
@@ -1561,6 +1793,11 @@ function App() {
     navigateTo('/info')
   }
 
+  function handleDropsRoute() {
+    setShowLanding(true)
+    navigateTo('/drops')
+  }
+
   function handleGlobePointerDown(event) {
     event.currentTarget.setPointerCapture(event.pointerId)
     globeDragRef.current = {
@@ -1613,7 +1850,7 @@ function App() {
       bgColor: '#23251f',
       textColor: '#f7f7ef',
       links: [
-        { label: 'Global drops', ariaLabel: 'Global drops', href: '#play' },
+        { label: 'Global drops', ariaLabel: 'Global drops', href: '/drops', onClick: handleDropsRoute },
         { label: 'Single viewport', ariaLabel: 'Single viewport', href: '#play' },
       ],
     },
@@ -1621,9 +1858,10 @@ function App() {
       label: 'Drops',
       bgColor: '#3a196b',
       textColor: '#f7f7ef',
+      onClick: handleDropsRoute,
       links: [
-        { label: 'City drops', ariaLabel: 'City drops', href: '#play' },
-        { label: 'Reward pool', ariaLabel: 'Reward pool', href: '#play' },
+        { label: 'Active drops', ariaLabel: 'Active drops', href: '/drops', onClick: handleDropsRoute },
+        { label: 'Past drops', ariaLabel: 'Past drops', href: '/drops', onClick: handleDropsRoute },
       ],
     },
     {
@@ -1978,6 +2216,17 @@ function App() {
           )
         ) : showLanding && route === '/wallet' ? (
           <WalletPage profile={profile} session={session} onConnectWallet={handleLandingWalletConnect} />
+        ) : showLanding && route === '/drops' ? (
+          <DropsPage
+            currentLockedDropState={currentLockedDropState}
+            dropsOverview={dropsOverview}
+            error={dropsOverviewError}
+            isLoading={isDropsOverviewLoading}
+            now={now}
+            onOpenDrop={handleDropDetailOpen}
+            onOpenLockedDrop={handleLockedDropOpen}
+            onPlayDrop={handleDropEntry}
+          />
         ) : showLanding && route === '/info' ? (
           <InfoPage
             onPlay={handleLandingPrimaryAction}
@@ -2115,8 +2364,7 @@ function App() {
                               <div className="landing-drop-reward-block">
                                 <span className="landing-drop-state">Win</span>
                                 <h2 className="landing-drop-amount">
-                                  <span>20</span>
-                                  <img alt="USDC" src={usdcLogo} />
+                                  <span>1 USD</span>
                                 </h2>
                               </div>
                             </div>

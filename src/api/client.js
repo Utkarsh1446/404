@@ -48,6 +48,9 @@ export const apiClient = {
       body: JSON.stringify(updates),
     })
   },
+  getDrops() {
+    return apiFetch('/api/drops')
+  },
   getDropDetails(dropCycleNumber) {
     return apiFetch(`/api/drops/${dropCycleNumber}`)
   },

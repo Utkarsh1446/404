@@ -1,4 +1,4 @@
-export const DROP_ACTIVE_MS = 2 * 60 * 60 * 1000
+export const DROP_ACTIVE_MS = 4 * 60 * 60 * 1000
 export const DROP_REVEAL_MS = 120 * 1000
 export const DROP_CYCLE_MS = DROP_ACTIVE_MS + DROP_REVEAL_MS
 
