@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Room, RoomEvent, Track } from 'livekit-client'
 import './App.css'
+import pinFavicon from './assets/404-pin-favicon.svg'
+import notfoundLogoVector from './assets/notfound-logo-vector.svg'
 import notfoundLogo from './assets/notfound-logo.svg'
+import dropsArtwork from './assets/drops.png'
+import groupPlayArtwork from './assets/group-play.png'
+import playArtwork from './assets/play.png'
+import usdcLogo from './assets/usdc-logo.webp'
 import worldUvDots from './assets/maps/world-uv-dots.svg'
 import CardNav from './components/CardNav'
 import { GuessMap } from './components/GuessMap'
@@ -15,22 +21,24 @@ import { useGameSession } from './hooks/useGameSession'
 import { formatDistance, formatWallet } from './lib/formatters'
 
 const POLAROID_MIST_TRANSITION_MS = 760
+const GLOBE_AUTO_SPIN_INTERVAL_MS = 250
+const GLOBE_AUTO_SPIN_DEGREES_PER_TICK = 0.4
 const DROP_INTERVAL_MS = 2 * 60 * 60 * 1000
 const DROP_REVEAL_MS = 120 * 1000
 const DROP_CYCLE_MS = DROP_INTERVAL_MS + DROP_REVEAL_MS
 const TODAYS_REWARDS_TOTAL = 1200
 const ESTIMATED_REWARD_PER_PLAYER = TODAYS_REWARDS_TOTAL / 10
 const LANDING_LEADERBOARD = [
-  { rank: 1, correctGuesses: 10 },
-  { rank: 2, correctGuesses: 9 },
-  { rank: 3, correctGuesses: 9 },
-  { rank: 4, correctGuesses: 8 },
-  { rank: 5, correctGuesses: 8 },
-  { rank: 6, correctGuesses: 7 },
-  { rank: 7, correctGuesses: 7 },
-  { rank: 8, correctGuesses: 6 },
-  { rank: 9, correctGuesses: 6 },
-  { rank: 10, correctGuesses: 5 },
+  { rank: 1, username: 'Nova', correctGuesses: 10 },
+  { rank: 2, username: 'Zee', correctGuesses: 9 },
+  { rank: 3, username: 'Milo', correctGuesses: 9 },
+  { rank: 4, username: 'Luna', correctGuesses: 8 },
+  { rank: 5, username: 'Kai', correctGuesses: 8 },
+  { rank: 6, username: 'Ari', correctGuesses: 7 },
+  { rank: 7, username: 'Rin', correctGuesses: 7 },
+  { rank: 8, username: 'Niko', correctGuesses: 6 },
+  { rank: 9, username: 'Juno', correctGuesses: 6 },
+  { rank: 10, username: 'Lex', correctGuesses: 5 },
 ]
 
 const INFO_DOCUMENTS = [
@@ -1605,6 +1613,24 @@ function App() {
   )
   const currentLockedDropState =
     lockedDropState && now < lockedDropState.revealEndsAt ? lockedDropState : null
+
+  useEffect(() => {
+    if (!showLanding || route !== '/' || multiplayerRoom) {
+      return undefined
+    }
+
+    const spinTimer = window.setInterval(() => {
+      if (globeDragRef.current) return
+
+      setGlobeRotation((current) => ({
+        ...current,
+        lng: normalizeLongitude(current.lng + GLOBE_AUTO_SPIN_DEGREES_PER_TICK),
+      }))
+    }, GLOBE_AUTO_SPIN_INTERVAL_MS)
+
+    return () => window.clearInterval(spinTimer)
+  }, [multiplayerRoom, route, showLanding])
+
   const visiblePolaroids = useMemo(() => {
     const centerLatitude = (globeRotation.lat * Math.PI) / 180
 
@@ -1718,6 +1744,14 @@ function App() {
       ...timedDrops,
     ]
   }, [currentLockedDropState, now])
+  const landingFeaturedDrop = useMemo(
+    () =>
+      landingDrops.find((drop) => drop.state === 'live') ??
+      landingDrops.find((drop) => drop.state === 'locked') ??
+      landingDrops.find((drop) => drop.state === 'reveal') ??
+      landingDrops.find((drop) => drop.state === 'upcoming'),
+    [landingDrops],
+  )
 
   useEffect(() => {
     const visibleByCity = new Map(visiblePolaroids.map((place) => [place.city, place]))
@@ -1820,6 +1854,16 @@ function App() {
   const shouldShowUsernameModal = Boolean(session && profile && !profile.hasUsername)
   return (
     <main className="app-shell">
+      <div className="landing-space-floaters" aria-hidden="true">
+        <img className="landing-space-floater is-pin is-one" alt="" src={pinFavicon} />
+        <img className="landing-space-floater is-logo is-two" alt="" src={notfoundLogoVector} />
+        <img className="landing-space-floater is-pin is-three" alt="" src={pinFavicon} />
+        <img className="landing-space-floater is-logo is-four" alt="" src={notfoundLogoVector} />
+        <img className="landing-space-floater is-pin is-five" alt="" src={pinFavicon} />
+        <img className="landing-space-floater is-logo is-six" alt="" src={notfoundLogoVector} />
+        <img className="landing-space-floater is-pin is-seven" alt="" src={pinFavicon} />
+      </div>
+
       {showLanding ? (
         <CardNav
           className="landing-card-nav"
@@ -1898,6 +1942,9 @@ function App() {
             <div className="landing-world">
               <div className="landing-bento-grid">
                 <section className="landing-bento landing-bento-copy">
+                  <div className="landing-bento-art">
+                    <img alt="" aria-hidden="true" src={playArtwork} />
+                  </div>
                   <div className="landing-copy">
                     <h1>
                       Guess the world.
@@ -1924,10 +1971,12 @@ function App() {
                 </section>
 
                 <section className="landing-bento landing-bento-feature">
+                  <div className="landing-bento-art">
+                    <img alt="" aria-hidden="true" src={groupPlayArtwork} />
+                  </div>
                   <div className="landing-copy landing-copy-feature">
                     <h2 className="landing-bento-title">
-                      <span className="landing-bento-title-line">Invite</span>
-                      <span className="landing-bento-title-line">&</span>
+                      <span className="landing-bento-title-line">Invite &</span>
                       <span className="landing-bento-title-line">Play with</span>
                       <span className="landing-bento-title-line">Your friends</span>
                     </h2>
@@ -1954,6 +2003,81 @@ function App() {
                     </div>
                   </div>
                 </section>
+
+                {landingFeaturedDrop ? (
+                  <section className="landing-bento landing-bento-drops">
+                    <div className="landing-bento-section-head">
+                      <h2 className="landing-bento-title">Drops</h2>
+                    </div>
+                    <div className="landing-drops-grid">
+                      {(() => {
+                        const drop = landingFeaturedDrop
+                        const canPlayDrop = drop.state === 'live'
+                        const canViewDrop = drop.state === 'reveal'
+                        const canViewLockedDrop = drop.state === 'locked'
+                        const clickHandler = canViewLockedDrop
+                          ? handleLockedDropOpen
+                          : canPlayDrop
+                            ? handleDropEntry
+                            : canViewDrop
+                              ? () => handleDropDetailOpen(drop)
+                              : undefined
+
+                        return (
+                          <button
+                            aria-label={
+                              canPlayDrop
+                                ? `Play active ${drop.location.city} drop`
+                                : canViewLockedDrop
+                                  ? `View locked ${drop.location.city} drop`
+                                  : canViewDrop
+                                    ? `View ${drop.location.city} drop details`
+                                    : `Upcoming ${drop.location.city} drop`
+                            }
+                            className={`landing-drop-card is-${drop.state}`}
+                            disabled={(!canPlayDrop && !canViewDrop && !canViewLockedDrop) || isBusy}
+                            onClick={clickHandler}
+                            type="button"
+                          >
+                            <div className="landing-drop-media">
+                              {drop.state === 'past' ? (
+                                <img alt={drop.location.city} src={drop.location.image} />
+                              ) : (
+                                <div className="landing-drop-placeholder" aria-hidden="true">
+                                  <img
+                                    alt=""
+                                    className="landing-drop-placeholder-art"
+                                    src={dropsArtwork}
+                                  />
+                                  <span className="landing-drop-placeholder-mark">?</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="landing-drop-body">
+                              <div className="landing-drop-copy">
+                                <span className="landing-drop-state">
+                                  {drop.state === 'reveal'
+                                    ? 'Reveal In'
+                                    : drop.state === 'locked'
+                                      ? 'Reveal In'
+                                      : drop.state === 'live'
+                                        ? 'Live Drop Ends In'
+                                        : 'Starts In'}
+                                </span>
+                                <h2>{drop.countdown}</h2>
+                              </div>
+                              <div className="landing-drop-reward-block">
+                                <span className="landing-drop-state">Win</span>
+                                <h2 className="landing-drop-amount">$20</h2>
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })()}
+                    </div>
+                  </section>
+                ) : null}
+
                 <section className="landing-bento landing-bento-rewards">
                   <div className="landing-rewards">
                     <div className="landing-rewards-summary">
@@ -1969,6 +2093,7 @@ function App() {
                       <div className="landing-leaderboard-row is-head" role="row">
                         <span role="columnheader">Rank</span>
                         <span role="columnheader">Avatar</span>
+                        <span role="columnheader">Username</span>
                         <span role="columnheader">Correct Guess</span>
                         <span role="columnheader">Est. Rewards</span>
                       </div>
@@ -1981,8 +2106,12 @@ function App() {
                             <span className="landing-leaderboard-avatar" role="cell">
                               <WalletAvatar value={`landing-${player.rank}`} />
                             </span>
+                            <span role="cell">{player.username}</span>
                             <span role="cell">{player.correctGuesses}</span>
-                            <span role="cell">${ESTIMATED_REWARD_PER_PLAYER}</span>
+                            <span className="landing-leaderboard-reward" role="cell">
+                              <span>{ESTIMATED_REWARD_PER_PLAYER}</span>
+                              <img alt="USDC" src={usdcLogo} />
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -2078,78 +2207,6 @@ function App() {
                     <span>{place.city}</span>
                   </article>
                 ))}
-              </div>
-            </div>
-
-            <div className="landing-drops-band">
-              <div className="landing-drops-grid">
-                {landingDrops.map((drop) => {
-                  const canPlayDrop = drop.state === 'live'
-                  const canViewDrop = drop.state === 'past' || drop.state === 'reveal'
-                  const canViewLockedDrop = drop.state === 'locked'
-                  const clickHandler = canViewLockedDrop
-                    ? handleLockedDropOpen
-                    : canPlayDrop
-                    ? handleDropEntry
-                    : canViewDrop
-                      ? () => handleDropDetailOpen(drop)
-                      : undefined
-
-                  return (
-                    <button
-                      aria-label={
-                        canPlayDrop
-                          ? `Play active ${drop.location.city} drop`
-                          : canViewLockedDrop
-                            ? `View locked ${drop.location.city} drop`
-                          : canViewDrop
-                            ? `View ${drop.location.city} drop details`
-                            : undefined
-                      }
-                      className={`landing-drop-card is-${drop.state}`}
-                      disabled={(!canPlayDrop && !canViewDrop && !canViewLockedDrop) || isBusy}
-                      key={drop.key}
-                      onClick={clickHandler}
-                      type="button"
-                    >
-                      {drop.state === 'empty' ? (
-                        <div className="landing-drop-empty-mark">DROPS</div>
-                      ) : (
-                        <>
-                          <div className="landing-drop-media">
-                            {drop.state === 'past' ? (
-                              <img alt={drop.location.city} src={drop.location.image} />
-                            ) : (
-                              <div className="landing-drop-placeholder" aria-hidden="true">
-                                ?
-                              </div>
-                            )}
-                          </div>
-                          <div className="landing-drop-body">
-                            <div className="landing-drop-copy">
-                              <span className="landing-drop-state">
-                                {drop.state === 'past'
-                                  ? 'Past'
-                                  : drop.state === 'reveal'
-                                    ? 'Reveal In'
-                                    : drop.state === 'locked'
-                                      ? 'Reveal In'
-                                    : drop.state === 'live'
-                                    ? 'Ends in'
-                                    : 'Starts in'}
-                              </span>
-                              <h2>{drop.state === 'past' ? drop.location.city : drop.countdown}</h2>
-                            </div>
-                            <div className="landing-drop-reward-block">
-                              <span className="landing-drop-state">Win</span>
-                              <h2 className="landing-drop-amount">$20</h2>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </button>
-                  )
-                })}
               </div>
             </div>
           </div>
