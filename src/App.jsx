@@ -367,33 +367,95 @@ function InfoPage({ onPlay, onOpenWallet }) {
     <div className="info-page">
       <div className="info-page-shell">
         <section className="info-hero" aria-labelledby="info-title">
+          <div className="info-hero-media" aria-hidden="true">
+            <img alt="" src={groupPlayArtwork} />
+            <div className="info-hero-pill">Live drops. Friend rooms. Rewards.</div>
+          </div>
+
           <div className="info-hero-copy">
-            <p className="info-kicker">NotFound Info Hub</p>
-            <h1 id="info-title">Everything needed to understand and distribute NotFound.</h1>
+            <p className="info-kicker">NotFound Platform</p>
+            <h1 id="info-title">Guess the world. Earn coffee money.</h1>
+            <p>
+              A space-themed geography game with daily drops, multiplayer rooms,
+              leaderboard rewards, and wallet-ready prize flow.
+            </p>
             <div className="info-hero-actions">
               <HoverButton className="landing-play-button" type="button" onClick={onPlay}>
-                Play
+                Play for Free
               </HoverButton>
               <HoverButton className="ghost-button info-wallet-button" type="button" onClick={onOpenWallet}>
                 Wallet
               </HoverButton>
             </div>
           </div>
+        </section>
 
-          <div className="info-metric-grid" aria-label="Launch metrics">
-            {INFO_METRICS.map((metric) => (
-              <div className="info-metric" key={metric.label}>
-                <strong>{metric.value}</strong>
-                <span>{metric.label}</span>
+        <section className="info-metrics-section" aria-label="Platform metrics">
+          {INFO_METRICS.map((metric) => (
+            <article className="info-metric" key={metric.label}>
+              <strong>{metric.value}</strong>
+              <span>{metric.label}</span>
+            </article>
+          ))}
+        </section>
+
+        <section className="info-section info-gameplay-section" aria-labelledby="info-gameplay">
+          <div className="info-section-heading">
+            <p className="info-kicker">Game Loop</p>
+            <h2 id="info-gameplay">Built around quick plays and visible rewards.</h2>
+          </div>
+          <div className="info-play-grid">
+            <article className="info-play-card is-featured">
+              <div className="info-play-art" aria-hidden="true">
+                <img alt="" src={dropsArtwork} />
+                <span>?</span>
               </div>
-            ))}
+              <div>
+                <span>Daily Drops</span>
+                <h3>Timed prize cards</h3>
+                <p>Live drop cards give players a focused countdown, a single mystery location, and a clear reward target.</p>
+              </div>
+            </article>
+            <article className="info-play-card">
+              <span>Multiplayer</span>
+              <h3>Invite and play</h3>
+              <p>Create a room, bring friends in, and compare scores without leaving the core game surface.</p>
+            </article>
+            <article className="info-play-card">
+              <span>Leaderboard</span>
+              <h3>Proof of wins</h3>
+              <p>Ranks, avatars, correct guesses, and estimated USDC rewards stay readable and reward-focused.</p>
+            </article>
+          </div>
+        </section>
+
+        <section className="info-section info-split-section" aria-labelledby="info-positioning">
+          <div className="info-section-heading">
+            <p className="info-kicker">Positioning</p>
+            <h2 id="info-positioning">A game-first reward platform.</h2>
+          </div>
+          <div className="info-split-grid">
+            <article className="info-panel">
+              <h3>Core audience</h3>
+              <p>
+                Crypto gamers, geography enthusiasts, and competitive social players who want
+                quick sessions with visible rewards and public leaderboard proof.
+              </p>
+            </article>
+            <article className="info-panel">
+              <h3>Platform tone</h3>
+              <p>
+                Bright character artwork, rounded bento cards, live countdowns, and clear wallet
+                actions make the experience feel playful without hiding the reward mechanics.
+              </p>
+            </article>
           </div>
         </section>
 
         <section className="info-section" aria-labelledby="info-documents">
           <div className="info-section-heading">
             <p className="info-kicker">Documents</p>
-            <h2 id="info-documents">Launch Library</h2>
+            <h2 id="info-documents">Launch library</h2>
           </div>
           <div className="info-document-grid">
             {INFO_DOCUMENTS.map((document) => (
@@ -414,26 +476,10 @@ function InfoPage({ onPlay, onOpenWallet }) {
           </div>
         </section>
 
-        <section className="info-section info-split-section" aria-labelledby="info-positioning">
-          <div className="info-section-heading">
-            <p className="info-kicker">Positioning</p>
-            <h2 id="info-positioning">Guess the World. Earn Real Money.</h2>
-          </div>
-          <div className="info-split-grid">
-            <article className="info-panel">
-              <h3>Core audience</h3>
-              <p>
-                Crypto gamers, geography enthusiasts, and competitive social players who want
-                quick sessions with visible rewards and public leaderboard proof.
-              </p>
-            </article>
-          </div>
-        </section>
-
         <section className="info-section" aria-labelledby="info-tokenomics">
           <div className="info-section-heading">
             <p className="info-kicker">Tokenomics</p>
-            <h2 id="info-tokenomics">Community-aligned token flow</h2>
+            <h2 id="info-tokenomics">Reward flow that fits the game.</h2>
           </div>
           <div className="info-token-grid">
             <article className="info-tax-card is-buy">
@@ -2068,7 +2114,10 @@ function App() {
                               </div>
                               <div className="landing-drop-reward-block">
                                 <span className="landing-drop-state">Win</span>
-                                <h2 className="landing-drop-amount">$20</h2>
+                                <h2 className="landing-drop-amount">
+                                  <span>20</span>
+                                  <img alt="USDC" src={usdcLogo} />
+                                </h2>
                               </div>
                             </div>
                           </button>
