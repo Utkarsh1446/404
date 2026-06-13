@@ -60,6 +60,10 @@ function saveStoredUsername(walletAddress, username) {
   window.localStorage.setItem(USERNAME_STORAGE_KEY, JSON.stringify(usernames))
 }
 
+function isAuthenticationFailure(error) {
+  return error?.status === 401
+}
+
 function hasRoundPanorama(round) {
   return Boolean(round?.panorama?.position)
 }
@@ -197,10 +201,16 @@ export function useGameSession() {
         }
         setPhase((current) => (current === 'disconnected' ? 'ready' : current))
       })
-      .catch(() => {
-        setSession(null)
-        setProfile(null)
-        setPhase('disconnected')
+      .catch((caughtError) => {
+        if (isAuthenticationFailure(caughtError)) {
+          setSession(null)
+          setProfile(null)
+          setPhase('disconnected')
+          return
+        }
+
+        setStatus('Wallet session saved. Reconnecting to backend...')
+        setPhase((current) => (current === 'disconnected' ? 'ready' : current))
       })
 
     return undefined

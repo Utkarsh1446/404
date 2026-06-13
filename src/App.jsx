@@ -436,7 +436,7 @@ function DropsPage({
     : null
   const isLockedActiveDrop =
     activeDrop && currentLockedDropState?.cycleNumber === activeDrop.dropCycleNumber
-  const activeActionLabel = isLoading
+  const activeActionLabel = isLoading && !activeDrop
     ? 'Loading...'
     : isLockedActiveDrop
       ? 'View Locked Drop'
@@ -483,7 +483,7 @@ function DropsPage({
             <HoverButton
               className="landing-play-button drops-primary-action"
               type="button"
-              disabled={!activeDrop || isLoading}
+              disabled={!activeDrop}
               onClick={handleActiveAction}
             >
               {activeActionLabel}
@@ -516,7 +516,7 @@ function DropsPage({
         <section className="drops-history-section" aria-labelledby="drops-history-title">
           <div className="drops-section-heading">
             <p className="drops-kicker">Past drops</p>
-            <h2 id="drops-history-title">Latest {dropsOverview?.pastLimit ?? 20} rounds</h2>
+            <h2 id="drops-history-title">Latest rounds</h2>
           </div>
 
           <div className="drops-history-grid">

@@ -142,11 +142,13 @@ function pickMultiplayerLocations(state) {
 }
 
 function ensurePlayerAccount(player) {
-  player.tokenBalance ??= 0
-  if (!player.notfStarterGrantApplied) {
-    player.tokenBalance += STARTER_NOTF_GRANT
-    player.notfStarterGrantApplied = true
+  const hasPersistedTokenBalance = Number.isFinite(player.tokenBalance)
+
+  if (!hasPersistedTokenBalance) {
+    player.tokenBalance = STARTER_NOTF_GRANT
   }
+
+  player.notfStarterGrantApplied = true
   player.spBalance ??= 0
   player.dropWins ??= 0
   if (typeof player.username === 'string') {
@@ -900,9 +902,9 @@ export function createGameService({ store, rewardThresholdKm, livekit, payoutCli
     if (!player) {
       player = {
         walletAddress,
-        tokenBalance: 0,
+        tokenBalance: STARTER_NOTF_GRANT,
         spBalance: 0,
-        notfStarterGrantApplied: false,
+        notfStarterGrantApplied: true,
         dropWins: 0,
         createdAt: new Date().toISOString(),
         lastSeenAt: new Date().toISOString(),
@@ -1538,29 +1540,6 @@ export function createGameService({ store, rewardThresholdKm, livekit, payoutCli
   }
 
   async function getDropsOverview() {
-    const overview = await store.update((state) => {
-      ensureStateCollections(state)
-
-      const now = Date.now()
-      const currentCycleNumber = Math.floor(now / DROP_CYCLE_MS)
-      const pastDrops = Array.from({ length: PAST_DROP_LIMIT }, (_entry, index) => {
-        const cycleNumber = currentCycleNumber - index - 1
-        return cycleNumber >= 0 ? summarizeDropCycle(state, cycleNumber, now) : null
-      }).filter(Boolean)
-
-      return {
-        activeDrop: summarizeDropCycle(state, currentCycleNumber, now),
-        pastDrops,
-        pastLimit: PAST_DROP_LIMIT,
-      }
-    })
-
-    await processDropPayouts(
-      overview.pastDrops
-        .filter((drop) => drop.status === 'completed')
-        .map((drop) => drop.dropCycleNumber),
-    )
-
     return store.update((state) => {
       ensureStateCollections(state)
 

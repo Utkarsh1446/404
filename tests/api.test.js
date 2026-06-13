@@ -253,6 +253,55 @@ test('wallet verify can restore cached username after profile loss', async () =>
 
   assert.equal(restored.body.profile.hasUsername, true)
   assert.equal(restored.body.profile.username, 'Cached_Player')
+  assert.equal(restored.body.profile.tokenBalance, 100)
+})
+
+test('starter NOTF grant is not re-applied to persisted players', async () => {
+  const wallet = Keypair.generate()
+  const walletAddress = wallet.publicKey.toBase58()
+  const now = new Date().toISOString()
+  const app = createTestAppWithState({
+    players: [
+      {
+        walletAddress,
+        tokenBalance: 100,
+        spBalance: 0,
+        notfStarterGrantApplied: false,
+        createdAt: now,
+        lastSeenAt: now,
+        updatedAt: now,
+      },
+    ],
+    authChallenges: [],
+    sessions: [],
+    rounds: [],
+    guesses: [],
+    multiplayerRooms: [],
+    dropParticipations: [],
+    dropSettlements: [],
+    dailyAttemptLedger: [],
+    rewardEvents: [],
+  })
+  const auth = await authenticate(app, wallet)
+
+  assert.equal(auth.profile.tokenBalance, 100)
+
+  const firstProfile = await request(app)
+    .get('/api/me/profile')
+    .set('Authorization', `Bearer ${auth.token}`)
+    .expect(200)
+  const secondProfile = await request(app)
+    .get('/api/me/profile')
+    .set('Authorization', `Bearer ${auth.token}`)
+    .expect(200)
+
+  assert.equal(firstProfile.body.tokenBalance, 100)
+  assert.equal(secondProfile.body.tokenBalance, 100)
+
+  const state = JSON.parse(fs.readFileSync(app.locals.config.storageFile, 'utf8'))
+  const storedPlayer = state.players.find((entry) => entry.walletAddress === walletAddress)
+  assert.equal(storedPlayer.notfStarterGrantApplied, true)
+  assert.equal(storedPlayer.tokenBalance, 100)
 })
 
 test('starting and guessing a regular round reveals immediately', async () => {
@@ -690,6 +739,68 @@ test('drops overview returns the active drop and the latest twenty past drops', 
         (_entry, index) => overview.body.activeDrop.dropCycleNumber - index - 1,
       ),
     )
+  } finally {
+    restoreNow()
+  }
+})
+
+test('drops overview does not process pending payouts', async () => {
+  const restoreNow = useActiveDropClock()
+  const winnerWalletAddress = Keypair.generate().publicKey.toBase58()
+  const endedCycle = Math.floor(Date.now() / DROP_CYCLE_MS) - 1
+  let payoutCalls = 0
+  const app = createTestAppWithState(
+    {
+      players: [],
+      authChallenges: [],
+      sessions: [],
+      rounds: [],
+      guesses: [],
+      multiplayerRooms: [],
+      dropParticipations: [],
+      dropSettlements: [
+        {
+          id: 'pending-payout-settlement',
+          dropCycleNumber: endedCycle,
+          locationId: 'test-location',
+          winningRoundId: 'test-round',
+          winnerWalletAddress,
+          rewardSp: 1,
+          settledAt: new Date(Date.now() - DROP_REVEAL_MS).toISOString(),
+          payout: {
+            status: 'pending',
+            amountUsd: 1,
+            tokenSymbol: 'USDC',
+            recipientWalletAddress: winnerWalletAddress,
+            createdAt: new Date(Date.now() - DROP_REVEAL_MS).toISOString(),
+            updatedAt: new Date(Date.now() - DROP_REVEAL_MS).toISOString(),
+            attemptCount: 0,
+          },
+        },
+      ],
+      dailyAttemptLedger: [],
+      rewardEvents: [],
+    },
+    {
+      payoutClient: {
+        getStatus: () => ({ configured: true }),
+        sendReward: async () => {
+          payoutCalls += 1
+          throw new Error('Overview must not send payouts.')
+        },
+      },
+    },
+  )
+
+  try {
+    const overview = await request(app)
+      .get('/api/drops')
+      .expect(200)
+
+    assert.equal(payoutCalls, 0)
+    assert.equal(overview.body.pastDrops[0].dropCycleNumber, endedCycle)
+    assert.equal(overview.body.pastDrops[0].winner.walletAddress, winnerWalletAddress)
+    assert.equal(overview.body.pastDrops[0].winner.payout.status, 'pending')
   } finally {
     restoreNow()
   }
