@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { clientConfig } from '../config'
+import { placeImages } from '../chain/images'
+import { PHOTO_FALLBACK_CHIP } from '../chain/copy'
 import { loadGoogleMaps } from '../lib/googleMaps'
 
 function buildStreetViewImage(panoramaConfig) {
@@ -229,9 +231,17 @@ export function StreetViewStage({ round }) {
   if (loadState === 'missing-key') {
     return (
       <div className="stage-placeholder">
-        <span className="eyebrow">Maps key needed</span>
-        <h3>Add `VITE_GOOGLE_MAPS_API_KEY` to enable Street View.</h3>
-        <p>The server round flow is live, but Google Maps requires a browser API key.</p>
+        <img
+          src={placeImages['paris.jpg']}
+          alt=""
+          style={{ width: '100%', height: 240, objectFit: 'cover', display: 'block' }}
+        />
+        <span className="eyebrow">{PHOTO_FALLBACK_CHIP}</span>
+        <h3>No Street View key is set.</h3>
+        <p>
+          The picture above is an openly licensed stand-in, not a panorama of this round.
+          The main screen (no ?legacy=1) plays the round on those photos. Credits are at /photo-licenses.txt.
+        </p>
       </div>
     )
   }

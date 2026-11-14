@@ -9,6 +9,10 @@ lerna-debug.log*
 
 node_modules
 dist
+contracts/target
+.near
+.wrangler
+relayer-worker/.wrangler
 dist-ssr
 *.local
 .env
