@@ -1,21 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import logo from '../assets/notfound-logo-vector.svg'
-import { GuessMap } from '../components/GuessMap'
-import { clientConfig } from '../config'
 import { places } from '../../shared/places.js'
 import {
   commitmentHex,
   distanceMeters,
   formatWhole,
   FREE_PER_DAY,
-  rewardWholeNotf,
   toE6,
 } from '../../shared/rules.js'
 import { applyGuess, freeRemaining, freshProfile, profileForDay } from './demoEngine.js'
 import { placeImages } from './images.js'
 import testnet from './testnet.json'
 import { createNearSession, loadNearSession, saveNearSession, signSubmitGuess, viewCall } from './nearBrowser.js'
-import { WorldMap } from './WorldMap.jsx'
+import { Atlas, RevealInset } from './Atlas.jsx'
 
 const PROFILE_KEY = 'notfound-demo-profile'
 const ROUND_MS = 90_000
@@ -25,73 +21,122 @@ function loadProfile() {
     const stored = JSON.parse(window.localStorage.getItem(PROFILE_KEY) || 'null')
     if (stored && Number.isFinite(stored.balance)) return profileForDay(stored)
   } catch {
-    /* use a fresh demo balance */
+    /* a fresh demo balance is fine */
   }
   return freshProfile()
 }
 
-function shortHash(value) {
-  if (!value) return ''
-  return `${value.slice(0, 10)}…${value.slice(-8)}`
+function txOf(label) {
+  return testnet.transactions?.find((entry) => entry.label === label)?.hash ?? ''
 }
 
-function shortAccount(value) {
-  if (!value) return ''
-  return value.length > 28 ? `${value.slice(0, 10)}…${value.slice(-6)}` : value
+function shortTx(hash) {
+  if (!hash) return '—'
+  return `${hash.slice(0, 12)}…${hash.slice(-5)}`
+}
+
+function metersLabel(distanceM) {
+  return `${new Intl.NumberFormat('en-US').format(Math.round(distanceM))} m`
+}
+
+function randomSalt() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32))
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 async function readJson(response) {
   const payload = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    throw new Error(payload.error || 'Request failed.')
-  }
+  if (!response.ok) throw new Error(payload.error || 'Request failed.')
   return payload
+}
+
+async function sealPlace(place, index) {
+  const salt = randomSalt()
+  const commitment = await commitmentHex(place.id, toE6(place.lat), toE6(place.lng), salt)
+  return {
+    mode: 'demo',
+    placeId: place.id,
+    salt,
+    commitment,
+    photoIndex: index,
+    deadline: Date.now() + ROUND_MS,
+  }
 }
 
 export default function ChainApp() {
   const forceDemo = new URLSearchParams(window.location.search).has('demo')
-  const [screen, setScreen] = useState('home')
   const [profile, setProfile] = useState(loadProfile)
   const [round, setRound] = useState(null)
   const [guess, setGuess] = useState(null)
   const [result, setResult] = useState(null)
-  const [drop, setDrop] = useState(null)
-  const [dropGuess, setDropGuess] = useState(null)
+  const [dropMode, setDropMode] = useState(false)
   const [dropResult, setDropResult] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [now, setNow] = useState(0)
   const [relayer, setRelayer] = useState(null)
   const [chainRound, setChainRound] = useState(null)
   const [supply, setSupply] = useState('')
-  const mapsKey = clientConfig.googleMapsApiKey
 
   useEffect(() => {
     window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile))
   }, [profile])
 
   useEffect(() => {
-    if (screen !== 'play' && screen !== 'drops') return undefined
-    const tick = () => setNow(Date.now())
-    const immediate = window.setTimeout(tick, 0)
-    const timer = window.setInterval(tick, 500)
-    return () => {
-      window.clearTimeout(immediate)
-      window.clearInterval(timer)
+    let cancelled = false
+    async function boot() {
+      if (!forceDemo) {
+        const base = import.meta.env.VITE_RELAYER_URL || 'http://127.0.0.1:8788'
+        try {
+          const healthResponse = await fetch(`${base}/health`)
+          if (healthResponse.ok) {
+            const health = await healthResponse.json()
+            if (health?.ok && !cancelled) {
+              const nextRelayer = { ...health, base }
+              setRelayer(nextRelayer)
+              let session = loadNearSession()
+              if (!session?.secretKey) session = await createNearSession()
+              const opened = await readJson(
+                await fetch(`${base}/session`, {
+                  method: 'POST',
+                  headers: { 'content-type': 'application/json' },
+                  body: JSON.stringify({ publicKey: session.publicKey }),
+                }),
+              )
+              session = { ...session, accountId: opened.accountId }
+              saveNearSession(session)
+              const started = await readJson(
+                await fetch(`${base}/rounds/start`, {
+                  method: 'POST',
+                  headers: { 'content-type': 'application/json' },
+                  body: JSON.stringify({ accountId: opened.accountId }),
+                }),
+              )
+              if (!cancelled) {
+                setRound({
+                  mode: 'testnet',
+                  placeId: started.placeId,
+                  commitment: started.commitment,
+                  roundId: started.roundId,
+                  commitTx: started.commitTx,
+                  accountId: opened.accountId,
+                  photoIndex: 0,
+                  deadline: Date.now() + ROUND_MS,
+                })
+              }
+              return
+            }
+          }
+        } catch {
+          /* demo atlas */
+        }
+      }
+      const sealed = await sealPlace(places[0], 0)
+      if (!cancelled) setRound(sealed)
     }
-  }, [screen])
-
-  useEffect(() => {
-    if (forceDemo) return undefined
-    const base = import.meta.env.VITE_RELAYER_URL || 'http://127.0.0.1:8788'
-    const controller = new AbortController()
-    fetch(`${base}/health`, { signal: controller.signal })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((health) => {
-        if (health?.ok) setRelayer({ ...health, base })
-      })
-      .catch(() => {})
-    return () => controller.abort()
+    boot()
+    return () => {
+      cancelled = true
+    }
   }, [forceDemo])
 
   useEffect(() => {
@@ -114,51 +159,61 @@ export default function ChainApp() {
     }
   }, [])
 
-  const secondsLeft = !round
-    ? 0
-    : now === 0
-      ? Math.ceil(ROUND_MS / 1000)
-      : Math.max(0, Math.ceil((round.deadline - now) / 1000))
-  const mode = relayer && !forceDemo ? 'testnet' : 'demo'
   const place = round ? places.find((entry) => entry.id === round.placeId) : null
+  const dropPlace = places[((round?.photoIndex ?? 0) + 1) % places.length]
+  const stagePlace = dropMode ? dropPlace : place
   const free = freeRemaining(profile)
+  const chainMeters = Number(chainRound?.distance_m ?? chainRound?.distanceM)
+  const chainReward = chainRound ? Number(BigInt(chainRound.reward || 0) / 10n ** 18n) : 15
+  const sampleCommit = txOf('commit round')
+  const sampleGuess = txOf('gasless guess')
+  const sampleReveal = txOf('reveal round')
+  const sampleSettle = txOf('settle drop')
 
-  const chainDistance = chainRound?.distance_m ?? chainRound?.distanceM
-  const chainSummary = useMemo(() => {
-    if (!chainRound) return ''
-    const kilometers = Number(chainDistance) / 1000
-    return Number.isFinite(kilometers) ? `${kilometers.toFixed(2)} km` : chainRound.status
-  }, [chainDistance, chainRound])
+  const reveal = dropMode ? dropResult : result
+  const answer = reveal
+    ? { lat: reveal.actual.lat, lng: reveal.actual.lng }
+    : null
 
-  function goHome() {
-    setScreen('home')
+  const commitHash = result?.commitTx || sampleCommit
+  const guessHash = result?.guessTx || sampleGuess
+  const revealHash = result?.revealTx || sampleReveal
+
+  const dropDistance = dropResult
+    ? `${(dropResult.distanceM / 1000).toFixed(1)} km`
+    : testnet.dropDistanceM
+      ? `${(testnet.dropDistanceM / 1000).toFixed(1)} km`
+      : '—'
+  const dropPrize = dropResult ? (dropResult.won ? `+${dropResult.prize}` : 'stays locked') : '+25 NOTF'
+  const dropTx = dropResult?.revealTx || sampleSettle
+
+  const ticker = useMemo(() => {
+    const roundBit = Number.isFinite(chainMeters)
+      ? `Testnet round settled · ${metersLabel(chainMeters)} · +${chainReward} NOTF`
+      : 'Place hash stored before the pin'
+    const dropBit = `Drop settled · closest inside 50 km · ${dropResult ? dropPrize : '+25 NOTF'}`
+    const supplyBit = supply ? `Live supply ${supply} NOTF` : 'Contract measures the distance'
+    return [roundBit, dropBit, supplyBit, 'Server signatures are not payouts']
+  }, [chainMeters, chainReward, dropPrize, dropResult, supply])
+
+  async function nextDemo(index) {
+    setBusy(true)
     setError('')
-  }
-
-  async function startDemo() {
-    const placeIndex = profile.used % places.length
-    const nextPlace = places[placeIndex]
-    const saltBytes = crypto.getRandomValues(new Uint8Array(32))
-    const salt = [...saltBytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')
-    const commitment = await commitmentHex(nextPlace.id, toE6(nextPlace.lat), toE6(nextPlace.lng), salt)
     setGuess(null)
     setResult(null)
-    setRound({
-      mode: 'demo',
-      placeId: nextPlace.id,
-      salt,
-      commitment,
-      deadline: Date.now() + ROUND_MS,
-    })
-    setScreen('play')
+    setDropMode(false)
+    setDropResult(null)
+    const sealed = await sealPlace(places[index % places.length], index)
+    setRound(sealed)
+    setBusy(false)
   }
 
-  async function startTestnet() {
-    let session = loadNearSession()
-    if (!session?.secretKey) session = await createNearSession()
+  async function openTestnetRound() {
     setBusy(true)
     setError('')
     try {
+      let session = loadNearSession()
+      if (!session?.secretKey) session = await createNearSession()
       const opened = await readJson(
         await fetch(`${relayer.base}/session`, {
           method: 'POST',
@@ -175,8 +230,10 @@ export default function ChainApp() {
           body: JSON.stringify({ accountId: opened.accountId }),
         }),
       )
+      const index = (round?.photoIndex ?? 0) + 1
       setGuess(null)
       setResult(null)
+      setDropMode(false)
       setRound({
         mode: 'testnet',
         placeId: started.placeId,
@@ -184,44 +241,48 @@ export default function ChainApp() {
         roundId: started.roundId,
         commitTx: started.commitTx,
         accountId: opened.accountId,
+        photoIndex: index,
         deadline: Date.now() + ROUND_MS,
       })
-      setScreen('play')
-    } catch (startError) {
-      setError(startError.message)
+    } catch (openError) {
+      setError(openError.message)
     } finally {
       setBusy(false)
     }
   }
 
-  async function submitGuess() {
-    if (!guess || !place || !round) return
+  async function lockGuess() {
+    if (!guess || !stagePlace || busy) return
     setBusy(true)
     setError('')
     try {
-      if (round.mode === 'demo') {
-        const settled = applyGuess({ profile, place, guess })
-        setProfile(settled.profile)
-        setResult({
-          ...settled,
-          city: place.city,
-          country: place.country,
-          commitment: round.commitment,
-          mode: 'demo',
-          actual: { lat: place.lat, lng: place.lng },
+      if (dropMode) {
+        const distanceM = distanceMeters(
+          toE6(stagePlace.lat),
+          toE6(stagePlace.lng),
+          toE6(guess.lat),
+          toE6(guess.lng),
+        )
+        const won = distanceM <= 50_000
+        if (won) setProfile((current) => ({ ...current, balance: current.balance + 25 }))
+        setDropResult({
+          distanceM,
+          won,
+          prize: 25,
+          actual: { lat: stagePlace.lat, lng: stagePlace.lng },
+          reward: won ? 25 : 0,
         })
-      } else {
+        return
+      }
+
+      if (round?.mode === 'testnet' && relayer) {
         const session = loadNearSession()
         const signedDelegate = await signSubmitGuess({
           accountId: round.accountId,
           secretKey: session.secretKey,
           receiverId: relayer.gameContract,
           rpcUrl: testnet.rpcUrl,
-          args: {
-            round_id: round.roundId,
-            lat_e6: toE6(guess.lat),
-            lng_e6: toE6(guess.lng),
-          },
+          args: { round_id: round.roundId, lat_e6: toE6(guess.lat), lng_e6: toE6(guess.lng) },
         })
         const relayed = await readJson(
           await fetch(`${relayer.base}/relay`, {
@@ -233,318 +294,188 @@ export default function ChainApp() {
         const revealed = await readJson(
           await fetch(`${relayer.base}/rounds/${round.roundId}/reveal`, { method: 'POST' }),
         )
-        const distanceM = revealed.round?.distance_m ?? revealed.round?.distanceM
-        const rewardRaw = revealed.round?.reward ?? '0'
+        const distanceM = Number(revealed.round?.distance_m ?? revealed.round?.distanceM)
+        const reward = Number(BigInt(revealed.round?.reward ?? 0) / 10n ** 18n)
         setResult({
-          mode: 'testnet',
-          distanceM: Number(distanceM),
-          reward: Number(BigInt(rewardRaw) / 10n ** 18n),
-          city: revealed.city,
-          country: revealed.country,
-          commitment: round.commitment,
+          distanceM,
+          reward,
           actual: { lat: revealed.lat, lng: revealed.lng },
+          commitTx: round.commitTx,
           guessTx: relayed.txHash,
           revealTx: revealed.revealTx,
-          commitTx: round.commitTx,
         })
+        return
       }
-      setScreen('result')
-    } catch (submitError) {
-      setError(submitError.message)
+
+      const settled = applyGuess({ profile, place: stagePlace, guess })
+      setProfile(settled.profile)
+      setResult({
+        distanceM: settled.distanceM,
+        reward: settled.reward,
+        actual: { lat: stagePlace.lat, lng: stagePlace.lng },
+      })
+    } catch (lockError) {
+      setError(lockError.message)
     } finally {
       setBusy(false)
     }
   }
 
-  function openDrop() {
-    const nextPlace = places[(profile.used + 1) % places.length]
-    setDropGuess(null)
-    setDropResult(null)
-    setDrop({ placeId: nextPlace.id, prize: 25, deadline: Date.now() + ROUND_MS })
-    setScreen('drops')
-  }
-
-  function submitDrop() {
-    if (!drop || !dropGuess) return
-    const dropPlace = places.find((entry) => entry.id === drop.placeId)
-    const distanceM = distanceMeters(
-      toE6(dropPlace.lat),
-      toE6(dropPlace.lng),
-      toE6(dropGuess.lat),
-      toE6(dropGuess.lng),
-    )
-    const won = distanceM <= 50_000
-    if (won) {
-      setProfile((current) => ({ ...current, balance: current.balance + drop.prize }))
-    }
-    setDropResult({
-      distanceM,
-      won,
-      prize: won ? drop.prize : 0,
-      city: dropPlace.city,
-      country: dropPlace.country,
-    })
-  }
+  const photoLabel = `Photo ${(stagePlace ? places.findIndex((entry) => entry.id === stagePlace.id) : 0) + 1}`
+  const committedLabel = round?.mode === 'testnet'
+    ? 'Answer committed · place hash on chain'
+    : 'Answer committed · place hash sealed'
 
   return (
-    <div className="nf">
-      <header className="nf-top">
-        <button className="nf-brand" type="button" onClick={goHome}>
-          <img src={logo} alt="notfound" />
+    <div className="board">
+      <header>
+        <button className="logo" type="button" onClick={() => nextDemo((round?.photoIndex ?? 0) + 1)}>
+          404 <span>NOTFOUND</span>
         </button>
-        <p className="nf-kicker">{mode === 'testnet' ? 'Guest session on testnet' : 'Demo atlas'}</p>
-        <nav className="nf-nav">
-          <button type="button" aria-current={screen === 'home' ? 'page' : undefined} onClick={goHome}>
-            Play
-          </button>
-          <button type="button" data-testid="nav-drops" onClick={openDrop}>
-            Drops
-          </button>
-          <button type="button" data-testid="nav-wallet" onClick={() => setScreen('wallet')}>
-            {profile.balance} NOTF
-          </button>
-        </nav>
+        <div className="chip">Free {free} / {FREE_PER_DAY}</div>
+        <button className="chip" type="button" onClick={() => { setDropMode(true); setGuess(null); setResult(null) }}>
+          {dropResult ? 'Drop settled' : 'Daily drop open'}
+        </button>
+        <div className="grow" />
+        <div className="chip">
+          <i />
+          {relayer && !forceDemo ? 'Gasless · NEP-366 relayer' : 'Demo · no wallet popup'}
+        </div>
+        <div className="chip f">{profile.balance} NOTF</div>
       </header>
-      {error ? <p className="nf-error">{error}</p> : null}
-      <main className="nf-main">
-        {screen === 'home' ? (
-          <section className="nf-home">
-            <div>
-              <h1>Where was this?</h1>
-              <p className="nf-lead">
-                A photo, a pin, and a payout that was fixed before you guessed. Three rounds a day are free.
-                The next ones cost {10} NOTF.
-              </p>
-              <div className="nf-actions">
-                <button
-                  className="nf-primary"
-                  type="button"
-                  data-testid="play-button"
-                  disabled={busy}
-                  onClick={() => {
-                    setError('')
-                    if (mode === 'testnet') startTestnet()
-                    else startDemo()
-                  }}
-                >
-                  {busy ? 'Opening a round…' : 'Play'}
-                </button>
-                {mode === 'testnet' ? (
-                  <button className="nf-ghost" type="button" onClick={startDemo}>
-                    Play offline demo
-                  </button>
-                ) : null}
-              </div>
-              <p className="nf-copy">
-                {mapsKey
-                  ? 'Google Maps is enabled from the environment for the guess map.'
-                  : 'No Google Maps key is set. This demo uses bundled photos and an atlas, and still runs the full guess, score, and NOTF loop.'}
-              </p>
-            </div>
-            <aside className="nf-card">
-              <h2>{free} free left</h2>
-              <div className="nf-stat-row">
-                <div className="nf-stat">
-                  <span>Balance</span>
-                  <strong>{profile.balance}</strong>
-                </div>
-                <div className="nf-stat">
-                  <span>Close guess</span>
-                  <strong>25</strong>
-                </div>
-                <div className="nf-stat">
-                  <span>Within 50 km</span>
-                  <strong>3</strong>
-                </div>
-              </div>
-              {testnet.configured ? (
-                <div className="nf-links">
-                  <span className="nf-quiet">
-                    Testnet supply {supply || '…'} NOTF. Sample round {chainSummary || '…'}.
-                  </span>
-                  <a href={`https://testnet.nearblocks.io/address/${testnet.tokenContract}`}>
-                    Token {shortAccount(testnet.tokenContract)}
-                  </a>
-                  <a href={`https://testnet.nearblocks.io/address/${testnet.gameContract}`}>
-                    Game {shortAccount(testnet.gameContract)}
-                  </a>
-                  <a href={`https://testnet.nearblocks.io/address/${testnet.poolContract}`}>
-                    Drop pool {shortAccount(testnet.poolContract)}
-                  </a>
-                </div>
-              ) : (
-                <p className="nf-quiet">Testnet contracts are not recorded in this build.</p>
-              )}
-            </aside>
-          </section>
-        ) : null}
-
-        {screen === 'play' && place ? (
-          <section className="nf-play">
-            <figure className="nf-photo">
-              <img src={placeImages[place.image]} alt="Guess where this photo was taken" data-place={place.id} />
-              <figcaption>{secondsLeft}s · commitment {shortHash(round.commitment)}</figcaption>
-            </figure>
-            <div className="nf-board">
-              <h2>Drop a pin</h2>
-              <p>The place is already committed. The contract will measure the distance.</p>
-              {mapsKey ? (
-                <GuessMap
-                  selectedGuess={guess}
-                  onSelectGuess={setGuess}
-                  disabled={busy}
-                  isExpanded
-                  onRequestExpand={() => {}}
-                />
-              ) : (
-                <WorldMap guess={guess} onGuess={setGuess} />
-              )}
-              <div className="nf-guess-bar">
-                <p>{guess ? `${guess.lat.toFixed(2)}, ${guess.lng.toFixed(2)}` : 'No pin yet'}</p>
-                <button
-                  className="nf-primary"
-                  type="button"
-                  data-testid="submit-guess"
-                  disabled={!guess || busy || secondsLeft === 0}
-                  onClick={submitGuess}
-                >
-                  {busy ? 'Settling…' : free > 0 && round.mode === 'demo' ? 'Lock guess' : 'Lock guess'}
-                </button>
+      {error ? <div className="err">{error}</div> : null}
+      <div className="ticker">
+        {ticker.map((item) => (
+          <span key={item}>{item.includes('·') ? <Ticker item={item} /> : item}</span>
+        ))}
+      </div>
+      <div className="stage">
+        <div className="photo">
+          {stagePlace ? (
+            <img src={placeImages[stagePlace.image]} alt="" data-place={stagePlace.id} />
+          ) : null}
+          <div className="ph-top">
+            <span className="chip">{photoLabel}</span>
+            <span className="chip">{round ? committedLabel : 'Sealing the place…'}</span>
+          </div>
+          <div className="q">
+            <b>{dropMode ? 'WHERE IS THE DROP?' : 'WHERE IS THIS?'}</b>
+            <small>
+              {dropMode
+                ? 'Pin the atlas. Inside 50 km takes the pool.'
+                : 'Pin the atlas. Lock the guess. No wallet popup.'}
+            </small>
+          </div>
+        </div>
+        <div className="atlas">
+          <Atlas
+            guess={guess}
+            answer={reveal ? answer : null}
+            framed={Boolean(reveal)}
+            onGuess={reveal ? undefined : setGuess}
+          />
+          <div className="legend">Atlas · equirectangular · Natural Earth</div>
+          <div className="lock">
+            <button className="btn" type="button" data-testid="submit-guess" disabled={!guess || busy || Boolean(reveal)} onClick={lockGuess}>
+              {busy ? 'Settling…' : 'Lock guess'}
+            </button>
+            <button
+              className="btn g"
+              type="button"
+              onClick={() => (relayer && !forceDemo ? openTestnetRound() : nextDemo((round?.photoIndex ?? 0) + 1))}
+            >
+              Skip
+            </button>
+          </div>
+          {reveal ? (
+            <RevealInset
+              guess={guess}
+              answer={answer}
+              meters={metersLabel(reveal.distanceM)}
+              reward={dropMode ? (reveal.won ? '+25 NOTF' : '+0 NOTF') : `+${reveal.reward} NOTF`}
+              rewardNote={dropMode ? 'from the pool' : 'minted by contract'}
+            />
+          ) : null}
+        </div>
+      </div>
+      <div className="low">
+        <section className="flow">
+          <h2 className="h">
+            How a round settles <small>commit → guess → reveal · NEAR testnet</small>
+          </h2>
+          <div className="steps">
+            <div className="step">
+              <div className="n">01</div>
+              <h4>Commit</h4>
+              <p>The place hash is stored before you drop a pin.</p>
+              <div className="tx">
+                <a href={`https://testnet.nearblocks.io/txns/${commitHash}`}>{shortTx(commitHash)}</a>
               </div>
             </div>
-          </section>
-        ) : null}
-
-        {screen === 'result' && result ? (
-          <section className="nf-result">
-            <p className="nf-kicker">{result.mode === 'testnet' ? 'Settled on NEAR testnet' : 'Settled locally'}</p>
-            <h2>
-              {result.city}, {result.country}
+            <div className="step">
+              <div className="n">02</div>
+              <h4>Guess, gasless</h4>
+              <p>A local key signs. The relayer pays gas.</p>
+              <div className="tx">
+                <a href={`https://testnet.nearblocks.io/txns/${guessHash}`}>{shortTx(guessHash)}</a>
+              </div>
+            </div>
+            <div className="step">
+              <div className="n">03</div>
+              <h4>Reveal & pay</h4>
+              <p>The contract checks the hash, measures distance, mints NOTF.</p>
+              <div className="tx">
+                <a href={`https://testnet.nearblocks.io/txns/${revealHash}`}>{shortTx(revealHash)}</a>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className="drop">
+          <div className="dcard">
+            <h2 className="h" style={{ margin: 0 }}>
+              Drop <small>escrowed prize pool</small>
             </h2>
-            <div className="nf-result-grid">
-              <div className="nf-card">
-                <span className="nf-quiet">Distance</span>
-                <strong data-testid="result-distance">{(result.distanceM / 1000).toFixed(2)} km</strong>
-              </div>
-              <div className="nf-card">
-                <span className="nf-quiet">NOTF</span>
-                <strong data-testid="result-reward">+{result.reward}</strong>
-              </div>
+            <div className="big">25 NOTF</div>
+            <div className="row">
+              <span>Rule</span>
+              <span>Closest guess inside 50 km</span>
             </div>
-            <p className="nf-copy">
-              Reward tier for this distance is {rewardWholeNotf(result.distanceM)} NOTF. The commitment{' '}
-              <span className="nf-hash">{shortHash(result.commitment)}</span> was stored before the pin.
-            </p>
-            {result.revealTx ? (
-              <p className="nf-links">
-                <a href={`https://testnet.nearblocks.io/txns/${result.commitTx}`}>Commit</a>
-                <a href={`https://testnet.nearblocks.io/txns/${result.guessTx}`}>Gasless guess</a>
-                <a href={`https://testnet.nearblocks.io/txns/${result.revealTx}`}>Reveal</a>
-              </p>
-            ) : null}
-            <div className="nf-actions">
-              <button className="nf-primary" type="button" onClick={mode === 'testnet' ? startTestnet : startDemo}>
-                Next round
-              </button>
-              <button className="nf-ghost" type="button" onClick={goHome}>
-                Back
-              </button>
+            <div className="row">
+              <span>{dropResult ? 'This pin' : 'Winner'}</span>
+              <span data-testid="drop-distance">{dropDistance}</span>
             </div>
-          </section>
-        ) : null}
-
-        {screen === 'drops' ? (
-          <section className="nf-drops">
-            <h1>Drop</h1>
-            <p className="nf-lead">One prize, locked in the pool. Closest pin inside 50 km takes it.</p>
-            {drop && !dropResult ? (
-              <div className="nf-play">
-                <figure className="nf-photo">
-                  <img
-                    src={placeImages[places.find((entry) => entry.id === drop.placeId).image]}
-                    alt="Drop location"
-                  />
-                  <figcaption>25 NOTF in the pool</figcaption>
-                </figure>
-                <div className="nf-board">
-                  <h2>Enter the drop</h2>
-                  <WorldMap guess={dropGuess} onGuess={setDropGuess} />
-                  <div className="nf-guess-bar">
-                    <p>{dropGuess ? `${dropGuess.lat.toFixed(2)}, ${dropGuess.lng.toFixed(2)}` : 'No pin yet'}</p>
-                    <button className="nf-primary" type="button" data-testid="submit-drop" disabled={!dropGuess} onClick={submitDrop}>
-                      Submit
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-            {dropResult ? (
-              <div className="nf-result">
-                <p className="nf-kicker">{dropResult.won ? 'Paid from the pool' : 'Prize stays locked'}</p>
-                <h2>
-                  {dropResult.city}, {dropResult.country}
-                </h2>
-                <div className="nf-result-grid">
-                  <div className="nf-card">
-                    <span className="nf-quiet">Distance</span>
-                    <strong data-testid="drop-distance">{(dropResult.distanceM / 1000).toFixed(2)} km</strong>
-                  </div>
-                  <div className="nf-card">
-                    <span className="nf-quiet">Pool</span>
-                    <strong>{dropResult.won ? `+${dropResult.prize}` : '0'}</strong>
-                  </div>
-                </div>
-                <p className="nf-copy">
-                  {dropResult.won
-                    ? 'Inside 50 km, so the locked prize is paid to this guess.'
-                    : 'Outside 50 km, so the prize stays in the pool.'}
-                </p>
-                <button className="nf-primary" type="button" onClick={openDrop}>
-                  Another drop
-                </button>
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-
-        {screen === 'wallet' ? (
-          <section className="nf-wallet">
-            <h1>Wallet</h1>
-            <div className="nf-stat-row">
-              <div className="nf-stat">
-                <span>Demo balance</span>
-                <strong>{profile.balance} NOTF</strong>
-              </div>
-              <div className="nf-stat">
-                <span>Free rounds</span>
-                <strong>
-                  {free}/{FREE_PER_DAY}
-                </strong>
-              </div>
-              <div className="nf-stat">
-                <span>Entry after that</span>
-                <strong>10</strong>
-              </div>
+            <div className="row">
+              <span>Payout</span>
+              <span>{dropPrize}</span>
             </div>
-            <p className="nf-copy">
-              {mode === 'testnet'
-                ? `This browser holds a local key for ${shortAccount(loadNearSession()?.accountId)}. The relayer pays the gas, so the round does not ask for a wallet popup.`
-                : 'Offline demo balance lives in this browser. A relayer on 127.0.0.1:8788 switches Play to a gasless testnet session without a wallet popup.'}
-            </p>
-            {testnet.configured ? (
-              <div className="nf-links">
-                <a href={`https://testnet.nearblocks.io/txns/${testnet.transactions?.find((entry) => entry.label === 'gasless guess')?.hash}`}>
-                  Sample gasless guess
-                </a>
-                <a href={`https://testnet.nearblocks.io/address/${testnet.poolContract}`}>Drop pool escrow</a>
-              </div>
-            ) : null}
-            <p className="nf-quiet">
-              <a href="?legacy=1">Classic server game</a>
-            </p>
-          </section>
-        ) : null}
-      </main>
+            <div className="row">
+              <span>Settle tx</span>
+              <a href={`https://testnet.nearblocks.io/txns/${dropTx}`}>{shortTx(dropTx)}</a>
+            </div>
+          </div>
+        </section>
+      </div>
+      <footer>
+        <a href={`https://testnet.nearblocks.io/address/${testnet.tokenContract || ''}`}>
+          NEP-141 · {testnet.tokenContract || 'token not recorded'}
+        </a>
+        <div className="grow" />
+        <span>{supply ? `Live supply ${supply} NOTF` : 'Bundled photos · testnet contracts'}</span>
+      </footer>
     </div>
+  )
+}
+
+function Ticker({ item }) {
+  const parts = item.split('·').map((part) => part.trim())
+  return (
+    <>
+      {parts.map((part, index) => (
+        <span key={part}>
+          {index > 0 ? ' · ' : ''}
+          {/NOTF|m$|km$/i.test(part) ? <b>{part}</b> : part}
+        </span>
+      ))}
+    </>
   )
 }
