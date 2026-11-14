@@ -1,0 +1,150 @@
+{
+  "configured": true,
+  "network": "testnet",
+  "rpcUrl": "https://rpc.testnet.near.org",
+  "tokenContract": "notf-token-726a52e4.testnet",
+  "gameContract": "notf-game-38b8e817.testnet",
+  "poolContract": "notf-pool-798fba54.testnet",
+  "relayerAccount": "notf-relay-87a84acb.testnet",
+  "sampleRoundId": "round-1794626565709",
+  "sampleDropId": "drop-1794626860614",
+  "samplePlayer": "f1f02b5b70c1afee052082bf8e0636f6f8b92011353d00bc07214a8a95250c2f",
+  "dropPlayer": "51c40c7c8bcace78cc6ec5b8f4c8c3adc5ab00180afd95062e994d1f59850d64",
+  "dropWinner": "51c40c7c8bcace78cc6ec5b8f4c8c3adc5ab00180afd95062e994d1f59850d64",
+  "dropDistanceM": 1115,
+  "playerBalance": "125000000000000000000",
+  "contractsLocked": [
+    "notf-token-726a52e4.testnet",
+    "notf-game-38b8e817.testnet",
+    "notf-pool-798fba54.testnet"
+  ],
+  "roundStatus": "settled",
+  "transactions": [
+    {
+      "label": "deploy token",
+      "hash": "EHKTjes5dh7zFYrnU25UvPMFGQ7jgS34mxkmif1ojGr6",
+      "accountId": "notf-token-726a52e4.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/EHKTjes5dh7zFYrnU25UvPMFGQ7jgS34mxkmif1ojGr6"
+    },
+    {
+      "label": "deploy game",
+      "hash": "5QNfZnkLQN1eFhmVfHBV4HkMWVigHzWaBs1BXpod6NjT",
+      "accountId": "notf-game-38b8e817.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/5QNfZnkLQN1eFhmVfHBV4HkMWVigHzWaBs1BXpod6NjT"
+    },
+    {
+      "label": "deploy pool",
+      "hash": "BhfXdqS9MdA4njZNpvN1cgRMBwkFc7tg5kkkHesDxs3d",
+      "accountId": "notf-pool-798fba54.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/BhfXdqS9MdA4njZNpvN1cgRMBwkFc7tg5kkkHesDxs3d"
+    },
+    {
+      "label": "init token",
+      "hash": "EgCQzVbr1WcrfbSuLbauTjEbbRmjHESsLUPgJZ19r1S",
+      "accountId": "notf-token-726a52e4.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/EgCQzVbr1WcrfbSuLbauTjEbbRmjHESsLUPgJZ19r1S"
+    },
+    {
+      "label": "init game",
+      "hash": "H7Jn9sgq4UZsickCq3aKMCPmgvPmR4gb1WHHfb3Qm57K",
+      "accountId": "notf-game-38b8e817.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/H7Jn9sgq4UZsickCq3aKMCPmgvPmR4gb1WHHfb3Qm57K"
+    },
+    {
+      "label": "init pool",
+      "hash": "GFwdRCVMRdp779hb5RYzt9sJHC11VnsjzRd5HuDsWVGC",
+      "accountId": "notf-pool-798fba54.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/GFwdRCVMRdp779hb5RYzt9sJHC11VnsjzRd5HuDsWVGC"
+    },
+    {
+      "label": "fund drop pool",
+      "hash": "81echne13U5nMf3ejNo9XdncEytYz9kpWCPy7EdK5MqS",
+      "accountId": "notf-token-726a52e4.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/81echne13U5nMf3ejNo9XdncEytYz9kpWCPy7EdK5MqS"
+    },
+    {
+      "label": "fund guest",
+      "hash": "2svpT9FKKpe1NmgcKo533bTuVyhcR21Q2yhiDGy9DHFE",
+      "accountId": "f1f02b5b70c1afee052082bf8e0636f6f8b92011353d00bc07214a8a95250c2f",
+      "explorer": "https://testnet.nearblocks.io/txns/2svpT9FKKpe1NmgcKo533bTuVyhcR21Q2yhiDGy9DHFE"
+    },
+    {
+      "label": "claim starter",
+      "hash": "2TGyvwM7DnWq9ZrifQzTeRwhB3dh4FEVhe997RE2rSgx",
+      "accountId": "notf-game-38b8e817.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/2TGyvwM7DnWq9ZrifQzTeRwhB3dh4FEVhe997RE2rSgx"
+    },
+    {
+      "label": "commit round",
+      "hash": "EcpeQcZ6rxaRUDaVoEKViHXX9BrWgQ3iePJWi1brpV4v",
+      "accountId": "notf-game-38b8e817.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/EcpeQcZ6rxaRUDaVoEKViHXX9BrWgQ3iePJWi1brpV4v"
+    },
+    {
+      "label": "gasless guess",
+      "hash": "8evrmdNe7CNS2vmjW2xyDGQMJNcyhQJanXZBFnnfb24k",
+      "accountId": "f1f02b5b70c1afee052082bf8e0636f6f8b92011353d00bc07214a8a95250c2f",
+      "explorer": "https://testnet.nearblocks.io/txns/8evrmdNe7CNS2vmjW2xyDGQMJNcyhQJanXZBFnnfb24k"
+    },
+    {
+      "label": "reveal round",
+      "hash": "HQKG8AwbdcUcw2gcuAhN17TiPAZagmMVo7A4SYUeQXTK",
+      "accountId": "notf-game-38b8e817.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/HQKG8AwbdcUcw2gcuAhN17TiPAZagmMVo7A4SYUeQXTK"
+    },
+    {
+      "label": "lock token",
+      "hash": "H9bwDFoTxGRAq3vRb6Rz3qx5BMBZ1PAcEUUYwVz9xco8",
+      "accountId": "notf-token-726a52e4.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/H9bwDFoTxGRAq3vRb6Rz3qx5BMBZ1PAcEUUYwVz9xco8"
+    },
+    {
+      "label": "lock game",
+      "hash": "Fq1CEyNZdfnTSkh1RdcUHWzsMqCcNP48nWAb3N8nnvEX",
+      "accountId": "notf-game-38b8e817.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/Fq1CEyNZdfnTSkh1RdcUHWzsMqCcNP48nWAb3N8nnvEX"
+    },
+    {
+      "label": "lock pool",
+      "hash": "8tXMxy6s61Zv5M6SuJT2zyRTQKZd4SRu9hV1pWcR4aCj",
+      "accountId": "notf-pool-798fba54.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/8tXMxy6s61Zv5M6SuJT2zyRTQKZd4SRu9hV1pWcR4aCj"
+    },
+    {
+      "label": "open drop",
+      "hash": "BhLmw3MsKE5ygGdJQr7LXtdpfzX13cWFUFGtCRrx2j61",
+      "accountId": "notf-pool-798fba54.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/BhLmw3MsKE5ygGdJQr7LXtdpfzX13cWFUFGtCRrx2j61"
+    },
+    {
+      "label": "fund drop player",
+      "hash": "a1VezYyT1v6uHbGyLK2zpAZH35cJjaXHnF1psHDh7PB",
+      "accountId": "51c40c7c8bcace78cc6ec5b8f4c8c3adc5ab00180afd95062e994d1f59850d64",
+      "explorer": "https://testnet.nearblocks.io/txns/a1VezYyT1v6uHbGyLK2zpAZH35cJjaXHnF1psHDh7PB"
+    },
+    {
+      "label": "claim starter for drop player",
+      "hash": "6Snhe4WEGAEhiMnrJqYjydSSKH8iMNUPaorrpfv8huXo",
+      "accountId": "notf-game-38b8e817.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/6Snhe4WEGAEhiMnrJqYjydSSKH8iMNUPaorrpfv8huXo"
+    },
+    {
+      "label": "gasless drop guess",
+      "hash": "6PLStsxhuABF4JcpDFAZtAATuzbcYU2WrdsfuEYhMdPs",
+      "accountId": "51c40c7c8bcace78cc6ec5b8f4c8c3adc5ab00180afd95062e994d1f59850d64",
+      "explorer": "https://testnet.nearblocks.io/txns/6PLStsxhuABF4JcpDFAZtAATuzbcYU2WrdsfuEYhMdPs"
+    },
+    {
+      "label": "settle drop",
+      "hash": "95ETWNvtsPfCD4PjBswgP9wgePzZkUw1hxrfCFAnwN7",
+      "accountId": "notf-pool-798fba54.testnet",
+      "explorer": "https://testnet.nearblocks.io/txns/95ETWNvtsPfCD4PjBswgP9wgePzZkUw1hxrfCFAnwN7"
+    }
+  ],
+  "accounts": {
+    "token": "https://testnet.nearblocks.io/address/notf-token-726a52e4.testnet",
+    "game": "https://testnet.nearblocks.io/address/notf-game-38b8e817.testnet",
+    "pool": "https://testnet.nearblocks.io/address/notf-pool-798fba54.testnet",
+    "relayer": "https://testnet.nearblocks.io/address/notf-relay-87a84acb.testnet"
+  }
+}
