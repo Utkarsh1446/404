@@ -11,10 +11,23 @@ import { applyGuess, freeRemaining, freshProfile, profileForDay } from './demoEn
 import { placeImages } from './images.js'
 import testnet from './testnet.json'
 import { createNearSession, loadNearSession, saveNearSession, signSubmitGuess, viewCall } from './nearBrowser.js'
+import { resolveRelayerUrl } from './relayerUrl.js'
+import {
+  BURNED_NOTE,
+  DEMO_BANNER,
+  NO_BURN_TX,
+  PHOTO_FALLBACK_CHIP,
+  SAMPLE_ROUND_NOTE,
+  WOULD_BURN_NOTE,
+  settledExampleLabel,
+  wouldMintNote,
+  wouldPayNote,
+} from './copy.js'
 import { Atlas, RevealInset } from './Atlas.jsx'
 
 const PROFILE_KEY = 'notfound-demo-profile'
 const ROUND_MS = 90_000
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
 
 function loadProfile() {
   try {
@@ -27,7 +40,11 @@ function loadProfile() {
 }
 
 function txOf(label) {
-  return testnet.transactions?.find((entry) => entry.label === label)?.hash ?? ''
+  return testnet.transactions?.find((entry) => entry.label === label) ?? null
+}
+
+function txUrl(hash) {
+  return hash ? `https://testnet.nearblocks.io/txns/${hash}` : ''
 }
 
 function shortTx(hash) {
@@ -37,6 +54,15 @@ function shortTx(hash) {
 
 function metersLabel(distanceM) {
   return `${new Intl.NumberFormat('en-US').format(Math.round(distanceM))} m`
+}
+
+function wholeFromRaw(raw) {
+  if (raw == null || raw === '') return 0
+  if (typeof raw === 'bigint') return Number(raw / 10n ** 18n)
+  if (typeof raw === 'number') return Math.round(raw / 1e18)
+  const text = String(raw)
+  if (!/^-?\d+$/.test(text)) return Math.round(Number(text) / 1e18)
+  return Number(BigInt(text) / 10n ** 18n)
 }
 
 function randomSalt() {
@@ -76,6 +102,7 @@ export default function ChainApp() {
   const [relayer, setRelayer] = useState(null)
   const [chainRound, setChainRound] = useState(null)
   const [supply, setSupply] = useState('')
+  const [chainBalance, setChainBalance] = useState('')
 
   useEffect(() => {
     window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile))
@@ -84,13 +111,15 @@ export default function ChainApp() {
   useEffect(() => {
     let cancelled = false
     async function boot() {
-      if (!forceDemo) {
-        const base = import.meta.env.VITE_RELAYER_URL || 'http://127.0.0.1:8788'
+      const base = forceDemo
+        ? ''
+        : resolveRelayerUrl(import.meta.env.VITE_RELAYER_URL, window.location.hostname)
+      if (base) {
         try {
-          const healthResponse = await fetch(`${base}/health`)
+          const healthResponse = await fetch(`${base}/health`, { signal: AbortSignal.timeout(2500) })
           if (healthResponse.ok) {
             const health = await healthResponse.json()
-            if (health?.ok && !cancelled) {
+            if (health?.ok && health.ready !== false && !cancelled) {
               const nextRelayer = { ...health, base }
               setRelayer(nextRelayer)
               let session = loadNearSession()
@@ -122,12 +151,12 @@ export default function ChainApp() {
                   photoIndex: 0,
                   deadline: Date.now() + ROUND_MS,
                 })
+                return
               }
-              return
             }
           }
         } catch {
-          /* demo atlas */
+          /* stay on the demo round */
         }
       }
       const sealed = await sealPlace(places[0], 0)
@@ -163,38 +192,39 @@ export default function ChainApp() {
   const dropPlace = places[((round?.photoIndex ?? 0) + 1) % places.length]
   const stagePlace = dropMode ? dropPlace : place
   const free = freeRemaining(profile)
-  const chainMeters = Number(chainRound?.distance_m ?? chainRound?.distanceM)
-  const chainReward = chainRound ? Number(BigInt(chainRound.reward || 0) / 10n ** 18n) : 15
+  const onTestnet = Boolean(relayer && !forceDemo && round?.mode === 'testnet')
+  const sampleMeters = Number(chainRound?.distance_m ?? testnet.sampleDistanceM)
+  const sampleReward = chainRound ? wholeFromRaw(chainRound.reward) : testnet.sampleReward
   const sampleCommit = txOf('commit round')
   const sampleGuess = txOf('gasless guess')
   const sampleReveal = txOf('reveal round')
   const sampleSettle = txOf('settle drop')
+  const sampleStarter = txOf('claim starter')
 
   const reveal = dropMode ? dropResult : result
   const answer = reveal
     ? { lat: reveal.actual.lat, lng: reveal.actual.lng }
     : null
 
-  const commitHash = result?.commitTx || sampleCommit
-  const guessHash = result?.guessTx || sampleGuess
-  const revealHash = result?.revealTx || sampleReveal
+  const usingSampleTx = !result?.revealTx
+  const commitHash = result?.commitTx || sampleCommit?.hash || ''
+  const guessHash = result?.guessTx || sampleGuess?.hash || ''
+  const revealHash = result?.revealTx || sampleReveal?.hash || ''
 
   const dropDistance = dropResult
-    ? `${(dropResult.distanceM / 1000).toFixed(1)} km`
-    : testnet.dropDistanceM
-      ? `${(testnet.dropDistanceM / 1000).toFixed(1)} km`
-      : '—'
-  const dropPrize = dropResult ? (dropResult.won ? `+${dropResult.prize}` : 'stays locked') : '+25 NOTF'
-  const dropTx = dropResult?.revealTx || sampleSettle
+    ? metersLabel(dropResult.distanceM)
+    : metersLabel(testnet.dropDistanceM)
+  const dropPrize = dropResult ? wouldPayNote(dropResult.won) : '+25 NOTF sample'
+  const dropTx = sampleSettle?.hash || ''
 
   const ticker = useMemo(() => {
-    const roundBit = Number.isFinite(chainMeters)
-      ? `Testnet round settled · ${metersLabel(chainMeters)} · +${chainReward} NOTF`
-      : 'Place hash stored before the pin'
-    const dropBit = `Drop settled · closest inside 50 km · ${dropResult ? dropPrize : '+25 NOTF'}`
-    const supplyBit = supply ? `Live supply ${supply} NOTF` : 'Contract measures the distance'
-    return [roundBit, dropBit, supplyBit, 'Server signatures are not payouts']
-  }, [chainMeters, chainReward, dropPrize, dropResult, supply])
+    const roundBit = Number.isFinite(sampleMeters)
+      ? `Sample round · ${metersLabel(sampleMeters)} · minted ${sampleReward} NOTF`
+      : 'Sample round settled on testnet'
+    const dropBit = `Sample drop · ${metersLabel(testnet.dropDistanceM)} · paid 25 NOTF`
+    const supplyBit = supply ? `Live supply ${supply} NOTF` : 'Supply view pending'
+    return [roundBit, dropBit, supplyBit, 'Round 4 burns 10 NOTF']
+  }, [sampleMeters, sampleReward, supply])
 
   async function nextDemo(index) {
     setBusy(true)
@@ -251,6 +281,18 @@ export default function ChainApp() {
     }
   }
 
+  async function refreshChainBalance(accountId) {
+    if (!accountId) return
+    try {
+      const raw = await viewCall(testnet.rpcUrl, testnet.tokenContract, 'ft_balance_of', {
+        account_id: accountId,
+      })
+      setChainBalance(formatWhole(raw))
+    } catch {
+      /* the chip stays on the last balance */
+    }
+  }
+
   async function lockGuess() {
     if (!guess || !stagePlace || busy) return
     setBusy(true)
@@ -263,14 +305,12 @@ export default function ChainApp() {
           toE6(guess.lat),
           toE6(guess.lng),
         )
-        const won = distanceM <= 50_000
-        if (won) setProfile((current) => ({ ...current, balance: current.balance + 25 }))
         setDropResult({
           distanceM,
-          won,
+          won: distanceM <= 50_000,
           prize: 25,
           actual: { lat: stagePlace.lat, lng: stagePlace.lng },
-          reward: won ? 25 : 0,
+          reward: distanceM <= 50_000 ? 25 : 0,
         })
         return
       }
@@ -295,15 +335,18 @@ export default function ChainApp() {
           await fetch(`${relayer.base}/rounds/${round.roundId}/reveal`, { method: 'POST' }),
         )
         const distanceM = Number(revealed.round?.distance_m ?? revealed.round?.distanceM)
-        const reward = Number(BigInt(revealed.round?.reward ?? 0) / 10n ** 18n)
+        const reward = wholeFromRaw(revealed.round?.reward ?? 0)
+        const fee = wholeFromRaw(revealed.round?.fee ?? 0)
         setResult({
           distanceM,
           reward,
+          fee,
           actual: { lat: revealed.lat, lng: revealed.lng },
           commitTx: round.commitTx,
           guessTx: relayed.txHash,
           revealTx: revealed.revealTx,
         })
+        refreshChainBalance(round.accountId)
         return
       }
 
@@ -312,6 +355,7 @@ export default function ChainApp() {
       setResult({
         distanceM: settled.distanceM,
         reward: settled.reward,
+        fee: settled.fee,
         actual: { lat: stagePlace.lat, lng: stagePlace.lng },
       })
     } catch (lockError) {
@@ -324,26 +368,63 @@ export default function ChainApp() {
   const photoLabel = `Photo ${(stagePlace ? places.findIndex((entry) => entry.id === stagePlace.id) : 0) + 1}`
   const committedLabel = round?.mode === 'testnet'
     ? 'Answer committed · place hash on chain'
-    : 'Answer committed · place hash sealed'
+    : 'Answer committed · place hash sealed in this browser'
+
+  const rewardNote = !reveal || dropMode
+    ? ''
+    : onTestnet && result?.revealTx
+      ? 'minted on testnet'
+      : wouldMintNote(reveal.reward)
+  const extraNote = reveal && !dropMode && reveal.fee > 0
+    ? (onTestnet && result?.revealTx ? BURNED_NOTE : WOULD_BURN_NOTE)
+    : ''
+  const rewardTx = dropMode
+    ? txUrl(dropTx)
+    : txUrl(result?.revealTx || sampleReveal?.hash)
+  const rewardTxLabel = dropMode
+    ? 'sample settle · not this pin'
+    : result?.revealTx
+      ? shortTx(result.revealTx)
+      : settledExampleLabel(sampleReward ?? 15)
+
+  const showBurnPreview = !onTestnet && !dropMode && !reveal && free === 0
 
   return (
     <div className="board">
       <header>
-        <button className="logo" type="button" onClick={() => nextDemo((round?.photoIndex ?? 0) + 1)}>
+        <button className="logo" type="button" onClick={() => (onTestnet ? openTestnetRound() : nextDemo((round?.photoIndex ?? 0) + 1))}>
           404 <span>NOTFOUND</span>
         </button>
         <div className="chip">Free {free} / {FREE_PER_DAY}</div>
         <button className="chip" type="button" onClick={() => { setDropMode(true); setGuess(null); setResult(null) }}>
-          {dropResult ? 'Drop settled' : 'Daily drop open'}
+          {dropResult ? 'Drop scored' : 'Daily drop open'}
         </button>
         <div className="grow" />
         <div className="chip">
           <i />
-          {relayer && !forceDemo ? 'Gasless · NEP-366 relayer' : 'Demo · no wallet popup'}
+          {onTestnet ? 'Gasless · NEP-366 relayer' : 'DEMO · no wallet'}
         </div>
-        <div className="chip f">{profile.balance} NOTF</div>
+        <div className="chip f" data-testid="balance">
+          {onTestnet ? (chainBalance ? `${chainBalance} NOTF` : 'testnet balance') : `demo ${profile.balance} NOTF`}
+        </div>
       </header>
+      {onTestnet ? null : (
+        <div className="banner" data-testid="demo-banner">{DEMO_BANNER}</div>
+      )}
       {error ? <div className="err">{error}</div> : null}
+      <div className="mech" data-testid="mint-schedule">
+        <span>≤1 km mints 25</span>
+        <span>≤10 km mints 15</span>
+        <span>≤25 km mints 8</span>
+        <span>≤50 km mints 3</span>
+        <span>farther mints 0</span>
+        <span>rounds 1–3 free</span>
+        <span>round 4 burns 10</span>
+        <a href={txUrl(sampleStarter?.hash)}>starter mint +100</a>
+        <a href={txUrl(sampleReveal?.hash)}>distance mint +{sampleReward ?? 15}</a>
+        <a href={txUrl(sampleSettle?.hash)}>drop paid +25</a>
+        <span>{NO_BURN_TX}</span>
+      </div>
       <div className="ticker">
         {ticker.map((item) => (
           <span key={item}>{item.includes('·') ? <Ticker item={item} /> : item}</span>
@@ -352,17 +433,18 @@ export default function ChainApp() {
       <div className="stage">
         <div className="photo">
           {stagePlace ? (
-            <img src={placeImages[stagePlace.image]} alt="" data-place={stagePlace.id} />
+            <img src={placeImages[stagePlace.image]} alt="Round photo" data-place={stagePlace.id} />
           ) : null}
           <div className="ph-top">
             <span className="chip">{photoLabel}</span>
             <span className="chip">{round ? committedLabel : 'Sealing the place…'}</span>
+            {MAPS_KEY ? null : <span className="chip">{PHOTO_FALLBACK_CHIP}</span>}
           </div>
           <div className="q">
             <b>{dropMode ? 'WHERE IS THE DROP?' : 'WHERE IS THIS?'}</b>
             <small>
               {dropMode
-                ? 'Pin the atlas. Inside 50 km takes the pool.'
+                ? 'Pin the atlas. Inside 50 km would take the pool.'
                 : 'Pin the atlas. Lock the guess. No wallet popup.'}
             </small>
           </div>
@@ -375,6 +457,9 @@ export default function ChainApp() {
             onGuess={reveal ? undefined : setGuess}
           />
           <div className="legend">Atlas · equirectangular · Natural Earth</div>
+          {showBurnPreview ? (
+            <div className="burnline" data-testid="burn-preview">{WOULD_BURN_NOTE}</div>
+          ) : null}
           <div className="lock">
             <button className="btn" type="button" data-testid="submit-guess" disabled={!guess || busy || Boolean(reveal)} onClick={lockGuess}>
               {busy ? 'Settling…' : 'Lock guess'}
@@ -382,7 +467,7 @@ export default function ChainApp() {
             <button
               className="btn g"
               type="button"
-              onClick={() => (relayer && !forceDemo ? openTestnetRound() : nextDemo((round?.photoIndex ?? 0) + 1))}
+              onClick={() => (onTestnet ? openTestnetRound() : nextDemo((round?.photoIndex ?? 0) + 1))}
             >
               Skip
             </button>
@@ -393,7 +478,10 @@ export default function ChainApp() {
               answer={answer}
               meters={metersLabel(reveal.distanceM)}
               reward={dropMode ? (reveal.won ? '+25 NOTF' : '+0 NOTF') : `+${reveal.reward} NOTF`}
-              rewardNote={dropMode ? 'from the pool' : 'minted by contract'}
+              rewardNote={dropMode ? wouldPayNote(reveal.won) : rewardNote}
+              extraNote={dropMode ? '' : extraNote}
+              txHref={rewardTx}
+              txLabel={rewardTxLabel}
             />
           ) : null}
         </div>
@@ -401,15 +489,15 @@ export default function ChainApp() {
       <div className="low">
         <section className="flow">
           <h2 className="h">
-            How a round settles <small>commit → guess → reveal · NEAR testnet</small>
+            How a round settles <small data-testid="sample-note">{usingSampleTx ? SAMPLE_ROUND_NOTE : 'this round on testnet'}</small>
           </h2>
           <div className="steps">
             <div className="step">
               <div className="n">01</div>
               <h4>Commit</h4>
-              <p>The place hash is stored before you drop a pin.</p>
+              <p>The place hash is stored before the pin exists.</p>
               <div className="tx">
-                <a href={`https://testnet.nearblocks.io/txns/${commitHash}`}>{shortTx(commitHash)}</a>
+                <a href={txUrl(commitHash)}>{shortTx(commitHash)}</a>
               </div>
             </div>
             <div className="step">
@@ -417,15 +505,15 @@ export default function ChainApp() {
               <h4>Guess, gasless</h4>
               <p>A local key signs. The relayer pays gas.</p>
               <div className="tx">
-                <a href={`https://testnet.nearblocks.io/txns/${guessHash}`}>{shortTx(guessHash)}</a>
+                <a href={txUrl(guessHash)}>{shortTx(guessHash)}</a>
               </div>
             </div>
             <div className="step">
               <div className="n">03</div>
-              <h4>Reveal & pay</h4>
+              <h4>Reveal & mint</h4>
               <p>The contract checks the hash, measures distance, mints NOTF.</p>
               <div className="tx">
-                <a href={`https://testnet.nearblocks.io/txns/${revealHash}`}>{shortTx(revealHash)}</a>
+                <a href={txUrl(revealHash)}>{shortTx(revealHash)}</a>
               </div>
             </div>
           </div>
@@ -441,7 +529,7 @@ export default function ChainApp() {
               <span>Closest guess inside 50 km</span>
             </div>
             <div className="row">
-              <span>{dropResult ? 'This pin' : 'Winner'}</span>
+              <span>{dropResult ? 'This pin' : 'Sample winner'}</span>
               <span data-testid="drop-distance">{dropDistance}</span>
             </div>
             <div className="row">
@@ -449,8 +537,8 @@ export default function ChainApp() {
               <span>{dropPrize}</span>
             </div>
             <div className="row">
-              <span>Settle tx</span>
-              <a href={`https://testnet.nearblocks.io/txns/${dropTx}`}>{shortTx(dropTx)}</a>
+              <span>{dropResult ? 'Sample settle' : 'Settle tx'}</span>
+              <a href={txUrl(dropTx)}>{shortTx(dropTx)}</a>
             </div>
           </div>
         </section>
@@ -459,8 +547,9 @@ export default function ChainApp() {
         <a href={`https://testnet.nearblocks.io/address/${testnet.tokenContract || ''}`}>
           NEP-141 · {testnet.tokenContract || 'token not recorded'}
         </a>
+        <a href="/photo-licenses.txt">Photo credits · CC BY-SA</a>
         <div className="grow" />
-        <span>{supply ? `Live supply ${supply} NOTF` : 'Bundled photos · testnet contracts'}</span>
+        <span>{supply ? `Live supply ${supply} NOTF` : 'CC BY-SA photos · testnet contracts'}</span>
       </footer>
     </div>
   )

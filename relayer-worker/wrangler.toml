@@ -1,0 +1,23 @@
+name = "notf-relayer"
+main = "src/index.js"
+compatibility_date = "2026-11-14"
+compatibility_flags = ["nodejs_compat"]
+
+# Prepared only. Do not deploy until the owner says so.
+# Create the namespace first, then replace both ids:
+#   npx wrangler kv namespace create ROUNDS
+# The private key is not a var. Set it with:
+#   npx wrangler secret put RELAYER_PRIVATE_KEY
+# Value is the relayer account's ed25519 secret (ed25519:...). Never commit it.
+
+[vars]
+NEAR_RPC_URL = "https://rpc.testnet.near.org"
+GAME_CONTRACT = "notf-game-38b8e817.testnet"
+TOKEN_CONTRACT = "notf-token-726a52e4.testnet"
+POOL_CONTRACT = "notf-pool-798fba54.testnet"
+RELAYER_ACCOUNT_ID = "notf-relay-87a84acb.testnet"
+
+[[kv_namespaces]]
+binding = "ROUNDS"
+id = "00000000000000000000000000000000"
+preview_id = "00000000000000000000000000000000"

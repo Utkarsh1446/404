@@ -12,6 +12,8 @@
   "dropPlayer": "51c40c7c8bcace78cc6ec5b8f4c8c3adc5ab00180afd95062e994d1f59850d64",
   "dropWinner": "51c40c7c8bcace78cc6ec5b8f4c8c3adc5ab00180afd95062e994d1f59850d64",
   "dropDistanceM": 1115,
+  "sampleDistanceM": 1329,
+  "sampleReward": 15,
   "playerBalance": "125000000000000000000",
   "contractsLocked": [
     "notf-token-726a52e4.testnet",

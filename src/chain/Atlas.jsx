@@ -108,7 +108,7 @@ export function Atlas({ guess, answer, framed, onGuess }) {
   )
 }
 
-export function RevealInset({ guess, answer, meters, reward, rewardNote }) {
+export function RevealInset({ guess, answer, meters, reward, rewardNote, extraNote, txHref, txLabel }) {
   const dx = ((guess?.lng ?? answer.lng) - answer.lng) * 14
   const dy = (answer.lat - (guess?.lat ?? answer.lat)) * 14
   const pin = { x: Math.max(24, Math.min(200, 70 + dx)), y: Math.max(24, Math.min(70, 52 + dy)) }
@@ -140,10 +140,22 @@ export function RevealInset({ guess, answer, meters, reward, rewardNote }) {
       </svg>
       <div className="res">
         <b data-testid="result-distance">{meters}</b>
-        <span>
+        <span data-testid="reward-note">
           {reward}
           <br />
           {rewardNote}
+          {extraNote ? (
+            <>
+              <br />
+              {extraNote}
+            </>
+          ) : null}
+          {txHref ? (
+            <>
+              <br />
+              <a href={txHref}>{txLabel}</a>
+            </>
+          ) : null}
         </span>
       </div>
     </div>

@@ -39,6 +39,7 @@ app.get('/health', (_request, response) => {
     tokenContract: publication.tokenContract,
     poolContract: publication.poolContract,
     relayerAccount: publication.relayerAccount,
+    ready: true,
   })
 })
 
